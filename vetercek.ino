@@ -69,7 +69,7 @@ void setup() {
   sleep.pwrDownMode(); //set sleep mode
   sleep.sleepDelay(10000); //sleep for: sleepTime
 
-  WindSpeed = Rotations * 0.75 * 0.868976242 * 10 ;  // convert to mp/h using the formula V=P(2.25/T); V = P(2.25/3) = P * 0.75 ;    0.868976242 to get knots 
+  WindSpeed = Rotations * 2.25 * 0.868976242 * 10 ;  // convert to mp/h using the formula V=P(2.25/Time); V = P(2.25/3) = P * 0.75 ;    0.868976242 to get knots 
   ++measure_count; // add +1 to counter
   WindAvr += WindSpeed; // add to sum of average wind values
   
