@@ -17,16 +17,16 @@ OneWire oneWire(ONE_WIRE_BUS); // water semperature
 DallasTemperature sensors(&oneWire);
 
 const char *bearer="internet.bob.si";
-const char *id="47b2d05fadd55d37a32eb13dfa0000ba";  // get this unique ID in order to send data to vetercek.com
+const char *id="e128c930fca75af8be9bff3232c697ce";  // get this unique ID in order to send data to vetercek.com
 unsigned int RX_PIN = 9; //RX pin for sim800
 unsigned int TX_PIN = 8; //TX pin for sim800
 unsigned int RST_PIN = 12; //RST pin for sim800 - not in use
 volatile unsigned long Rotations; // cup rotation counter used in interrupt routine 
 volatile unsigned long ContactBounceTime; // Timer to avoid contact bounce in interrupt routine 
 int WindSpeed; // speed  
-int WindAvr=0;
+long WindAvr=0;
 int WindGust=0;
-int WindDir=0;
+long WindDir=0;
 int measure_count=0; // count each mesurement
 int Water; // water Temperature
 int Temp; //Stores Temperature value
@@ -64,12 +64,12 @@ void setup() {
  
   Rotations = 0; // Set Rotations count to 0 ready for calculations 
   sei(); // Enables interrupts 
-  delay (1000); // Wait 1 second to average 
+  delay (2000); // Wait 1 second to average 
   cli(); // Disable interrupts 
   sleep.pwrDownMode(); //set sleep mode
   sleep.sleepDelay(10000); //sleep for: sleepTime
 
-  WindSpeed = Rotations * 2.25 * 0.868976242 * 10 ;  // convert to mp/h using the formula V=P(2.25/Time); V = P(2.25/3) = P * 0.75 ;    0.868976242 to get knots 
+  WindSpeed = Rotations * 1.125 * 0.868976242 * 10 ;  // convert to mp/h using the formula V=P(2.25/Time); V = P(2.25/3) = P * 0.75 ;    0.868976242 to get knots 
   ++measure_count; // add +1 to counter
   WindAvr += WindSpeed; // add to sum of average wind values
   
@@ -169,11 +169,11 @@ void sendData(){
       int WhenSend2 = root["whensend"];
       int Offset = root["offset"];
 
-      if (WhenSend2 > 1){  // server response to when to do next update 
+      if (WhenSend2> -999){  // server response to when to do next update 
        WhenSend=WhenSend2;
       }
 
-      if (Offset > 1){  // server response to when to do next update 
+      if (Offset > -999){  // server response to when to do next update 
        VaneOffset=Offset;
       }
  }
