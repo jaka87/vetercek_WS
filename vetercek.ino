@@ -191,8 +191,7 @@ void sendData(){
       WindGust=0;
       Water=0;
       Temp=0;
-      for( int i = 0; i < sizeof(avrDir);  ++i )
-        avrDir[i] = (char)0;
+      memset(avrDir,0,sizeof(avrDir));
 
 
       StaticJsonDocument<200> doc;
