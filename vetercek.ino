@@ -24,9 +24,9 @@ unsigned int RST_PIN = 12; //RST pin for sim800 - not in use
 volatile unsigned long Rotations; // cup rotation counter used in interrupt routine 
 volatile unsigned long ContactBounceTime; // Timer to avoid contact bounce in interrupt routine 
 int WindSpeed; // speed  
-long WindAvr=0;
+long WindAvr=0; //sum of all wind speed between update
 int WindGust=0;
-long WindDir=0;
+int avrDir[16] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 }; // array where wind direction are saved and later one with highest value is selected as dominant
 int measure_count=0; // count each mesurement
 int Water; // water Temperature
 int Temp; //Stores Temperature value
@@ -77,8 +77,6 @@ void setup() {
      WindGust=WindSpeed;
   } 
   getWindDirection();
-
-
   
   Serial.println(CalDirection); 
   Serial.println(WindSpeed); 
@@ -106,8 +104,41 @@ if ((millis() - ContactBounceTime) > 15 ) { // debounce the switch contact.
 Rotations++; 
 ContactBounceTime = millis(); 
 } 
-
 }
+
+
+void getHeading(int direction) {  // split wind direction in 16 parts and save it to array
+if(direction < 11.25) { ++avrDir[0]; }
+else if(direction < 33.75) { ++avrDir[1]; }
+else if(direction < 56.25) { ++avrDir[2]; }
+else if(direction < 78.75) { ++avrDir[3]; }
+else if(direction < 101.25) { ++avrDir[4]; }
+else if(direction < 123.75) { ++avrDir[5]; }
+else if(direction < 146.25) { ++avrDir[6]; }
+else if(direction < 168.75) { ++avrDir[7]; }
+else if(direction < 191.25) { ++avrDir[8]; }
+else if(direction < 213.75) { ++avrDir[9]; }
+else if(direction < 236.25) { ++avrDir[10]; }
+else if(direction < 258.75) { ++avrDir[11]; }
+else if(direction < 281.25) { ++avrDir[12]; }
+else if(direction < 303.75) { ++avrDir[13]; }
+else if(direction < 326.25) { ++avrDir[14]; }
+else if(direction < 348.75) { ++avrDir[15]; }
+else { ++avrDir[0]; }
+}
+
+int dominantDirection(int* array, int size){ // get dominant wind direction
+ int maxIndex = 0;
+ int max = array[maxIndex];
+ for (int i=1; i<size; i++){
+   if (max<array[i]){
+     max = array[i];
+     maxIndex = i*22; //this is just approximate calculation so server can return the right char value
+   }
+ }
+ return maxIndex;
+}
+
 
 // Get Wind Direction
 void getWindDirection() {
@@ -121,7 +152,7 @@ void getWindDirection() {
    if(CalDirection < 0)
      CalDirection = CalDirection + 360;
 
-  WindDir += CalDirection; // add to sum of average direction values
+  getHeading(CalDirection);
 }
 
 
@@ -139,7 +170,7 @@ void print(const __FlashStringHelper *message, int code = -1){
 
 // send data to server
 void sendData(){
-  wind_dir=WindDir/measure_count; 
+  wind_dir=dominantDirection(avrDir,16);
   wind_speed=WindAvr/measure_count; 
   
   print(F("Cofigure bearer: "), http.configureBearer(bearer));
@@ -155,12 +186,14 @@ void sendData(){
   print(F("HTTP POST: "), result);
   if (result == SUCCESS) {
 
-      WindDir=0;
       measure_count=0;
       WindAvr=0; 
       WindGust=0;
       Water=0;
       Temp=0;
+      for( int i = 0; i < sizeof(avrDir);  ++i )
+        avrDir[i] = (char)0;
+
 
       StaticJsonDocument<200> doc;
       deserializeJson(doc, response);
