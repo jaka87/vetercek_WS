@@ -16,8 +16,9 @@ DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor
 OneWire oneWire(ONE_WIRE_BUS); // water semperature
 DallasTemperature sensors(&oneWire);
 
-const char *bearer="internet.bob.si";
+const char *bearer="internet.bob.si"; // APN address
 const char *id="e128c930fca75af8be9bff3232c697ce";  // get this unique ID in order to send data to vetercek.com
+const char *webpage="vetercek.com/xml/post.php";  // where POST request is made
 unsigned int RX_PIN = 9; //RX pin for sim800
 unsigned int TX_PIN = 8; //TX pin for sim800
 unsigned int RST_PIN = 12; //RST pin for sim800 - not in use
@@ -64,12 +65,12 @@ void setup() {
  
   Rotations = 0; // Set Rotations count to 0 ready for calculations 
   sei(); // Enables interrupts 
-  delay (2000); // Wait 1 second to average 
+  delay (1000); // Wait 1 second to average 
   cli(); // Disable interrupts 
   sleep.pwrDownMode(); //set sleep mode
   sleep.sleepDelay(10000); //sleep for: sleepTime
 
-  WindSpeed = Rotations * 1.125 * 0.868976242 * 10 ;  // convert to mp/h using the formula V=P(2.25/Time); V = P(2.25/3) = P * 0.75 ;    0.868976242 to get knots 
+  WindSpeed = Rotations * 2.25 * 0.868976242 * 10 ;  // convert to mp/h using the formula V=P(2.25/Time);    *0.868976242 to get knots 
   ++measure_count; // add +1 to counter
   WindAvr += WindSpeed; // add to sum of average wind values
   
@@ -182,7 +183,7 @@ void sendData(){
      
   sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGust/10,WindGust%10,Temp/10,Temp%10,Water/10,Water%10,voltage);
   Serial.println(body);
-  result = http.post("vetercek.com/xml/post.php", body, response);
+  result = http.post(webpage, body, response);
   print(F("HTTP POST: "), result);
   if (result == SUCCESS) {
 
