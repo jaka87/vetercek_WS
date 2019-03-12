@@ -8,9 +8,9 @@
 #include <DHT_U.h>
 #define WindSensorPin (2) // The pin location of the anemometer sensor 
 #define WindVanePin (A1)       // The pin the wind vane sensor is connected to
-#define DHTPIN 6     // what pin we're connected to
+#define DHTPIN 4     // what pin we're connected to
 #define DHTTYPE DHT22   // DHT 22  (AM2302)
-#define ONE_WIRE_BUS 2
+#define ONE_WIRE_BUS 3
 Sleep sleep;
 DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor
 OneWire oneWire(ONE_WIRE_BUS); // water semperature
