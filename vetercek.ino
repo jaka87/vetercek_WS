@@ -29,8 +29,10 @@ long WindAvr=0; //sum of all wind speed between update
 int WindGust=0;
 int avrDir[16] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 }; // array where wind direction are saved and later one with highest value is selected as dominant
 int measure_count=0; // count each mesurement
-int Water; // water Temperature
-int Temp; //Stores Temperature value
+float Water; // water Temperature
+char wat[6]; // Water char value
+float Temp; //Stores Temperature value
+char tmp[6]; // Temperature char value
 int VaneValue;       // raw analog value from wind vane
 int Direction;       // translated 0 - 360 direction
 int VaneOffset=0;        // define the anemometer offset from magnetic north
@@ -41,12 +43,13 @@ int wind_gust;   //calculated wind gusts
 char voltage[2]; //battery state
 char response[100];
 char body[200]; 
+char *signn; // temperature sign in special case
 const int SleepTime=10000;       // delay between each masurement
-int WhenSend=1;       // after how many measurements to send data to server
+int WhenSend=10;       // after how many measurements to send data to server
 Result result;
 
 HTTP http(9600, RX_PIN, TX_PIN, RST_PIN);
-#define BODY_FORMAT "{\"id\": \"%s\", \"dir\": \"%d\", \"speed\": \"%d.%d\", \"gust\": \"%d.%d\", \"tmp\": \"%d.%d\", \"wat\": \"%d.%d\",  \"btt\": \"%s\"}"
+#define BODY_FORMAT "{\"id\": \"%s\", \"dir\": \"%d\", \"speed\": \"%d.%d\", \"gust\": \"%d.%d\", \"tmp\": \"%s\", \"wat\": \"%s\",  \"btt\": \"%s\"}"
 
 
 // the setup routine runs once when you press reset:
@@ -88,7 +91,7 @@ void setup() {
   Serial.println(""); 
   
     if (measure_count >= WhenSend) { // check if is time to send data online
-    Temp= dht.readTemperature()*10; //read temperature...
+    Temp= dht.readTemperature(); //read temperature...
     sensors.requestTemperatures(); // get water Temperature
     Water=sensors.getTempCByIndex(0)*10;
 
@@ -173,15 +176,18 @@ void print(const __FlashStringHelper *message, int code = -1){
 void sendData(){
   wind_dir=dominantDirection(avrDir,16);
   wind_speed=WindAvr/measure_count; 
-  
+  dtostrf(Temp, 4, 1, tmp); //float Tmp to char
+  dtostrf(Water, 4, 1, wat); //water to char
+
   print(F("Cofigure bearer: "), http.configureBearer(bearer));
   result = http.connect();
   print(F("HTTP connect: "), result);
 
   http.batteryState(voltage); //battery percentage
   //http.gpsLocation(gps); // GPS location
-     
-  sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGust/10,WindGust%10,Temp/10,Temp%10,Water/10,Water%10,voltage);
+
+
+  sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGust/10,WindGust%10,tmp,wat,voltage);
   Serial.println(body);
   result = http.post(webpage, body, response);
   print(F("HTTP POST: "), result);
