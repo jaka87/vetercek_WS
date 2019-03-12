@@ -28,7 +28,7 @@ This project was created in order to provide cheap alternative to expensive auto
 
 ## Scheme
 ![Scheme](scheme.png)
-Most parts are standard but RJ11 jack is a bit tricky. There are few wariants aveliable. Im using one with part number [5523](http://en.glgnet.biz/productsdetail/productId=97.html) printed on it. Connection should look like this on PCB
+Most parts are standard but RJ11 jack is a bit tricky. There are few wariants aveliable. Im using one with part number [5523](http://en.glgnet.biz/productsdetail/productId=97.html) printed on it. Connection should look like this on PCB  
 ![RJ11](rj11.png)  
 Here is the [link](https://easyeda.com/jaka87/vetercek-mod) to PCB design.  
 
