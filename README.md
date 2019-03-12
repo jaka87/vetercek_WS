@@ -7,17 +7,20 @@ This project was created in order to provide cheap alternative to expensive auto
 + Send WS battery state to the server
 + Remote adjustment of the time between updates (depending on sever response)
 + Remote adjustment of wind wane offset (depending on sever response)
-
++ Wind speed and direction are measured for 1 second every ten seconds. While this will not detect winds under 2KT it is a good compromise for battery life
 
 ## Required parts
 + Arduino pro mini 3.3V **3€**
+  + LED is removed to save battery life
 + Davis 6410 anemometer **150€**
 + Sim800l gsm module **4€**
+  + LED is removed to save battery life
 + DHT22 temperature sensor **3€**
 + DS18B20 water temperature sensor **4€**
 + TP4056 li-ion charger **1€**
 + 5 or 6V Monocrystalline Solar Power Panel **10€**
 + 3.6V li-ion batteries **10-15€**
+  +2-3 batteries with paralel connection
 + Waterproof housing
 + Some minor electrical parts like resistors, capacitors, diodes...
 
@@ -26,8 +29,8 @@ This project was created in order to provide cheap alternative to expensive auto
 ## Scheme
 ![Scheme](scheme.png)
 Most parts are standard but RJ11 jack is a bit tricky. There are few wariants aveliable. Im using one with part number [5523](http://en.glgnet.biz/productsdetail/productId=97.html) printed on it. Connection should look like this on PCB
-![RJ11](rj11.png)
-Here is the [link](https://easyeda.com/jaka87/vetercek-mod) to PCB design.
+![RJ11](rj11.png)  
+Here is the [link](https://easyeda.com/jaka87/vetercek-mod) to PCB design.  
 
 ## TO-DO
 + create PCB and make larger test outside
