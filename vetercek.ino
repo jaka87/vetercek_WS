@@ -100,33 +100,11 @@ void setup() {
 }
 
 
-// This is the function that the interrupt calls to increment the rotation count 
-void isr_rotation () { 
+void isr_rotation () {  // This is the function that the interrupt calls to increment the rotation count 
 if ((millis() - ContactBounceTime) > 15 ) { // debounce the switch contact. 
 Rotations++; 
 ContactBounceTime = millis(); 
 } 
-}
-
-
-void getHeading(int direction) {  // split wind direction in 16 parts and save it to array
-if(direction < 11.25) { ++avrDir[0]; }
-else if(direction < 33.75) { ++avrDir[1]; }
-else if(direction < 56.25) { ++avrDir[2]; }
-else if(direction < 78.75) { ++avrDir[3]; }
-else if(direction < 101.25) { ++avrDir[4]; }
-else if(direction < 123.75) { ++avrDir[5]; }
-else if(direction < 146.25) { ++avrDir[6]; }
-else if(direction < 168.75) { ++avrDir[7]; }
-else if(direction < 191.25) { ++avrDir[8]; }
-else if(direction < 213.75) { ++avrDir[9]; }
-else if(direction < 236.25) { ++avrDir[10]; }
-else if(direction < 258.75) { ++avrDir[11]; }
-else if(direction < 281.25) { ++avrDir[12]; }
-else if(direction < 303.75) { ++avrDir[13]; }
-else if(direction < 326.25) { ++avrDir[14]; }
-else if(direction < 348.75) { ++avrDir[15]; }
-else { ++avrDir[0]; }
 }
 
 int dominantDirection(int* array, int size){ // get dominant wind direction
@@ -142,7 +120,7 @@ int dominantDirection(int* array, int size){ // get dominant wind direction
 }
 
 
-// Get Wind Direction
+// Get Wind Direction, and split it in 16 parts and save it to array
 void getWindDirection() {
    VaneValue = analogRead(WindVanePin);
    Direction = map(VaneValue, 0, 1023, 0, 360);
@@ -154,7 +132,9 @@ void getWindDirection() {
    if(CalDirection < 0)
      CalDirection = CalDirection + 360;
 
-  getHeading(CalDirection);
+  CalDirection=(CalDirection+11.25)/22.5;
+  if(CalDirection < 16) { ++avrDir[CalDirection]; }
+  else { ++avrDir[0]; }
 }
 
 
@@ -196,7 +176,7 @@ void sendData(){
       WindGust=0;
       Water=0;
       Temp=0;
-      memset(avrDir,0,sizeof(avrDir));
+      memset(avrDir,0,sizeof(avrDir)); // empty direction array
 
 
       StaticJsonDocument<200> doc;
