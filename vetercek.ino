@@ -43,9 +43,8 @@ int wind_gust;   //calculated wind gusts
 char voltage[2]; //battery state
 char response[100];
 char body[200]; 
-char *signn; // temperature sign in special case
 const int SleepTime=10000;       // delay between each masurement
-int WhenSend=10;       // after how many measurements to send data to server
+int WhenSend=1;       // after how many measurements to send data to server
 Result result;
 
 HTTP http(9600, RX_PIN, TX_PIN, RST_PIN);
@@ -59,7 +58,6 @@ void setup() {
   Serial.println("Starting!");
   dht.begin();
   attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); // interupt for anemometer
-  //pinMode(3, INPUT_PULLUP);               //setup pin 3 with internal pull-up
     
 }
 
@@ -93,7 +91,7 @@ void setup() {
     if (measure_count >= WhenSend) { // check if is time to send data online
     Temp= dht.readTemperature(); //read temperature...
     sensors.requestTemperatures(); // get water Temperature
-    Water=sensors.getTempCByIndex(0)*10;
+    Water=sensors.getTempCByIndex(0);
 
       http.wakeUp();
       sendData();
@@ -208,7 +206,7 @@ void sendData(){
       int WhenSend2 = root["whensend"];
       int Offset = root["offset"];
 
-      if (WhenSend2> -999){  // server response to when to do next update 
+      if (WhenSend2> 0){  // server response to when to do next update 
        WhenSend=WhenSend2;
       }
 
