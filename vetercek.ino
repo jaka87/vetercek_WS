@@ -6,11 +6,11 @@
 #include <DallasTemperature.h> // water Temperature sensor
 #include <DHT.h> // Temperature sensor
 #include <DHT_U.h>
-#define WindSensorPin (2) // The pin location of the anemometer sensor 
-#define WindVanePin (A1)       // The pin the wind vane sensor is connected to
+#define WindSensorPin (3) // The pin location of the anemometer sensor 
+#define WindVanePin (A3)       // The pin the wind vane sensor is connected to
 #define DHTPIN 4     // what pin we're connected to
 #define DHTTYPE DHT22   // DHT 22  (AM2302)
-#define ONE_WIRE_BUS 3
+#define ONE_WIRE_BUS 2
 Sleep sleep;
 DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor
 OneWire oneWire(ONE_WIRE_BUS); // water semperature
@@ -66,12 +66,12 @@ void setup() {
  
   Rotations = 0; // Set Rotations count to 0 ready for calculations 
   sei(); // Enables interrupts 
-  delay (1000); // Wait 1 second to average 
+  delay (2000); // Wait 2 second to average 
   cli(); // Disable interrupts 
   sleep.pwrDownMode(); //set sleep mode
   sleep.sleepDelay(10000); //sleep for: sleepTime
 
-  WindSpeed = Rotations * 2.25 * 0.868976242 * 10 ;  // convert to mp/h using the formula V=P(2.25/Time);    *0.868976242 to get knots 
+  WindSpeed = Rotations * 1.125 * 0.868976242 * 10 ;  // convert to mp/h using the formula V=P(2.25/Time);    *0.868976242 to get knots 
   ++measure_count; // add +1 to counter
   WindAvr += WindSpeed; // add to sum of average wind values
   
