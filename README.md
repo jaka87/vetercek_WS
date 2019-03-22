@@ -23,12 +23,12 @@ This project was created in order to provide cheap alternative to expensive auto
   +2-3 batteries with paralel connection
 + Waterproof housing
 + Some minor electrical parts like resistors, capacitors, diodes...
-   +R1 = 4.7KΩ resistor
-   +R2 = 4.7KΩ resistor
-   +R4 = 1.8KΩ resistor
-   +R5 = 10KΩ resistor
-   +D1 = 1N4148 diode
-   +C3 = 1000uF capacitor
+  + R1 = 4.7KΩ resistor
+  + R2 = 4.7KΩ resistor
+  + R4 = 1.8KΩ resistor
+  + R5 = 10KΩ resistor
+  + D1 = 1N4148 diode
+  + C3 = 1000uF capacitor
 
 
 
@@ -39,7 +39,7 @@ Most parts are standard but RJ11 jack is a bit tricky. There are few wariants av
 Here is the [link](https://easyeda.com/jaka87/vetercek-mod) to PCB design.  
 
 ## TO-DO
-+ create PCB and make larger test outside
++  ~~create PCB and make larger test outside~~
 + ~~allow for larger ints in order to have possibility for longer time between updates~~
 + support for wifi module
 + support for other web services
