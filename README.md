@@ -23,6 +23,12 @@ This project was created in order to provide cheap alternative to expensive auto
   +2-3 batteries with paralel connection
 + Waterproof housing
 + Some minor electrical parts like resistors, capacitors, diodes...
+   +R1 = 4.7KΩ resistor
+   +R2 = 4.7KΩ resistor
+   +R4 = 1.8KΩ resistor
+   +R5 = 10KΩ resistor
+   +D1 = 1N4148 diode
+   +C3 = 1000uF capacitor
 
 
 
@@ -40,7 +46,7 @@ Here is the [link](https://easyeda.com/jaka87/vetercek-mod) to PCB design.
 + sending GPS cordinates to server (in case WS get stolen)
 
 ## Thanks!
-Thanks to all of you contributing to make this happen. I will wrote contributors and their role in the project once it's up and running.
+Thanks to all of you contributing to make this happen. Especially thanks to Tadej Tašner for drawing PCB and his advices regarding the hardware components. Also thanks to those people that took time and wrote libraries used in this project and therefore make the project easier to compile.
 
 Contributing to this software is warmly welcomed. You can use it, change it, do what ever you want with it.
 
