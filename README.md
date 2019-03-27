@@ -7,7 +7,7 @@ This project was created in order to provide cheap alternative to expensive auto
 + Send WS battery state to the server
 + Remote adjustment of the time between updates (depending on sever response)
 + Remote adjustment of wind wane offset (depending on sever response)
-+ Wind speed and direction are measured for 1 second every ten seconds. While this will not detect winds under 2KT it is a good compromise for battery life
++ Wind speed and direction are measured for 2 second every 10 seconds. It is a good compromise for accurate measurements and long battery life.
 
 ## Required parts
 + Arduino pro mini 3.3V **3€**
