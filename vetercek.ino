@@ -6,6 +6,7 @@
 #include <DallasTemperature.h> // water Temperature sensor
 #include <DHT.h> // Temperature sensor
 #include <DHT_U.h>
+#include "config.h"
 #define WindSensorPin (3) // The pin location of the anemometer sensor 
 #define WindVanePin (A3)       // The pin the wind vane sensor is connected to
 #define DHTPIN 4     // what pin we're connected to
@@ -17,7 +18,7 @@ OneWire oneWire(ONE_WIRE_BUS); // water semperature
 DallasTemperature sensors(&oneWire);
 
 const char *bearer="internet.bob.si"; // APN address
-const char *id="e128c930fca75af8be9bff3232c697ce";  // get this unique ID in order to send data to vetercek.com
+const char *id=API_PASSWORD;  // get this unique ID in order to send data to vetercek.com
 const char *webpage="vetercek.com/xml/post.php";  // where POST request is made
 unsigned int RX_PIN = 9; //RX pin for sim800
 unsigned int TX_PIN = 8; //TX pin for sim800
@@ -40,7 +41,8 @@ int CalDirection;    // converted value with offset applied
 int wind_dir;  //calculated wind direction
 int wind_speed;  //calculated wind speed
 int wind_gust;   //calculated wind gusts
-char voltage[2]; //battery state
+char voltage[2]; //battery percentage
+char gps[20]; //gps location
 char response[100];
 char body[200]; 
 const int SleepTime=10000;       // delay between each masurement
@@ -48,7 +50,7 @@ int WhenSend=1;       // after how many measurements to send data to server
 Result result;
 
 HTTP http(9600, RX_PIN, TX_PIN, RST_PIN);
-#define BODY_FORMAT "{\"id\": \"%s\", \"dir\": \"%d\", \"speed\": \"%d.%d\", \"gust\": \"%d.%d\", \"tmp\": \"%s\", \"wat\": \"%s\",  \"btt\": \"%s\"}"
+#define BODY_FORMAT "{\"id\": \"%s\", \"dir\": \"%d\", \"speed\": \"%d.%d\", \"gust\": \"%d.%d\", \"tmp\": \"%s\", \"wat\": \"%s\",  \"btt\": \"%s\",  \"loc\": \"%s\"}"
 
 
 // the setup routine runs once when you press reset:
@@ -162,38 +164,38 @@ void sendData(){
   print(F("HTTP connect: "), result);
 
   http.batteryState(voltage); //battery percentage
-  //http.gpsLocation(gps); // GPS location
+  http.gpsLocation(gps); // GPS location
 
-
-  sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGust/10,WindGust%10,tmp,wat,voltage);
-  Serial.println(body);
-  result = http.post(webpage, body, response);
-  print(F("HTTP POST: "), result);
-  if (result == SUCCESS) {
-
-      measure_count=0;
-      WindAvr=0; 
-      WindGust=0;
-      Water=0;
-      Temp=0;
-      memset(avrDir,0,sizeof(avrDir)); // empty direction array
-
-
-      StaticJsonDocument<200> doc;
-      deserializeJson(doc, response);
-      JsonObject root = doc.as<JsonObject>();
-      const char* idd = root["id"];
-      int WhenSend2 = root["whensend"];
-      int Offset = root["offset"];
-
-      if (WhenSend2> 0){  // server response to when to do next update 
-       WhenSend=WhenSend2;
-      }
-
-      if (Offset > -999){  // server response to when to do next update 
-       VaneOffset=Offset;
-      }
- }
-
+  if (measure_count >= WhenSend) { // check if is time to send data online
+  
+    sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGust/10,WindGust%10,tmp,wat,voltage,gps);
+    Serial.println(body);
+    result = http.post(webpage, body, response);
+    print(F("HTTP POST: "), result);
+    if (result == SUCCESS) {
+  
+        measure_count=0;
+        WindAvr=0; 
+        WindGust=0;
+        Water=0;
+        Temp=0;
+        memset(avrDir,0,sizeof(avrDir)); // empty direction array
+  
+        StaticJsonDocument<200> doc;
+        deserializeJson(doc, response);
+        JsonObject root = doc.as<JsonObject>();
+        const char* idd = root["id"];
+        int WhenSend2 = root["whensend"];
+        int Offset = root["offset"];
+  
+        if (WhenSend2> 0){  // server response to when to do next update 
+         WhenSend=WhenSend2;
+        }
+  
+        if (Offset > -999){  // server response to when to do next update 
+         VaneOffset=Offset;
+        }
+   }
+  }
   print(F("HTTP disconnect: "), http.disconnect());
 }
