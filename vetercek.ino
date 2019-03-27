@@ -12,6 +12,8 @@
 #define DHTPIN 4     // what pin we're connected to
 #define DHTTYPE DHT22   // DHT 22  (AM2302)
 #define ONE_WIRE_BUS 2
+#define DEBUG FALSE
+
 Sleep sleep;
 DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor
 OneWire oneWire(ONE_WIRE_BUS); // water semperature
@@ -45,7 +47,6 @@ char voltage[2]; //battery percentage
 char gps[20]; //gps location
 char response[100];
 char body[200]; 
-const int debug=0;       // delay between each masurement
 const int SleepTime=10000;       // delay between each masurement
 int WhenSend=1;       // after how many measurements to send data to server
 Result result;
@@ -56,11 +57,12 @@ HTTP http(9600, RX_PIN, TX_PIN, RST_PIN);
 
 // the setup routine runs once when you press reset:
 void setup() {
-  Serial.begin(9600);
-  while(!Serial); // show debug info in serial monitor
-    if (debug == 1) { // 
+    if (DEBUG){
+    Serial.begin(9600);
+    while(!Serial);
       Serial.println("Starting!");
-    } 
+  }
+  
   dht.begin();
   attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); // interupt for anemometer
     
@@ -85,7 +87,7 @@ void setup() {
   } 
   getWindDirection();
 
-    if (debug == 1) { 
+    if (DEBUG){
       Serial.println(CalDirection); 
       Serial.println(WindSpeed); 
       Serial.println(WindGust); 
@@ -147,17 +149,6 @@ void getWindDirection() {
 
 
 
-void print(const __FlashStringHelper *message, int code = -1){
-  if (code != -1){
-    Serial.print(message);
-    Serial.println(code);
-  }
-  else {
-    Serial.println(message);
-  }
-}
-
-
 // send data to server
 void sendData(){
   wind_dir=dominantDirection(avrDir,16);
@@ -165,21 +156,18 @@ void sendData(){
   dtostrf(Temp, 4, 1, tmp); //float Tmp to char
   dtostrf(Water, 4, 1, wat); //water to char
 
-  print(F("Cofigure bearer: "), http.configureBearer(bearer));
+  http.configureBearer(bearer);
   result = http.connect();
-  print(F("HTTP connect: "), result);
-
   http.batteryState(voltage); //battery percentage
   http.gpsLocation(gps); // GPS location
   
     sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGust/10,WindGust%10,tmp,wat,voltage,gps);
 
-    if (debug == 1) { 
+    if (DEBUG){
       Serial.println(body);
     }  
 
     result = http.post(webpage, body, response);
-    print(F("HTTP POST: "), result);
     if (result == SUCCESS) {
   
         measure_count=0;
@@ -205,5 +193,5 @@ void sendData(){
         }
    }
 
-  print(F("HTTP disconnect: "), http.disconnect());
+ http.disconnect();
 }
