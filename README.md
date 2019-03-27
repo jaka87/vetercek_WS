@@ -35,7 +35,7 @@ This project was created in order to provide cheap alternative to expensive auto
   + 3p screw in terminal
   + RJ11 connector to PCB
   + 2 cable glands for anemometer cable, and temperature sensor
-  + PG11 cable gand with tyvek foil coverig the exit functioning as an air vent
+  + PG11 cable gland with tyvek foil coverig the exit functioning as an air vent
 
 
 ## Scheme
