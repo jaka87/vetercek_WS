@@ -45,6 +45,7 @@ char voltage[2]; //battery percentage
 char gps[20]; //gps location
 char response[100];
 char body[200]; 
+const int debug=0;       // delay between each masurement
 const int SleepTime=10000;       // delay between each masurement
 int WhenSend=1;       // after how many measurements to send data to server
 Result result;
@@ -57,7 +58,9 @@ HTTP http(9600, RX_PIN, TX_PIN, RST_PIN);
 void setup() {
   Serial.begin(9600);
   while(!Serial); // show debug info in serial monitor
-  Serial.println("Starting!");
+    if (debug == 1) { // 
+      Serial.println("Starting!");
+    } 
   dht.begin();
   attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); // interupt for anemometer
     
@@ -81,14 +84,17 @@ void setup() {
      WindGust=WindSpeed;
   } 
   getWindDirection();
-  
-  Serial.println(CalDirection); 
-  Serial.println(WindSpeed); 
-  Serial.println(WindGust); 
-  Serial.println(Temp); 
-  Serial.println(Water); 
-  Serial.println(WhenSend-measure_count); 
-  Serial.println(""); 
+
+    if (debug == 1) { 
+      Serial.println(CalDirection); 
+      Serial.println(WindSpeed); 
+      Serial.println(WindGust); 
+      Serial.println(Temp); 
+      Serial.println(Water); 
+      Serial.println(WhenSend-measure_count); 
+      Serial.println(""); 
+    }   
+
   
     if (measure_count >= WhenSend) { // check if is time to send data online
     Temp= dht.readTemperature(); //read temperature...
@@ -165,11 +171,13 @@ void sendData(){
 
   http.batteryState(voltage); //battery percentage
   http.gpsLocation(gps); // GPS location
-
-  if (measure_count >= WhenSend) { // check if is time to send data online
   
     sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGust/10,WindGust%10,tmp,wat,voltage,gps);
-    Serial.println(body);
+
+    if (debug == 1) { 
+      Serial.println(body);
+    }  
+
     result = http.post(webpage, body, response);
     print(F("HTTP POST: "), result);
     if (result == SUCCESS) {
@@ -196,6 +204,6 @@ void sendData(){
          VaneOffset=Offset;
         }
    }
-  }
+
   print(F("HTTP disconnect: "), http.disconnect());
 }
