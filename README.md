@@ -18,7 +18,7 @@ This project was created in order to provide cheap alternative to expensive auto
 + DHT22 temperature sensor **3€**
 + DS18B20 water temperature sensor **4€**
 + TP4056 li-ion charger **1€**
-+ 5 or 6V Monocrystalline Solar Power Panel **10€**
++ 5 or 6V Monocrystalline Solar Power Panel **5-10€**
 + 3.6V li-ion batteries **10-15€**
   +2-3 batteries with paralel connection
 + Waterproof housing
@@ -28,8 +28,14 @@ This project was created in order to provide cheap alternative to expensive auto
   + R4 = 1.8KΩ resistor
   + R5 = 10KΩ resistor
   + D1 = 1N4148 diode
+  + C1 = 22nF capacitor
+  + C2 = 22nF capacitor
   + C3 = 1000uF capacitor
-
+  + 2x 2p screw in terminals
+  + 3p screw in terminal
+  + RJ11 connector to PCB
+  + 2 cable glands for anemometer cable, and temperature sensor
+  + PG11 cable gand with tyvek foil coverig the exit functioning as an air vent
 
 
 ## Scheme
@@ -41,9 +47,10 @@ Here is the [link](https://easyeda.com/jaka87/vetercek-mod) to PCB design.
 ## TO-DO
 +  ~~create PCB and make larger test outside~~
 + ~~allow for larger ints in order to have possibility for longer time between updates~~
-+ support for wifi module
-+ support for other web services
-+ sending GPS cordinates to server (in case WS get stolen)
++ ~~sending GPS cordinates to server (in case WS get stolen)~~
++ support for wifi module - in works
++ support for other web services - long term goal, not planned for near future
+
 
 ## Thanks!
 Thanks to all of you contributing to make this happen. Especially thanks to Tadej Tašner for drawing PCB and his advices regarding the hardware components. Also thanks to those people that took time and wrote libraries used in this project and therefore make the project easier to compile.
