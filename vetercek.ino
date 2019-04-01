@@ -12,14 +12,15 @@
 #define DHTPIN 4     // what pin we're connected to
 #define DHTTYPE DHT22   // DHT 22  (AM2302)
 #define ONE_WIRE_BUS 2
-#define DEBUG FALSE
+#define DEBUG false
 
 Sleep sleep;
 DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor
 OneWire oneWire(ONE_WIRE_BUS); // water semperature
 DallasTemperature sensors(&oneWire);
 
-const char *bearer="internet.bob.si"; // APN address
+unsigned long time; //time
+const char *bearer="internet.ht.hr"; // APN address
 const char *id=API_PASSWORD;  // get this unique ID in order to send data to vetercek.com
 const char *webpage="vetercek.com/xml/post.php";  // where POST request is made
 unsigned int RX_PIN = 9; //RX pin for sim800
@@ -45,14 +46,14 @@ int wind_speed;  //calculated wind speed
 int wind_gust;   //calculated wind gusts
 char voltage[2]; //battery percentage
 char gps[20]; //gps location
-char response[100];
+char response[70];
 char body[200]; 
 const int SleepTime=10000;       // delay between each masurement
 int WhenSend=1;       // after how many measurements to send data to server
 Result result;
 
 HTTP http(9600, RX_PIN, TX_PIN, RST_PIN);
-#define BODY_FORMAT "{\"id\": \"%s\", \"dir\": \"%d\", \"speed\": \"%d.%d\", \"gust\": \"%d.%d\", \"tmp\": \"%s\", \"wat\": \"%s\",  \"btt\": \"%s\",  \"loc\": \"%s\"}"
+#define BODY_FORMAT "{\"id\": \"%s\", \"dir\": \"%d\", \"speed\": \"%d.%d\", \"gust\": \"%d.%d\", \"tmp\": \"%s\", \"wat\": \"%s\",  \"btt\": \"%s\",  \"loc\": \"%s\",  \"c\": \"%d\",  \"t\": \"%d\" }"
 
 
 // the setup routine runs once when you press reset:
@@ -70,6 +71,8 @@ void setup() {
 
 // the loop routine runs over and over again forever:
   void loop() {
+
+  time = millis(); // count time from start
  
   Rotations = 0; // Set Rotations count to 0 ready for calculations 
   sei(); // Enables interrupts 
@@ -88,12 +91,22 @@ void setup() {
   getWindDirection();
 
     if (DEBUG){
-      Serial.println(CalDirection); 
-      Serial.println(WindSpeed); 
-      Serial.println(WindGust); 
-      Serial.println(Temp); 
-      Serial.println(Water); 
-      Serial.println(WhenSend-measure_count); 
+      Serial.print("dir:"); 
+      Serial.print(CalDirection); 
+      Serial.print(" speed:"); 
+      Serial.print(WindSpeed); 
+      Serial.print(" gust:"); 
+      Serial.print(WindGust); 
+      Serial.print(" temp:");       
+      Serial.print(Temp); 
+      Serial.print(" w:");       
+      Serial.print(Water); 
+      Serial.print(" next:");  
+      Serial.print(WhenSend-measure_count); 
+      Serial.print(" count:");  
+      Serial.print(measure_count); 
+      Serial.print(" t:");  
+      Serial.println(time);
       Serial.println(""); 
     }   
 
@@ -161,7 +174,7 @@ void sendData(){
   http.batteryState(voltage); //battery percentage
   http.gpsLocation(gps); // GPS location
   
-    sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGust/10,WindGust%10,tmp,wat,voltage,gps);
+    sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGust/10,WindGust%10,tmp,wat,voltage,gps,measure_count,time);
 
     if (DEBUG){
       Serial.println(body);
