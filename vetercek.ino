@@ -19,7 +19,6 @@ DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor
 OneWire oneWire(ONE_WIRE_BUS); // water semperature
 DallasTemperature sensors(&oneWire);
 
-unsigned long time; //time
 const char *bearer="internet.ht.hr"; // APN address
 const char *id=API_PASSWORD;  // get this unique ID in order to send data to vetercek.com
 const char *webpage="vetercek.com/xml/post.php";  // where POST request is made
@@ -46,14 +45,15 @@ int wind_speed;  //calculated wind speed
 int wind_gust;   //calculated wind gusts
 char voltage[2]; //battery percentage
 char gps[20]; //gps location
-char response[70];
-char body[200]; 
+char response[35];
+char body[160]; 
 const int SleepTime=10000;       // delay between each masurement
 int WhenSend=1;       // after how many measurements to send data to server
 Result result;
+int ram=0;
 
 HTTP http(9600, RX_PIN, TX_PIN, RST_PIN);
-#define BODY_FORMAT "{\"id\": \"%s\", \"dir\": \"%d\", \"speed\": \"%d.%d\", \"gust\": \"%d.%d\", \"tmp\": \"%s\", \"wat\": \"%s\",  \"btt\": \"%s\",  \"loc\": \"%s\",  \"c\": \"%d\",  \"t\": \"%d\" }"
+#define BODY_FORMAT "{\"id\":\"%s\",\"d\":\"%d\",\"s\":\"%d.%d\",\"g\":\"%d.%d\",\"t\":\"%s\",\"w\":\"%s\",\"b\":\"%s\",\"l\":\"%s\",\"r\":\"%d\",\"c\":\"%d\" }"
 
 
 // the setup routine runs once when you press reset:
@@ -63,16 +63,14 @@ void setup() {
     while(!Serial);
       Serial.println("Starting!");
   }
-  
   dht.begin();
+  sensors.begin();
   attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); // interupt for anemometer
     
 }
 
 // the loop routine runs over and over again forever:
   void loop() {
-
-  time = millis(); // count time from start
  
   Rotations = 0; // Set Rotations count to 0 ready for calculations 
   sei(); // Enables interrupts 
@@ -90,6 +88,7 @@ void setup() {
   } 
   getWindDirection();
 
+
     if (DEBUG){
       Serial.print("dir:"); 
       Serial.print(CalDirection); 
@@ -105,17 +104,13 @@ void setup() {
       Serial.print(WhenSend-measure_count); 
       Serial.print(" count:");  
       Serial.print(measure_count); 
-      Serial.print(" t:");  
-      Serial.println(time);
+      Serial.print(" r:");  
+      Serial.print(ram);
       Serial.println(""); 
     }   
 
   
     if (measure_count >= WhenSend) { // check if is time to send data online
-    Temp= dht.readTemperature(); //read temperature...
-    sensors.requestTemperatures(); // get water Temperature
-    Water=sensors.getTempCByIndex(0);
-
       http.wakeUp();
       sendData();
       http.sleep();
@@ -142,6 +137,17 @@ int dominantDirection(int* array, int size){ // get dominant wind direction
  return maxIndex;
 }
 
+// Get temperature
+void getTemperature() {
+  Temp= dht.readTemperature(); //read temperature...
+  dtostrf(Temp, 4, 1, tmp); //float Tmp to char
+}
+
+void getWater() {
+    sensors.requestTemperatures(); // get water Temperature
+    Water=sensors.getTempCByIndex(0);
+  dtostrf(Water, 4, 1, wat); //water to char
+}
 
 // Get Wind Direction, and split it in 16 parts and save it to array
 void getWindDirection() {
@@ -166,15 +172,16 @@ void getWindDirection() {
 void sendData(){
   wind_dir=dominantDirection(avrDir,16);
   wind_speed=WindAvr/measure_count; 
-  dtostrf(Temp, 4, 1, tmp); //float Tmp to char
-  dtostrf(Water, 4, 1, wat); //water to char
-
+  getTemperature();
+  getWater();
+  
   http.configureBearer(bearer);
   result = http.connect();
   http.batteryState(voltage); //battery percentage
   http.gpsLocation(gps); // GPS location
-  
-    sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGust/10,WindGust%10,tmp,wat,voltage,gps,measure_count,time);
+  ram = availableMemory();
+
+    sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGust/10,WindGust%10,tmp,wat,voltage,gps,ram,measure_count);
 
     if (DEBUG){
       Serial.println(body);
@@ -193,7 +200,6 @@ void sendData(){
         StaticJsonDocument<200> doc;
         deserializeJson(doc, response);
         JsonObject root = doc.as<JsonObject>();
-        const char* idd = root["id"];
         int WhenSend2 = root["whensend"];
         int Offset = root["offset"];
   
@@ -207,4 +213,15 @@ void sendData(){
    }
 
  http.disconnect();
+   ram = availableMemory();
+
+}
+
+int availableMemory()
+{
+ int size = 1024;
+ byte *buf;
+ while ((buf = (byte *) malloc(--size)) == NULL);
+ free(buf);
+ return size;
 }
