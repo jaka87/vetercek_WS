@@ -50,10 +50,10 @@ char body[160];
 const int SleepTime=10000;       // delay between each masurement
 int WhenSend=1;       // after how many measurements to send data to server
 Result result;
-int ram=0;
+//int ram=0;
 
 HTTP http(9600, RX_PIN, TX_PIN, RST_PIN);
-#define BODY_FORMAT "{\"id\":\"%s\",\"d\":\"%d\",\"s\":\"%d.%d\",\"g\":\"%d.%d\",\"t\":\"%s\",\"w\":\"%s\",\"b\":\"%s\",\"l\":\"%s\",\"r\":\"%d\",\"c\":\"%d\" }"
+#define BODY_FORMAT "{\"id\":\"%s\",\"d\":\"%d\",\"s\":\"%d.%d\",\"g\":\"%d.%d\",\"t\":\"%s\",\"w\":\"%s\",\"b\":\"%s\",\"l\":\"%s\",\"c\":\"%d\" }"
 
 
 // the setup routine runs once when you press reset:
@@ -104,8 +104,6 @@ void setup() {
       Serial.print(WhenSend-measure_count); 
       Serial.print(" count:");  
       Serial.print(measure_count); 
-      Serial.print(" r:");  
-      Serial.print(ram);
       Serial.println(""); 
     }   
 
@@ -179,9 +177,8 @@ void sendData(){
   result = http.connect();
   http.batteryState(voltage); //battery percentage
   http.gpsLocation(gps); // GPS location
-  ram = availableMemory();
 
-    sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGust/10,WindGust%10,tmp,wat,voltage,gps,ram,measure_count);
+    sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGust/10,WindGust%10,tmp,wat,voltage,gps,measure_count);
 
     if (DEBUG){
       Serial.println(body);
@@ -213,15 +210,15 @@ void sendData(){
    }
 
  http.disconnect();
-   ram = availableMemory();
+//   ram = availableMemory();
 
 }
 
-int availableMemory()
-{
- int size = 1024;
- byte *buf;
- while ((buf = (byte *) malloc(--size)) == NULL);
- free(buf);
- return size;
-}
+//int availableMemory()
+//{
+// int size = 1024;
+// byte *buf;
+// while ((buf = (byte *) malloc(--size)) == NULL);
+// free(buf);
+// return size;
+//}
