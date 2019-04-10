@@ -12,7 +12,7 @@
 #define DHTPIN 4     // what pin we're connected to
 #define DHTTYPE DHT22   // DHT 22  (AM2302)
 #define ONE_WIRE_BUS 2
-#define DEBUG false
+#define DEBUG true
 
 Sleep sleep;
 DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor
@@ -172,11 +172,11 @@ void sendData(){
   wind_speed=WindAvr/measure_count; 
   getTemperature();
   getWater();
-  
+ 
   http.configureBearer(bearer);
   result = http.connect();
-  http.batteryState(voltage); //battery percentage
-  http.gpsLocation(gps); // GPS location
+  http.readVoltagePercentage(voltage); //battery percentage
+  http.readGpsLocation(gps); // GPS location
 
     sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGust/10,WindGust%10,tmp,wat,voltage,gps,measure_count);
 
