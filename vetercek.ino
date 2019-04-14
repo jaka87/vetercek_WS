@@ -12,7 +12,7 @@
 #define DHTPIN 4     // what pin we're connected to
 #define DHTTYPE DHT22   // DHT 22  (AM2302)
 #define ONE_WIRE_BUS 2
-#define DEBUG true
+#define DEBUG false
 
 Sleep sleep;
 DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor
@@ -82,10 +82,6 @@ void setup() {
   WindSpeed = Rotations * 1.125 * 0.868976242 * 10 ;  // convert to mp/h using the formula V=P(2.25/Time);    *0.868976242 to get knots 
   ++measure_count; // add +1 to counter
   WindAvr += WindSpeed; // add to sum of average wind values
-  
-  if (WindSpeed > WindGust) { // check if > than old gust of wind
-     WindGust=WindSpeed;
-  } 
   getWindDirection();
 
 
@@ -123,16 +119,16 @@ ContactBounceTime = millis();
 } 
 }
 
-int dominantDirection(int* array, int size){ // get dominant wind direction
+
+void dominantDirection(){ // get dominant wind direction
  int maxIndex = 0;
- int max = array[maxIndex];
- for (int i=1; i<size; i++){
-   if (max<array[i]){
-     max = array[i];
-     maxIndex = i*22; //this is just approximate calculation so server can return the right char value
+ int max = avrDir[maxIndex];
+ for (int i=1; i<16; i++){
+   if (max<avrDir[i]){
+     max = avrDir[i];
+     wind_dir = i*22; //this is just approximate calculation so server can return the right char value
    }
  }
- return maxIndex;
 }
 
 // Get temperature
@@ -146,6 +142,11 @@ void getWater() {
     Water=sensors.getTempCByIndex(0);
   dtostrf(Water, 4, 1, wat); //water to char
 }
+
+void getAvgWInd() {
+  wind_speed=WindAvr/measure_count; // calculate average wind
+}
+
 
 // Get Wind Direction, and split it in 16 parts and save it to array
 void getWindDirection() {
@@ -162,21 +163,26 @@ void getWindDirection() {
   CalDirection=(CalDirection+11.25)/22.5;
   if(CalDirection < 16) { ++avrDir[CalDirection]; }
   else { ++avrDir[0]; }
+
+    if (WindSpeed > WindGust) { // check if > than old gust of wind
+      WindGust=WindSpeed;
+     } 
 }
 
 
 
 // send data to server
 void sendData(){
-  wind_dir=dominantDirection(avrDir,16);
-  wind_speed=WindAvr/measure_count; 
+  dominantDirection();
+  getAvgWInd();
   getTemperature();
   getWater();
- 
+         
   http.configureBearer(bearer);
   result = http.connect();
-  http.readVoltagePercentage(voltage); //battery percentage
+  http.readVoltagePercentage(voltage); //battery percentage  
   http.readGpsLocation(gps); // GPS location
+
 
     sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGust/10,WindGust%10,tmp,wat,voltage,gps,measure_count);
 
