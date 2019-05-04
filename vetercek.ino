@@ -4,20 +4,24 @@
 #include <math.h> // wind speed calculations
 #include <OneWire.h> // water Temperature sensor
 #include <DallasTemperature.h> // water Temperature sensor
-#include <DHT.h> // Temperature sensor
-#include <DHT_U.h>
+//#include <DHT.h> // Temperature sensor
+//#include <DHT_U.h>
 #include "config.h"
 #define WindSensorPin (3) // The pin location of the anemometer sensor 
 #define WindVanePin (A3)       // The pin the wind vane sensor is connected to
-#define DHTPIN 4     // what pin we're connected to
-#define DHTTYPE DHT22   // DHT 22  (AM2302)
+//#define DHTPIN 4     // what pin we're connected to
+//#define DHTTYPE DHT22   // DHT 22  (AM2302)
 #define ONE_WIRE_BUS 2
 #define DEBUG false
 
 Sleep sleep;
-DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor
-OneWire oneWire(ONE_WIRE_BUS); // water semperature
+//DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor
+OneWire oneWire(ONE_WIRE_BUS); // water temperature
 DallasTemperature sensors(&oneWire);
+
+uint8_t sensor1[8] = { 0x28, 0x40, 0x17, 0x45, 0x92, 0x12, 0x02, 0x81 }; // inside sensor
+uint8_t sensor2[8] = { 0x28, 0xAA, 0x52, 0x0C, 0x38, 0x14, 0x01, 0xFB }; // outside sensor
+
 
 const char *bearer="internet.ht.hr"; // APN address
 const char *id=API_PASSWORD;  // get this unique ID in order to send data to vetercek.com
@@ -43,7 +47,7 @@ int CalDirection;    // converted value with offset applied
 int wind_dir;  //calculated wind direction
 int wind_speed;  //calculated wind speed
 int wind_gust;   //calculated wind gusts
-char voltage[2]; //battery percentage
+char voltage[3]; //battery percentage
 char gps[20]; //gps location
 char response[35];
 char body[160]; 
@@ -63,7 +67,7 @@ void setup() {
     while(!Serial);
       Serial.println("Starting!");
   }
-  dht.begin();
+  //dht.begin();
   sensors.begin();
   attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); // interupt for anemometer
     
@@ -132,15 +136,19 @@ void dominantDirection(){ // get dominant wind direction
 }
 
 // Get temperature
-void getTemperature() {
-  Temp= dht.readTemperature(); //read temperature...
-  dtostrf(Temp, 4, 1, tmp); //float Tmp to char
-}
+//void getTemperature() {
+//  Temp= dht.readTemperature(); //read temperature...
+//  dtostrf(Temp, 4, 1, tmp); //float Tmp to char
+//}
 
-void getWater() {
+void getTemp() {
     sensors.requestTemperatures(); // get water Temperature
-    Water=sensors.getTempCByIndex(0);
+    //Water=sensors.getTempCByIndex(0); when there is only one sensor
+    Water=sensors.getTempC(sensor1); //when there are two sensors
+    Temp=sensors.getTempC(sensor2); //when there are two sensors
   dtostrf(Water, 4, 1, wat); //water to char
+  dtostrf(Temp, 4, 1, tmp); //float Tmp to char
+
 }
 
 void getAvgWInd() {
@@ -175,8 +183,8 @@ void getWindDirection() {
 void sendData(){
   dominantDirection();
   getAvgWInd();
-  getTemperature();
-  getWater();
+  //getTemperature();
+  getTemp();
          
   http.configureBearer(bearer);
   result = http.connect();

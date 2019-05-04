@@ -15,7 +15,7 @@ This project was created in order to provide cheap alternative to expensive auto
 + Davis 6410 anemometer **150€**
 + Sim800l gsm module **4€**
   + LED is removed to save battery life
-+ DHT22 temperature sensor **3€**
++ ~~DHT22 temperature sensor **3€**~~ replaced by another DS18B20 mounted outside of housing
 + DS18B20 water temperature sensor **4€**
 + TP4056 li-ion charger **1€**
 + 5 or 6V Monocrystalline Solar Power Panel **5-10€**
