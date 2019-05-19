@@ -5,6 +5,7 @@
 + Send air temperature to the server
 + Remote adjustment of wind wane offset (depending on sever response)
 + Wind is measured in 2s intervals without pause, results are sent to server every 5min
++ When first plugged in ESP creates a wifi network named "WEATHER STATION". If you connect to this network with mobile you will be prompt to "sign in" (otherwise enter go to 192.168.4.1) select the network you would like your ESP to connect to end enter credentials. After that ESP will connect to wifi automatically.
 
 ## Required parts
 + Wemos D1 mini  **5€**
