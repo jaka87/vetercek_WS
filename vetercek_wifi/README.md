@@ -26,6 +26,7 @@ Here is the [link](https://easyeda.com/jaka87/wemos-d1) to PCB design.
 
 ## Libraries used in this project
 + [ESP8266](https://github.com/esp8266/Arduino) - core library for ESP8266 chip
++ [WiFi Manager](https://github.com/tzapu/WiFiManager) - creates a temporary wifi network to which you connect and enter your wifi credentials
 + [OneWire](https://github.com/PaulStoffregen/OneWire) - manipulate DS18B20 sensor
 + [Arduino-Temperature-Control-Library](https://github.com/milesburton/Arduino-Temperature-Control-Library) - also manipulate DS18B20 sensor
 + [ArduinoJson](https://github.com/bblanchon/ArduinoJson) - parse JSON data
