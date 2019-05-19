@@ -15,7 +15,7 @@
 
 
 ## Scheme
-![Scheme](img/scheme.png)
+![Scheme](img/scheme.png)  
 Most parts are standard but RJ11 jack is a bit tricky. There are few wariants aveliable. Im using one with part number [5523](http://en.glgnet.biz/productsdetail/productId=97.html) printed on it. Connection should look like this on PCB  
 ![RJ11](img/rj11.png)  
 Here is the [link](https://easyeda.com/jaka87/wemos-d1) to PCB design.  
