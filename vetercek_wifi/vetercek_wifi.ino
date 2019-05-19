@@ -5,17 +5,14 @@
 #include <ESP8266HTTPClient.h>
 #include <OneWire.h> // Temperature sensor
 #include <DallasTemperature.h> // Temperature sensor
-
 #include "config.h"
-
 #include <ArduinoJson.h> //parse server response
 #include <math.h> // wind speed calculations
 #define WindSensorPin (D2) // The pin location of the anemometer sensor 
-#define WindVanePin (A0)       // The pin the wind vane sensor is connected to
+#define WindVanePin A0       // The pin the wind vane sensor is connected to
 #define ONE_WIRE_BUS (D4)
-#define BODY_FORMAT "{\"id\": \"%s\", \"dir\": \"%d\", \"speed\": \"%d.%d\", \"gust\": \"%d.%d\", \"tmp\": \"%s\"}"
+#define BODY_FORMAT "{\"id\": \"%s\", \"d\": \"%d\", \"s\": \"%d.%d\", \"g\": \"%d.%d\", \"t\": \"%s\"}"
 #define DEBUG true
-
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
@@ -41,39 +38,38 @@ char tmp[6]; // Temperature char value
 char response[100];
 char body[200]; 
 const int SleepTime=10000;       // delay between each masurement
-int WhenSend=5;       // after how many measurements to send data to server
+int WhenSend=150;       // after how many measurements to send data to server
 
 void ICACHE_RAM_ATTR isr_rotation () {  // This is the function that the interrupt calls to increment the rotation count 
-if ((millis() - ContactBounceTime) > 15 ) { // debounce the switch contact. 
-Rotations++; 
-ContactBounceTime = millis(); 
-} 
+  if ((millis() - ContactBounceTime) > 15 ) { // debounce the switch contact. 
+  Rotations++; 
+  ContactBounceTime = millis(); 
+  } 
 }
 
 void setup() {
-    // put your setup code here, to run once:
-    Serial.begin(115200);
-WiFiManager wifiManager;
-   wifiManager.autoConnect("WEATHER STATION");
-Serial.println("connected...yeey :)");
-attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); // interupt for anemometer
- 
+  pinMode(A0, INPUT);
+  Serial.begin(115200);
+  WiFiManager wifiManager;
+  //wifiManager.resetSettings();
+  //WiFiManagerParameter dir_offset("offset", "Vane offset", 0, 5);
+  //wifiManager.addParameter(&dir_offset);
+  //wifiManager.autoConnect("WEATHER STATION");
+  attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); // interupt for anemometer
 }
 
   void loop() {
- 
   Rotations = 0; // Set Rotations count to 0 ready for calculations 
   sei(); // Enables interrupts 
   delay (2000); // Wait 2 second to average 
   cli(); // Disable interrupts 
-  delay (10000); // Wait 2 second to average 
+  //delay (5000); // Wait 2 second to average 
 
   WindSpeed = Rotations * 1.125 * 0.868976242 * 10 ;  // convert to mp/h using the formula V=P(2.25/Time);    *0.868976242 to get knots 
   ++measure_count; // add +1 to counter
   WindAvr += WindSpeed; // add to sum of average wind values
   getWindDirection();
-
-
+  
     if (DEBUG){
       Serial.print("dir:"); 
       Serial.print(CalDirection); 
@@ -87,16 +83,14 @@ attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); //
       Serial.print(measure_count); 
       Serial.println(""); 
     }   
-
-  
     if (measure_count >= WhenSend) { // check if is time to send data online
       sendData();
     } 
 }
 
 void getTemp() {
-    sensors.requestTemperatures(); // get water Temperature
-    Temp=sensors.getTempCByIndex(0); //when there is only one sensor
+    sensors.requestTemperatures(); // get Temperature
+    Temp=sensors.getTempCByIndex(0);
   dtostrf(Temp, 4, 1, tmp); //float Tmp to char
 
 }
@@ -172,7 +166,7 @@ if (httpCode == HTTP_CODE_OK) {
       int Offset = root["offset"];
 
       if (Offset > -999){  // server response to when to do next update 
-       VaneOffset=Offset;
-         }
+        VaneOffset=Offset;
+        }
       }
 }
