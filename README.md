@@ -10,7 +10,7 @@ This project was created in order to provide cheap alternative to expensive auto
 + Wind speed and direction are measured for 2 second every 10 seconds. It is a good compromise for accurate measurements and long battery life.
 
 
-## you can select folowing options
+## Connecting options
 + [GSM 2G](vetercek_2G)
 + [WIFI](vetercek_wifi)
 + LTE - in progress
