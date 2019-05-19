@@ -3,14 +3,21 @@
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
 #include <ESP8266HTTPClient.h>
+#include <OneWire.h> // Temperature sensor
+#include <DallasTemperature.h> // Temperature sensor
+
 #include "config.h"
 
 #include <ArduinoJson.h> //parse server response
 #include <math.h> // wind speed calculations
 #define WindSensorPin (D2) // The pin location of the anemometer sensor 
 #define WindVanePin (A0)       // The pin the wind vane sensor is connected to
+#define ONE_WIRE_BUS (D4)
 #define BODY_FORMAT "{\"id\": \"%s\", \"dir\": \"%d\", \"speed\": \"%d.%d\", \"gust\": \"%d.%d\", \"tmp\": \"%s\"}"
 #define DEBUG true
+
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
 
 
 const char *id=API_PASSWORD;  // get this unique ID in order to send data to vetercek.com
@@ -87,7 +94,12 @@ attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); //
     } 
 }
 
+void getTemp() {
+    sensors.requestTemperatures(); // get water Temperature
+    Temp=sensors.getTempCByIndex(0); //when there is only one sensor
+  dtostrf(Temp, 4, 1, tmp); //float Tmp to char
 
+}
 
 void dominantDirection(){ // get dominant wind direction
  int maxIndex = 0;
@@ -128,6 +140,9 @@ void getWindDirection() {
 
 
 void sendData() {
+  dominantDirection();
+  getAvgWInd();
+  getTemp();
 
 HTTPClient http;
 http.begin("http://vetercek.com/xml/post.php");
