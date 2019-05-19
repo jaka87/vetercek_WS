@@ -1,4 +1,5 @@
 ## Vetercek.com weather station WIFI
+Wind is measured every 2 seconds, results are sent to server every 5min
 
 ## Required parts
 + Wemos D1 mini  **5€**

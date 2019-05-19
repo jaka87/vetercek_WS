@@ -13,8 +13,12 @@ This project was created in order to provide cheap alternative to expensive auto
 ## Connecting options
 + [GSM 2G](vetercek_2G)
 + [WIFI](vetercek_wifi)
-+ LTE - in progress
++ NB-IoT - in progress
 
+## RJ11 PCB socket
+[RJ11 ](https://www.ebay.com/itm/10pcs-set-RJ11-RJ12-6P6C-Computer-Internet-Network-PCB-Jack-Socket-ATAU/272983583460?ssPageName=STRK%3AMEBIDX%3AIT&_trksid=p2057872.m2749.l2649) - there are few different variants with different pin number. This is the correct one.
+Also aveliable as part number [5523](http://en.glgnet.biz/productsdetail/productId=97.html). Connection should look like this on PCB  
+![RJ11](vetercek_2G/img/rj11.png)  
 
 ## License
 This project is released under
