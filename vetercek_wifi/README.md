@@ -17,13 +17,12 @@ Wind is measured every 2 seconds, results are sent to server every 5min
 
 ## Scheme
 ![Scheme](img/scheme.png)  
-Most parts are standard but RJ11 jack is a bit tricky. There are few wariants aveliable. Im using one with part number [5523](http://en.glgnet.biz/productsdetail/productId=97.html) printed on it. Connection should look like this on PCB  
-![RJ11](img/rj11.png)  
 Here is the [link](https://easyeda.com/jaka87/wemos-d1) to PCB design.  
 
-
 ## TO-DO
-+  test propperly - this is just theoretic design
++  test propperly
++ add option to enter vane offset and API key when selecting wifi network
++ reset settings with a push of a button
 
 ## Libraries used in this project
 + [ESP8266](https://github.com/esp8266/Arduino) - core library for ESP8266 chip

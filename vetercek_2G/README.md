@@ -30,9 +30,7 @@
 
 
 ## Scheme
-![Scheme](img/scheme.png)
-Most parts are standard but RJ11 jack is a bit tricky. There are few wariants aveliable. Im using one with part number [5523](http://en.glgnet.biz/productsdetail/productId=97.html) printed on it. Connection should look like this on PCB  
-![RJ11](img/rj11.png)  
+![Scheme](img/scheme.png)  
 Here is the [link](https://easyeda.com/jaka87/vetercek-mod) to PCB design.  
 
 This is how  PCB looks with all components soldered together  
