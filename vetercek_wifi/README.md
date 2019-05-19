@@ -1,5 +1,10 @@
-## Vetercek.com weather station WIFI
-Wind is measured every 2 seconds, results are sent to server every 5min
+# Vetercek.com weather station WIFI
+
+## Features of the WS
++ Send wind speed and gusts to the server
++ Send air temperature to the server
++ Remote adjustment of wind wane offset (depending on sever response)
++ Wind is measured in 2s intervals without pause, results are sent to server every 5min
 
 ## Required parts
 + Wemos D1 mini  **5€**
@@ -20,7 +25,7 @@ Wind is measured every 2 seconds, results are sent to server every 5min
 Here is the [link](https://easyeda.com/jaka87/wemos-d1) to PCB design.  
 
 ## TO-DO
-+  test propperly
++ test propperly
 + add option to enter vane offset and API key when selecting wifi network
 + reset settings with a push of a button
 

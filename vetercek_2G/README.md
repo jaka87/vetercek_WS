@@ -1,4 +1,12 @@
-## Vetercek.com weather station 2G
+# Vetercek.com weather station 2G
+
+## Features of the WS
++ Send wind speed and gusts to the server
++ Send water and air temperature to the server
++ Send WS battery state to the server
++ Remote adjustment of the time between updates (depending on sever response)
++ Remote adjustment of wind wane offset (depending on sever response)
++ Wind speed and direction are measured for 2 second every 10 seconds. It is a good compromise for accurate measurements and long battery life.
 
 ## Required parts
 + Arduino pro mini 3.3V **3€**
