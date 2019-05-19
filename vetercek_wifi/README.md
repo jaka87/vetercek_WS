@@ -1,4 +1,4 @@
-## Vetercek.com weather station 2G
+## Vetercek.com weather station WIFI
 
 ## Required parts
 + Wemos D1 mini  **5€**

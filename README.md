@@ -11,8 +11,8 @@ This project was created in order to provide cheap alternative to expensive auto
 
 
 ## you can select folowing options
-+ [GSM 2G](vetercek_2g/README.md)
-+ [WIFI](vetercek_wifi/README)
++ [GSM 2G](vetercek_2G)
++ [WIFI](vetercek_wifi)
 + LTE - in progress
 
 
