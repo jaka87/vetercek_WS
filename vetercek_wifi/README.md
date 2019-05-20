@@ -20,10 +20,13 @@
   + 2 cable glands for anemometer cable, and temperature sensor
   + PG11 cable gland with tyvek foil coverig the exit functioning as an air vent
 
-
 ## Scheme
 ![Scheme](img/scheme.png)  
 Here is the [link](https://easyeda.com/jaka87/wemos-d1) to PCB design.  
+
+This is how  PCB looks with all components soldered together  
+![Completed PCB](img/pcb.png)  
+
 
 ## TO-DO
 + test propperly

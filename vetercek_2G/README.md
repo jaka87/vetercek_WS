@@ -42,7 +42,7 @@
 Here is the [link](https://easyeda.com/jaka87/vetercek-mod) to PCB design.  
 
 This is how  PCB looks with all components soldered together  
-![COmpleted PCB](img/ready_pcb.png)  
+![Completed PCB](img/ready_pcb.png)  
 
 ## TO-DO
 +  ~~create PCB and make larger test outside~~
