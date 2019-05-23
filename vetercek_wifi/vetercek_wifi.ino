@@ -18,7 +18,7 @@ DallasTemperature sensors(&oneWire);
 
 
 const char *id=API_PASSWORD;  // get this unique ID in order to send data to vetercek.com
-const char *webpage="vetercek.com/xml/post.php";  // where POST request is made
+const char *webpage="http://vetercek.com/xml/post.php";  // where POST request is made
 volatile unsigned long Rotations; // cup rotation counter used in interrupt routine 
 volatile unsigned long ContactBounceTime; // Timer to avoid contact bounce in interrupt routine 
 int WindSpeed; // speed  
@@ -38,7 +38,7 @@ char tmp[6]; // Temperature char value
 char response[100];
 char body[200]; 
 const int SleepTime=10000;       // delay between each masurement
-int WhenSend=150;       // after how many measurements to send data to server
+int WhenSend=50;       // after how many measurements to send data to server
 
 void ICACHE_RAM_ATTR isr_rotation () {  // This is the function that the interrupt calls to increment the rotation count 
   if ((millis() - ContactBounceTime) > 15 ) { // debounce the switch contact. 
@@ -54,7 +54,7 @@ void setup() {
   //wifiManager.resetSettings();
   //WiFiManagerParameter dir_offset("offset", "Vane offset", 0, 5);
   //wifiManager.addParameter(&dir_offset);
-  //wifiManager.autoConnect("WEATHER STATION");
+  wifiManager.autoConnect("WEATHER STATION");
   attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); // interupt for anemometer
 }
 
@@ -139,7 +139,7 @@ void sendData() {
   getTemp();
 
 HTTPClient http;
-http.begin("http://vetercek.com/xml/post.php");
+http.begin(webpage);
 http.addHeader("Content-Type", "application/json");
 
 sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGust/10,WindGust%10,tmp);
