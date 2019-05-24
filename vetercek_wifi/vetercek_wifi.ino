@@ -8,13 +8,17 @@
 #include "config.h"
 #include <ArduinoJson.h> //parse server response
 #include <math.h> // wind speed calculations
+#include <DoubleResetDetect.h>
 #define WindSensorPin (D2) // The pin location of the anemometer sensor 
 #define WindVanePin A0       // The pin the wind vane sensor is connected to
 #define ONE_WIRE_BUS (D4)
 #define BODY_FORMAT "{\"id\": \"%s\", \"d\": \"%d\", \"s\": \"%d.%d\", \"g\": \"%d.%d\", \"t\": \"%s\"}"
+#define DRD_TIMEOUT 5.0
+#define DRD_ADDRESS 0x00
 #define DEBUG true
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
+DoubleResetDetect drd(DRD_TIMEOUT, DRD_ADDRESS);
 
 
 const char *id=API_PASSWORD;  // get this unique ID in order to send data to vetercek.com
@@ -48,14 +52,24 @@ void ICACHE_RAM_ATTR isr_rotation () {  // This is the function that the interru
 }
 
 void setup() {
-  pinMode(A0, INPUT);
-  Serial.begin(115200);
+  //pinMode(A0, INPUT);
+    Serial.begin(9600);
   WiFiManager wifiManager;
-  //wifiManager.resetSettings();
+      if (drd.detect())
+    {
+        Serial.println("** Double reset boot **");
+        wifiManager.resetSettings();
+    }
+    else
+    {
+        Serial.println("** Normal boot **");
+    }
   //WiFiManagerParameter dir_offset("offset", "Vane offset", 0, 5);
   //wifiManager.addParameter(&dir_offset);
   wifiManager.autoConnect("WEATHER STATION");
   attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); // interupt for anemometer
+
+
 }
 
   void loop() {
@@ -164,7 +178,11 @@ if (httpCode == HTTP_CODE_OK) {
       const char* idd = root["id"];
       int WhenSend2 = root["whensend"];
       int Offset = root["offset"];
-
+  
+        if (WhenSend2> 0){  // server response to when to do next update 
+         WhenSend=WhenSend2;
+        }
+  
       if (Offset > -999){  // server response to when to do next update 
         VaneOffset=Offset;
         }
