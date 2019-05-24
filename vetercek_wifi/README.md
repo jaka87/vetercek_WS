@@ -39,6 +39,7 @@ This is how  PCB looks with all components soldered together
 + [OneWire](https://github.com/PaulStoffregen/OneWire) - manipulate DS18B20 sensor
 + [Arduino-Temperature-Control-Library](https://github.com/milesburton/Arduino-Temperature-Control-Library) - also manipulate DS18B20 sensor
 + [ArduinoJson](https://github.com/bblanchon/ArduinoJson) - parse JSON data
++ [DoubleResetDetect](https://github.com/jenscski/DoubleResetDetect) - enable double reset function
 
 ## Thanks!
 Thanks to all of you contributing to make this happen. 
