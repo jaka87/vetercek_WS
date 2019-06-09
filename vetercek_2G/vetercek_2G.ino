@@ -22,6 +22,7 @@ unsigned int TX_PIN = 8; //TX pin for sim800
 unsigned int RST_PIN = 12; //RST pin for sim800 - not in use
 volatile unsigned long Rotations; // cup rotation counter used in interrupt routine 
 volatile unsigned long ContactBounceTime; // Timer to avoid contact bounce in interrupt routine 
+byte tmpSensors = 0; //number of temperature sensors
 byte debounce = 15; // debounce timeout in ms
 int wind_delay = 2; // time for each anemometer measurement in seconds
 int SleepTime=10;       // delay between each measurement in seconds
@@ -88,10 +89,6 @@ void setup() {
         Serial.print(WindSpeed); 
         Serial.print(" gust:"); 
         Serial.print(WindGust); 
-        Serial.print(" temp:");       
-        Serial.print(Temp); 
-        Serial.print(" w:");       
-        Serial.print(Water); 
         Serial.print(" next:");  
         Serial.print(WhenSend-measure_count); 
         Serial.print(" count:");  
@@ -131,10 +128,11 @@ void dominantDirection(){ // get dominant wind direction
 
 
 void getTemp() {
-    sensors.requestTemperatures(); // get water Temperature
-    Temp=sensors.getTempCByIndex(0);  
-    //Water=sensors.getTempCByIndex(1); //when there are two sensors    
-  //dtostrf(Water, 4, 1, wat); //water to char
+    tmpSensors = sensors.getDeviceCount();
+    sensors.requestTemperatures(); // get Temperature
+       if (tmpSensors ==2){ Water=sensors.getTempCByIndex(1); Temp=sensors.getTempCByIndex(0);  }
+       else if (tmpSensors ==1){ Temp=sensors.getTempCByIndex(0);  }
+  dtostrf(Water, 4, 1, wat); //water to char
   dtostrf(Temp, 4, 1, tmp); //float Tmp to char
 
 }
