@@ -1,6 +1,6 @@
 #include <Http.h> // send data
 #include <ArduinoJson.h> //parse server response
-#include <Sleep_n0m1.h> // put arduino to sleep
+#include "LowPower.h"
 #include <math.h> // wind speed calculations
 #include <OneWire.h> // water Temperature sensor
 #include <DallasTemperature.h> // water Temperature sensor
@@ -10,7 +10,7 @@
 #define ONE_WIRE_BUS 2
 #define DEBUG true
 
-Sleep sleep;
+//Sleep sleep;
 OneWire oneWire(ONE_WIRE_BUS); // water temperature
 DallasTemperature sensors(&oneWire);
 
@@ -25,8 +25,6 @@ volatile unsigned long ContactBounceTime; // Timer to avoid contact bounce in in
 byte tmpSensors = 0; //number of temperature sensors
 byte debounce = 15; // debounce timeout in ms
 int wind_delay = 2; // time for each anemometer measurement in seconds
-int SleepTime=10;       // delay between each measurement in seconds
-int measure_wind=1; // 1- normal 0- wind is not measured  (to turn off anemometer measurements when GPRS transfer in process)
 int WindSpeed; // speed  
 long WindAvr=0; //sum of all wind speed between update
 int WindGust=0;
@@ -68,19 +66,17 @@ void setup() {
 
 // the loop routine runs over and over again forever:
   void loop() {
-
-  if (measure_wind == 1) { //if no GPRS transfer is running
     Rotations = 0; // Set Rotations count to 0 ready for calculations 
     sei(); // Enables interrupts 
       delay (wind_delay*1000); // Wait x second to average 
     cli(); // Disable interrupts 
-    sleep.pwrDownMode(); //set sleep mode
-    sleep.sleepDelay(SleepTime*1000); //sleep for: sleepTime
-  
+    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
+
     WindSpeed = Rotations * (2.25/wind_delay) * 0.868976242 * 10 ;  // convert to mp/h using the formula V=P(2.25/Time);    *0.868976242 to get knots 
     ++measure_count; // add +1 to counter
-    WindAvr += WindSpeed; // add to sum of average wind values
-    getWindDirection();
+          WindAvr += WindSpeed; // add to sum of average wind values        
+          getWindDirection();
+
   
       if (DEBUG){
         Serial.print("dir:"); 
@@ -95,15 +91,14 @@ void setup() {
         Serial.print(measure_count); 
         Serial.println(""); 
       }   
-   }  
+  
   
     if (measure_count >= WhenSend) { // check if is time to send data online
       http.wakeUp();
-      measure_wind=0;
       sendData();
-      measure_wind=1;
       http.sleep();
     } 
+
 }
 
 
@@ -211,10 +206,6 @@ void sendData(){
          debounce=debounce2;
         }   
              
-        if (SleepTime2> 0){  // sleep between measurement
-         SleepTime=SleepTime2;
-        }  
-        
         if (wind_delay2> 0){  // interval for one wind measurement
          wind_delay=wind_delay2;
         }  

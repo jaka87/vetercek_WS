@@ -52,7 +52,7 @@ This is how  PCB looks with all components soldered together
 
 ## Libraries used in this project
 + [ArduinoSIM800L](https://github.com/carrascoacd/ArduinoSIM800L) - send data to the server
-+ [Sleep_n0m1](https://github.com/n0m1/Sleep_n0m1) - enable sleep to save battery
++ [Low-Power](https://github.com/rocketscream/Low-Power) - enable sleep to save battery
 + [OneWire](https://github.com/PaulStoffregen/OneWire) - manipulate DS18B20 sensor
 + [Arduino-Temperature-Control-Library](https://github.com/milesburton/Arduino-Temperature-Control-Library) - also manipulate DS18B20 sensor
 + [ArduinoJson](https://github.com/bblanchon/ArduinoJson) - parse JSON data
