@@ -169,6 +169,7 @@ void sendData(){
   http.readVoltagePercentage(voltage); //battery percentage  
   http.readGpsLocation(gps); // GPS location
 
+
     sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGust/10,WindGust%10,tmp,wat,voltage,gps,measure_count);
 
     if (DEBUG){
@@ -190,8 +191,6 @@ void sendData(){
         JsonObject root = doc.as<JsonObject>();
         int WhenSend2 = root["w"];
         int Offset = root["o"];
-        int debounce2 = root["d"];
-        int SleepTime2 = root["s"];
         int wind_delay2 = root["wd"];
   
         if (WhenSend2> 0){  // server response to when to do next update 
@@ -202,9 +201,6 @@ void sendData(){
          VaneOffset=Offset;
         }
         
-        if (debounce2> 0){  // debounce timeout 
-         debounce=debounce2;
-        }   
              
         if (wind_delay2> 0){  // interval for one wind measurement
          wind_delay=wind_delay2;
