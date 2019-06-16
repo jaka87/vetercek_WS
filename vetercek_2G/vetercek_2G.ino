@@ -48,6 +48,7 @@ char body[160];
 int WhenSend=1;       // after how many measurements to send data to server
 Result result;
 
+
 HTTP http(9600, RX_PIN, TX_PIN, RST_PIN);
 #define BODY_FORMAT "{\"id\":\"%s\",\"d\":\"%d\",\"s\":\"%d.%d\",\"g\":\"%d.%d\",\"t\":\"%s\",\"w\":\"%s\",\"b\":\"%s\",\"l\":\"%s\",\"c\":\"%d\" }"
 
@@ -60,23 +61,14 @@ void setup() {
       Serial.println("Starting!");
   }
   sensors.begin();
-  attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); // interupt for anemometer
     
 }
 
 // the loop routine runs over and over again forever:
   void loop() {
-    Rotations = 0; // Set Rotations count to 0 ready for calculations 
-    sei(); // Enables interrupts 
-      delay (wind_delay*1000); // Wait x second to average 
-    cli(); // Disable interrupts 
-    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
-
-    WindSpeed = Rotations * (2.25/wind_delay) * 0.868976242 * 10 ;  // convert to mp/h using the formula V=P(2.25/Time);    *0.868976242 to get knots 
-    ++measure_count; // add +1 to counter
-          WindAvr += WindSpeed; // add to sum of average wind values        
-          getWindDirection();
-
+    anemometer();
+    getWindDirection();
+    LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);
   
       if (DEBUG){
         Serial.print("dir:"); 
@@ -101,12 +93,26 @@ void setup() {
 
 }
 
+void anemometer() { //measure wind speed
+  ContactBounceTime = millis(); 
+    Rotations = 0; // Set Rotations count to 0 ready for calculations 
+    attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); //setup interrupt on anemometer input pin, interrupt will occur whenever falling edge is detected
+    sei(); // Enables interrupts 
+          delay (wind_delay*1000); // Wait x second to average 
+    cli(); // Disable interrupts 
+    detachInterrupt(digitalPinToInterrupt(WindSensorPin));
+    
+    WindSpeed = Rotations * (2.25/wind_delay) * 0.868976242 * 10 ;  // convert to mp/h using the formula V=P(2.25/Time);    *0.868976242 to get knots 
+    ++measure_count; // add +1 to counter
+    WindAvr += WindSpeed; // add to sum of average wind values        
+}
+
 
 void isr_rotation () {  // This is the function that the interrupt calls to increment the rotation count 
   if ((millis() - ContactBounceTime) > debounce ) { // debounce the switch contact. 
     Rotations++; 
     ContactBounceTime = millis(); 
-  } 
+  }
 }
 
 

@@ -42,7 +42,7 @@ char tmp[6]; // Temperature char value
 char response[100];
 char body[200]; 
 const int SleepTime=10000;       // delay between each masurement
-int WhenSend=50;       // after how many measurements to send data to server
+int WhenSend=150;       // after how many measurements to send data to server
 
 void ICACHE_RAM_ATTR isr_rotation () {  // This is the function that the interrupt calls to increment the rotation count 
   if ((millis() - ContactBounceTime) > 15 ) { // debounce the switch contact. 
@@ -180,7 +180,7 @@ if (httpCode == HTTP_CODE_OK) {
       int Offset = root["offset"];
   
         if (WhenSend2> 0){  // server response to when to do next update 
-         WhenSend=WhenSend2;
+        // WhenSend=WhenSend2;
         }
   
       if (Offset > -999){  // server response to when to do next update 
