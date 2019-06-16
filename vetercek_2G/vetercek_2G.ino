@@ -27,7 +27,8 @@ byte debounce = 15; // debounce timeout in ms
 int wind_delay = 2; // time for each anemometer measurement in seconds
 int WindSpeed; // speed  
 long WindAvr=0; //sum of all wind speed between update
-int WindGust=0;
+int WindGust[3]={ 0,0,0 }; // top three gusts
+int WindGustAvg=0; //wind gust average
 int avrDir[16] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 }; // array where wind direction are saved and later one with highest value is selected as dominant
 int measure_count=0; // count each mesurement
 float Water; // water Temperature
@@ -45,7 +46,7 @@ char voltage[3]; //battery percentage
 char gps[20]; //gps location
 char response[60];
 char body[160]; 
-int WhenSend=1;       // after how many measurements to send data to server
+int WhenSend=3;       // after how many measurements to send data to server
 Result result;
 
 
@@ -76,7 +77,7 @@ void setup() {
         Serial.print(" speed:"); 
         Serial.print(WindSpeed); 
         Serial.print(" gust:"); 
-        Serial.print(WindGust); 
+        Serial.print(WindGustAvg); 
         Serial.print(" next:");  
         Serial.print(WhenSend-measure_count); 
         Serial.print(" count:");  
@@ -104,7 +105,23 @@ void anemometer() { //measure wind speed
     
     WindSpeed = Rotations * (2.25/wind_delay) * 0.868976242 * 10 ;  // convert to mp/h using the formula V=P(2.25/Time);    *0.868976242 to get knots 
     ++measure_count; // add +1 to counter
-    WindAvr += WindSpeed; // add to sum of average wind values        
+    WindAvr += WindSpeed; // add to sum of average wind values       
+
+    if (WindSpeed > WindGust[2]) { // check if > than old gust3 of wind
+      WindGust[0]=WindGust[1];
+      WindGust[1]=WindGust[2];      
+      WindGust[2]=WindSpeed;
+     } 
+
+    else if (WindSpeed > WindGust[1]) { // check if > than old gust2 of wind
+      WindGust[0]=WindGust[1];
+      WindGust[1]=WindSpeed;      
+     } 
+
+    else if (WindSpeed > WindGust[0]) { // check if > than old gust1 of wind
+      WindGust[0]=WindSpeed;
+     } 
+  WindGustAvg= (WindGust[0]+WindGust[1]+WindGust[2])/3;     
 }
 
 
@@ -133,6 +150,7 @@ void getTemp() {
     sensors.requestTemperatures(); // get Temperature
        if (tmpSensors ==2){ Water=sensors.getTempCByIndex(1); Temp=sensors.getTempCByIndex(0);  }
        else if (tmpSensors ==1){ Temp=sensors.getTempCByIndex(0);  }
+       else { Water=-127; Temp=-127;  }
   dtostrf(Water, 4, 1, wat); //water to char
   dtostrf(Temp, 4, 1, tmp); //float Tmp to char
 
@@ -159,9 +177,6 @@ void getWindDirection() {
   if(CalDirection < 16) { ++avrDir[CalDirection]; }
   else { ++avrDir[0]; }
 
-    if (WindSpeed > WindGust) { // check if > than old gust of wind
-      WindGust=WindSpeed;
-     } 
 }
 
 // send data to server
@@ -176,7 +191,7 @@ void sendData(){
   http.readGpsLocation(gps); // GPS location
 
 
-    sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGust/10,WindGust%10,tmp,wat,voltage,gps,measure_count);
+    sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGustAvg/10,WindGustAvg%10,tmp,wat,voltage,gps,measure_count);
 
     if (DEBUG){
       Serial.println(body);
@@ -187,11 +202,12 @@ void sendData(){
   
         measure_count=0;
         WindAvr=0; 
-        WindGust=0;
+        WindGustAvg=0;
         Water=0;
         Temp=0;
         memset(avrDir,0,sizeof(avrDir)); // empty direction array
-  
+        memset(WindGust,0,sizeof(WindGust)); // empty direction array
+
         StaticJsonDocument<200> doc;
         deserializeJson(doc, response);
         JsonObject root = doc.as<JsonObject>();
