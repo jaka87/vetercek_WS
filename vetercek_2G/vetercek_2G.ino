@@ -149,10 +149,10 @@ void getTemp() {
     tmpSensors = sensors.getDeviceCount();
     sensors.requestTemperatures(); // get Temperature
        if (tmpSensors ==2){ Water=sensors.getTempCByIndex(1); Temp=sensors.getTempCByIndex(0);  }
-       else if (tmpSensors ==1){ Temp=sensors.getTempCByIndex(0);  }
-       else { Water=-127; Temp=-127;  }
-  dtostrf(Water, 4, 1, wat); //water to char
+       else if (tmpSensors ==1){ Temp=sensors.getTempCByIndex(0); Water=-99.0; }
+       else { Water=-99.0; Temp=-98.0;  }
   dtostrf(Temp, 4, 1, tmp); //float Tmp to char
+  dtostrf(Water, 4, 1, wat); //water to char
 
 }
 
