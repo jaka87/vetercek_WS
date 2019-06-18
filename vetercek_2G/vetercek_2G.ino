@@ -8,7 +8,7 @@
 #define WindSensorPin (3) // The pin location of the anemometer sensor 
 #define WindVanePin (A3)       // The pin the wind vane sensor is connected to
 #define ONE_WIRE_BUS 2
-#define DEBUG true
+#define DEBUG false
 
 //Sleep sleep;
 OneWire oneWire(ONE_WIRE_BUS); // water temperature
@@ -148,12 +148,19 @@ void dominantDirection(){ // get dominant wind direction
 void getTemp() {
     tmpSensors = sensors.getDeviceCount();
     sensors.requestTemperatures(); // get Temperature
-       if (tmpSensors ==2){ Water=sensors.getTempCByIndex(1); Temp=sensors.getTempCByIndex(0);  }
-       else if (tmpSensors ==1){ Temp=sensors.getTempCByIndex(0); Water=-99.0; }
+       if (tmpSensors ==2){ getAir(); getWater(); }
+       else if (tmpSensors ==1){ getAir(); }
        else { Water=-99.0; Temp=-98.0;  }
-  dtostrf(Temp, 4, 1, tmp); //float Tmp to char
-  dtostrf(Water, 4, 1, wat); //water to char
+}
 
+void getAir() {
+ Temp=sensors.getTempCByIndex(0);  
+  dtostrf(Temp, 4, 1, tmp); //float Tmp to char
+}
+
+void getWater() {
+ Water=sensors.getTempCByIndex(1);  
+  dtostrf(Water, 4, 1, wat); //float Tmp to char
 }
 
 void getAvgWInd() {
