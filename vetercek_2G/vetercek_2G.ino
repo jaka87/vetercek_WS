@@ -8,9 +8,8 @@
 #define WindSensorPin (3) // The pin location of the anemometer sensor 
 #define WindVanePin (A3)       // The pin the wind vane sensor is connected to
 #define ONE_WIRE_BUS 2
-#define DEBUG false
+#define DEBUG true
 
-//Sleep sleep;
 OneWire oneWire(ONE_WIRE_BUS); // water temperature
 DallasTemperature sensors(&oneWire);
 

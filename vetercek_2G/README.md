@@ -20,7 +20,8 @@
 + 5 or 6V Monocrystalline Solar Power Panel **5-10€**
 + 3.6V li-ion batteries **10-15€**
   +2-3 batteries with paralel connection
-+ Waterproof housing
++ Waterproof housing **5€**
++ GSM antena **3€**
 + Some minor electrical parts like resistors, capacitors, diodes...
   + R1 = 4.7KΩ resistor
   + R2 = 4.7KΩ resistor
@@ -56,6 +57,16 @@ This is how  PCB looks with all components soldered together
 + [OneWire](https://github.com/PaulStoffregen/OneWire) - manipulate DS18B20 sensor
 + [Arduino-Temperature-Control-Library](https://github.com/milesburton/Arduino-Temperature-Control-Library) - also manipulate DS18B20 sensor
 + [ArduinoJson](https://github.com/bblanchon/ArduinoJson) - parse JSON data
+
+## Power consumption
+|   |      Sleep     |  Running |
+|----------|:-------------:|------:|
+| arduino |  0.57mA | 4.17mA |
+| anemometer |  0.18mA | 0.18mA |
+| DS18B20 |  0.04mA | 0.04mA |
+| sim800l |  ? | 20-100mA |
+
+We use 5800mAh battery in the field. Usually it takes 35-100s to wake up SIM800l and send update.
 
 ## Thanks!
 Thanks to all of you contributing to make this happen. Especially thanks to Tadej Tašner for drawing PCB and his advices regarding the hardware components. Also thanks to those people that took time and wrote libraries used in this project and therefore make the project easier to compile.

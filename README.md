@@ -12,6 +12,11 @@ This project was created in order to provide cheap alternative to expensive auto
 Also aveliable as part number [5523](http://en.glgnet.biz/productsdetail/productId=97.html). Connection should look like this on PCB  
 ![RJ11](vetercek_2G/img/rj11.png)  
 
+### Field test
+2.6.2019 we manage to set up our first weather station located in Sv. Ivan, Croatia. It was quite the challenge since the station is located in the sea about 30-40m from the shore.
+![station location](vetercek_2G/img/st1.jpg)  
+![close up](vetercek_2G/img/st2.jpg)  
+
 ## License
 This project is released under
 The GNU Lesser General Public License (LGPL-3.0)
