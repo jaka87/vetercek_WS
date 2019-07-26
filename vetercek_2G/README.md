@@ -25,6 +25,7 @@
 + Some minor electrical parts like resistors, capacitors, diodes...
   + R1 = 4.7KΩ resistor
   + R2 = 4.7KΩ resistor
+  + R3 = 1.8KΩ resistor
   + R4 = 1.8KΩ resistor
   + R5 = 10KΩ resistor
   + D1 = 1N4148 diode
