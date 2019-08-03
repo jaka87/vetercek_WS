@@ -2,16 +2,20 @@
 #include <ArduinoJson.h> //parse server response
 #include "LowPower.h"
 #include <math.h> // wind speed calculations
-#include <OneWire.h> // water Temperature sensor
-#include <DallasTemperature.h> // water Temperature sensor
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#define ONE_WIRE_BUS_1 2
+#define ONE_WIRE_BUS_2 4
+OneWire oneWire_in(ONE_WIRE_BUS_1);
+OneWire oneWire_out(ONE_WIRE_BUS_2);
+DallasTemperature sensor_air(&oneWire_in);
+DallasTemperature sensor_water(&oneWire_out);
 #include "config.h"
 #define WindSensorPin (3) // The pin location of the anemometer sensor 
 #define WindVanePin (A3)       // The pin the wind vane sensor is connected to
-#define ONE_WIRE_BUS 2
+#define ONE_WIRE_BUS 2 //air
+#define ONE_WIRE_BUS2 4 // water
 #define DEBUG true
-
-OneWire oneWire(ONE_WIRE_BUS); // water temperature
-DallasTemperature sensors(&oneWire);
 
 const char *bearer="iot.1nce.net"; // APN address
 const char *id=API_PASSWORD;  // get this unique ID in order to send data to vetercek.com
@@ -21,7 +25,6 @@ unsigned int TX_PIN = 8; //TX pin for sim800
 unsigned int RST_PIN = 12; //RST pin for sim800 - not in use
 volatile unsigned long Rotations; // cup rotation counter used in interrupt routine 
 volatile unsigned long ContactBounceTime; // Timer to avoid contact bounce in interrupt routine 
-byte tmpSensors = 0; //number of temperature sensors
 byte debounce = 15; // debounce timeout in ms
 int wind_delay = 2; // time for each anemometer measurement in seconds
 int WindSpeed; // speed  
@@ -60,12 +63,13 @@ void setup() {
     while(!Serial);
       Serial.println("Starting!");
   }
-  sensors.begin();
+    sensor_air.begin();
+    sensor_water.begin();
     
 }
 
 // the loop routine runs over and over again forever:
-  void loop() {
+  void loop() {    
     anemometer();
     getWindDirection();
     LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);
@@ -144,23 +148,18 @@ void dominantDirection(){ // get dominant wind direction
 }
 
 
-void getTemp() {
-    tmpSensors = sensors.getDeviceCount();
-    sensors.requestTemperatures(); // get Temperature
-       if (tmpSensors ==2){ getAir(); getWater(); }
-       else if (tmpSensors ==1){ getAir(); }
-       else { Water=-99.0; Temp=-98.0;  }
-}
-
 void getAir() {
- Temp=sensors.getTempCByIndex(0);  
+    sensor_air.requestTemperatures(); // Send the command to get temperatures
+ Temp=sensor_air.getTempCByIndex(0);  
   dtostrf(Temp, 4, 1, tmp); //float Tmp to char
 }
 
 void getWater() {
- Water=sensors.getTempCByIndex(1);  
+    sensor_water.requestTemperatures(); // Send the command to get temperatures
+ Water=sensor_water.getTempCByIndex(0);  
   dtostrf(Water, 4, 1, wat); //float Tmp to char
 }
+
 
 void getAvgWInd() {
   wind_speed=WindAvr/measure_count; // calculate average wind
@@ -189,8 +188,9 @@ void getWindDirection() {
 void sendData(){
   dominantDirection();
   getAvgWInd();
-  getTemp();
-         
+  getAir();
+  getWater();         
+  
   http.configureBearer(bearer);
   result = http.connect();
   http.readVoltagePercentage(voltage); //battery percentage  
