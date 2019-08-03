@@ -101,9 +101,7 @@ void anemometer() { //measure wind speed
   ContactBounceTime = millis(); 
     Rotations = 0; // Set Rotations count to 0 ready for calculations 
     attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); //setup interrupt on anemometer input pin, interrupt will occur whenever falling edge is detected
-    sei(); // Enables interrupts 
           delay (wind_delay*1000); // Wait x second to average 
-    cli(); // Disable interrupts 
     detachInterrupt(digitalPinToInterrupt(WindSensorPin));
     
     WindSpeed = Rotations * (2.25/wind_delay) * 0.868976242 * 10 ;  // convert to mp/h using the formula V=P(2.25/Time);    *0.868976242 to get knots 
@@ -196,6 +194,9 @@ void sendData(){
   http.readVoltagePercentage(voltage); //battery percentage  
   http.readGpsLocation(gps); // GPS location
 
+    if (voltage=='10'){
+      voltage=='100';
+    }  
 
     sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGustAvg/10,WindGustAvg%10,tmp,wat,voltage,gps,measure_count);
 
