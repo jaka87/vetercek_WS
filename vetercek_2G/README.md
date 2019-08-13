@@ -36,15 +36,18 @@
   + 3p screw in terminal
   + RJ11 connector to PCB
   + 2 cable glands for anemometer cable, and temperature sensor
-  + PG11 cable gland with tyvek foil coverig the exit functioning as an air vent
+  + ~~PG11 cable gland with tyvek foil coverig the exit functioning as an air vent~~ now i just put seal the whole box with silicone
 
 
 ## Scheme
 ![Scheme](img/scheme.png)  
 Here is the [link](https://easyeda.com/jaka87/vetercek-mod) to PCB design.  
 
-This is how  PCB looks with all components soldered together  
-![Completed PCB](img/ready_pcb.png)  
+This is how  PCB looks with all components soldered together. On the left is the new PCB with JST connectors, on the right is the old PCB that has screw in connectors and is slightly larger  
+![Old vs new PCB](img/oldvsnew.png)  
+
+New PCB inserted inside the 100x68x50mm box with the two 18650 batteries under PCB  
+![Old vs new PCB](img/inbox.png)  
 
 ## TO-DO
 +  ~~create PCB and make larger test outside~~

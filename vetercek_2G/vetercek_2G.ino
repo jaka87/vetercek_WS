@@ -15,7 +15,7 @@ DallasTemperature sensor_water(&oneWire_out);
 #define WindVanePin (A3)       // The pin the wind vane sensor is connected to
 #define ONE_WIRE_BUS 2 //air
 #define ONE_WIRE_BUS2 4 // water
-#define DEBUG true
+#define DEBUG false
 
 const char *bearer="iot.1nce.net"; // APN address
 const char *id=API_PASSWORD;  // get this unique ID in order to send data to vetercek.com
@@ -194,10 +194,6 @@ void sendData(){
   http.readVoltagePercentage(voltage); //battery percentage  
   http.readGpsLocation(gps); // GPS location
 
-    if (voltage=='10'){
-      voltage=='100';
-    }  
-
     sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGustAvg/10,WindGustAvg%10,tmp,wat,voltage,gps,measure_count);
 
     if (DEBUG){
@@ -221,7 +217,8 @@ void sendData(){
         int WhenSend2 = root["w"];
         int Offset = root["o"];
         int wind_delay2 = root["wd"];
-  
+
+
         if (WhenSend2> 0){  // server response to when to do next update 
          WhenSend=WhenSend2;
         }
