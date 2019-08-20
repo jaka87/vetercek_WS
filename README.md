@@ -13,9 +13,11 @@ Also aveliable as part number [5523](http://en.glgnet.biz/productsdetail/product
 ![RJ11](vetercek_2G/img/rj11.png)  
 
 ### Field test
-2.6.2019 we manage to set up our first weather station located in Sv. Ivan, Croatia. It was quite the challenge since the station is located in the sea about 30-40m from the shore.
+2.6.2019 we manage to set up our first weather station located in Sv. Ivan, Croatia. It was quite the challenge since the station is located in the sea about 30-40m from the shore.  
 ![station location](vetercek_2G/img/st1.jpg)  
 ![close up](vetercek_2G/img/st2.jpg)  
+Here is the new version of the station. Solar panel is separated from the box, box itself has been replaced with better quality one.  
+![new setup](vetercek_2G/img/newmount.png)  
 
 ## License
 This project is released under
