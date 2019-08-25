@@ -1,4 +1,7 @@
-#include <Http.h> // send data
+#include <Http.h>
+#include <Geo.h>
+#include <Parser.h>
+#include <Sim800.h>
 #include <ArduinoJson.h> //parse server response
 #include "LowPower.h"
 #include <math.h> // wind speed calculations
@@ -46,6 +49,7 @@ int wind_speed;  //calculated wind speed
 int wind_gust;   //calculated wind gusts
 char voltage[3]; //battery percentage
 char gps[20]; //gps location
+char signalq[3]; //battery percentage
 char response[60];
 char body[160];
 int WhenSend = 3;     // after how many measurements to send data to server
@@ -53,7 +57,8 @@ Result result;
 
 
 HTTP http(9600, RX_PIN, TX_PIN, RST_PIN);
-#define BODY_FORMAT "{\"id\":\"%s\",\"d\":\"%d\",\"s\":\"%d.%d\",\"g\":\"%d.%d\",\"t\":\"%s\",\"w\":\"%s\",\"b\":\"%s\",\"l\":\"%s\",\"c\":\"%d\" }"
+Geo geo(9600, RX_PIN, TX_PIN, RST_PIN);
+#define BODY_FORMAT "{\"id\":\"%s\",\"d\":\"%d\",\"s\":\"%d.%d\",\"g\":\"%d.%d\",\"t\":\"%s\",\"w\":\"%s\",\"b\":\"%s\",\"l\":\"%s\",\"sq\":\"%s\",\"c\":\"%d\" }"
 
 
 // the setup routine runs once when you press reset:
@@ -190,20 +195,28 @@ void getWindDirection() {
 
 }
 
+
+
+
 // send data to server
 void sendData() {
   dominantDirection();
   getAvgWInd();
   getAir();
   getWater();
-
-
+  delay(1000);
+  
   http.configureBearer(bearer);
   result = http.connect();
+  
+  geo.readGpsLocation(gps); // GPS location
+  delay (500);
+  http.readSignalStrength(signalq); //battery percentage
+  delay (500);
   http.readVoltagePercentage(voltage); //battery percentage
-  http.readGpsLocation(gps); // GPS location
+  delay (1000);
 
-  sprintf(body, BODY_FORMAT, id, wind_dir, wind_speed / 10, wind_speed % 10, WindGustAvg / 10, WindGustAvg % 10, tmp, wat, voltage, gps, measure_count);
+  sprintf(body, BODY_FORMAT, id, wind_dir, wind_speed / 10, wind_speed % 10, WindGustAvg / 10, WindGustAvg % 10, tmp, wat, voltage, gps, signalq,measure_count);
 
   if (DEBUG) {
     Serial.println(body);
