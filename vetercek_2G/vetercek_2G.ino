@@ -18,7 +18,7 @@ DallasTemperature sensor_water(&oneWire_out);
 #define WindVanePin (A3)       // The pin the wind vane sensor is connected to
 #define ONE_WIRE_BUS 2 //air
 #define ONE_WIRE_BUS2 4 // water
-#define DEBUG false
+#define DEBUG true
 
 const char *bearer = "iot.1nce.net"; // APN address
 const char *id = API_PASSWORD; // get this unique ID in order to send data to vetercek.com
@@ -155,18 +155,16 @@ void getAir() {
   sensor_air.requestTemperatures(); // Send the command to get temperatures
   delay (750) ;
   Temp = sensor_air.getTempCByIndex(0);
-  if (Temp > -100 && Temp < 85) {
-    dtostrf(Temp, 4, 1, tmp); //float Tmp to char
-  }
+  if (Temp > -100 && Temp < 85) { dtostrf(Temp, 4, 1, tmp); }   //float Tmp to char
+  else { memset(tmp, 0, sizeof(tmp));}  
 }
 
 void getWater() {
   sensor_water.requestTemperatures(); // Send the command to get temperatures
   delay (750) ;  
   Water = sensor_water.getTempCByIndex(0);
-  if (Water > -100 && Water < 85) {
-    dtostrf(Water, 4, 1, wat); //float Tmp to char
-  }  
+  if (Water > -100 && Water < 85) { dtostrf(Water, 4, 1, wat); }  //float Tmp to char
+  else { memset(wat, 0, sizeof(wat));}  
 }
 
 
