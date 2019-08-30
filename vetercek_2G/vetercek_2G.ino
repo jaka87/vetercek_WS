@@ -18,7 +18,7 @@ DallasTemperature sensor_water(&oneWire_out);
 #define WindVanePin (A3)       // The pin the wind vane sensor is connected to
 #define ONE_WIRE_BUS 2 //air
 #define ONE_WIRE_BUS2 4 // water
-#define DEBUG true
+#define DEBUG false
 
 const char *bearer = "iot.1nce.net"; // APN address
 const char *id = API_PASSWORD; // get this unique ID in order to send data to vetercek.com
@@ -68,6 +68,11 @@ void setup() {
     while (!Serial);
     Serial.println("Starting!");
   }
+   pinMode(LED_BUILTIN, OUTPUT);     // this part is used when you bypass bootloader to signal when board is starting...
+   digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on 
+   delay(1000);                       // wait 
+   digitalWrite(LED_BUILTIN, LOW);    // turn the LED
+
   sensor_air.begin();
   sensor_water.begin();
 
