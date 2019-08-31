@@ -47,7 +47,7 @@ int CalDirection;    // converted value with offset applied
 int wind_dir;  //calculated wind direction
 int wind_speed;  //calculated wind speed
 int wind_gust;   //calculated wind gusts
-int onofftmp;   //on/off temperature measure
+int onofftmp = -1;   //on/off temperature measure
 char voltage[3]; //battery percentage
 char gps[20]; //gps location
 char signalq[3]; //battery percentage
@@ -206,7 +206,7 @@ void getWindDirection() {
 void sendData() {
   dominantDirection();
   getAvgWInd();
-  if (onofftmp == 1) {
+  if (onofftmp > -1) {
     getAir();
     getWater();
     delay(1000);
@@ -245,20 +245,20 @@ void sendData() {
     deserializeJson(doc, response);
     JsonObject root = doc.as<JsonObject>();
     
-    if (root["w"] != WhenSend) { // server response to when to do next update
+    if (root["w"] != WhenSend && root["w"] > 0) { // server response to when to do next update
       WhenSend = root["w"];
     }
 
-    if (root["o"] != VaneOffset) { // server sends wind wane position
+    if (root["o"] != VaneOffset && root["o"] > -999) { // server sends wind wane position
       VaneOffset = root["o"];
     }
 
 
-    if (root["wd"] != wind_delay) { // interval for one wind measurement
+    if (root["wd"] != wind_delay && root["wd"] > 0 ) { // interval for one wind measurement
       wind_delay = root["wd"];
     }
 
-    if (root["tt"] != onofftmp) { // on/off tmp sensor
+    if (root["tt"] != onofftmp && root["tt"] > -1) { // on/off tmp sensor
       onofftmp = root["tt"];
     }  
   }
