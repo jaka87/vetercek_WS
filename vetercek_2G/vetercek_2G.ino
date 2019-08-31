@@ -47,6 +47,7 @@ int CalDirection;    // converted value with offset applied
 int wind_dir;  //calculated wind direction
 int wind_speed;  //calculated wind speed
 int wind_gust;   //calculated wind gusts
+int onofftmp;   //on/off temperature measure
 char voltage[3]; //battery percentage
 char gps[20]; //gps location
 char signalq[3]; //battery percentage
@@ -161,7 +162,6 @@ void getAir() {
   delay (750) ;
   Temp = sensor_air.getTempCByIndex(0);
   if (Temp > -100 && Temp < 85) { dtostrf(Temp, 4, 1, tmp); }   //float Tmp to char
-  else { memset(tmp, 0, sizeof(tmp));}  
 }
 
 void getWater() {
@@ -169,7 +169,6 @@ void getWater() {
   delay (750) ;  
   Water = sensor_water.getTempCByIndex(0);
   if (Water > -100 && Water < 85) { dtostrf(Water, 4, 1, wat); }  //float Tmp to char
-  else { memset(wat, 0, sizeof(wat));}  
 }
 
 
@@ -207,9 +206,11 @@ void getWindDirection() {
 void sendData() {
   dominantDirection();
   getAvgWInd();
-  getAir();
-  getWater();
-  delay(1000);
+  if (onofftmp == 1) {
+    getAir();
+    getWater();
+    delay(1000);
+  }
   
   http.configureBearer(bearer);
   result = http.connect();
@@ -237,27 +238,29 @@ void sendData() {
     Temp = 0;
     memset(avrDir, 0, sizeof(avrDir)); // empty direction array
     memset(WindGust, 0, sizeof(WindGust)); // empty direction array
-
+    memset(tmp, 0, sizeof(tmp));
+    memset(wat, 0, sizeof(wat));
+    
     StaticJsonDocument<200> doc;
     deserializeJson(doc, response);
     JsonObject root = doc.as<JsonObject>();
-    int WhenSend2 = root["w"];
-    int Offset = root["o"];
-    int wind_delay2 = root["wd"];
-
-
-    if (WhenSend2 > 0) { // server response to when to do next update
-      WhenSend = WhenSend2;
+    
+    if (root["w"] != WhenSend) { // server response to when to do next update
+      WhenSend = root["w"];
     }
 
-    if (Offset > -999) { // server sends wind wane position
-      VaneOffset = Offset;
+    if (root["o"] != VaneOffset) { // server sends wind wane position
+      VaneOffset = root["o"];
     }
 
 
-    if (wind_delay2 > 0) { // interval for one wind measurement
-      wind_delay = wind_delay2;
+    if (root["wd"] != wind_delay) { // interval for one wind measurement
+      wind_delay = root["wd"];
     }
+
+    if (root["tt"] != onofftmp) { // on/off tmp sensor
+      onofftmp = root["tt"];
+    }  
   }
 
   http.disconnect();
