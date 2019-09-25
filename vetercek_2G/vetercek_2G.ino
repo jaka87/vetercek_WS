@@ -1,5 +1,4 @@
 #include <Http.h>
-#include <Geo.h>
 #include <Parser.h>
 #include <Sim800.h>
 #include <ArduinoJson.h> //parse server response
@@ -18,7 +17,7 @@ DallasTemperature sensor_water(&oneWire_out);
 #define WindVanePin (A3)       // The pin the wind vane sensor is connected to
 #define ONE_WIRE_BUS 2 //air
 #define ONE_WIRE_BUS2 4 // water
-#define DEBUG false
+#define DEBUG true
 
 const char *bearer = "iot.1nce.net"; // APN address
 const char *id = API_PASSWORD; // get this unique ID in order to send data to vetercek.com
@@ -29,7 +28,7 @@ unsigned int RST_PIN = 12; //RST pin for sim800 - not in use
 volatile unsigned long Rotations; // cup rotation counter used in interrupt routine
 volatile unsigned long ContactBounceTime; // Timer to avoid contact bounce in interrupt routine
 byte debounce = 15; // debounce timeout in ms
-int wind_delay = 2; // time for each anemometer measurement in seconds
+byte wind_delay = 2; // time for each anemometer measurement in seconds
 int WindSpeed; // speed
 long WindAvr = 0; //sum of all wind speed between update
 int WindGust[3] = { 0, 0, 0 }; // top three gusts
@@ -47,10 +46,8 @@ int CalDirection;    // converted value with offset applied
 int wind_dir;  //calculated wind direction
 int wind_speed;  //calculated wind speed
 int wind_gust;   //calculated wind gusts
-int onofftmp = -1;   //on/off temperature measure
-char voltage[3]; //battery percentage
-char gps[20]; //gps location
-char signalq[3]; //battery percentage
+byte onofftmp = 0;   //on/off temperature measure
+unsigned int bat=0; // battery percentage
 char response[60];
 char body[160];
 int WhenSend = 3;     // after how many measurements to send data to server
@@ -58,8 +55,7 @@ Result result;
 
 
 HTTP http(9600, RX_PIN, TX_PIN, RST_PIN);
-Geo geo(9600, RX_PIN, TX_PIN, RST_PIN);
-#define BODY_FORMAT "{\"id\":\"%s\",\"d\":\"%d\",\"s\":\"%d.%d\",\"g\":\"%d.%d\",\"t\":\"%s\",\"w\":\"%s\",\"b\":\"%s\",\"l\":\"%s\",\"sq\":\"%s\",\"c\":\"%d\" }"
+#define BODY_FORMAT "{\"id\":\"%s\",\"d\":\"%d\",\"s\":\"%d.%d\",\"g\":\"%d.%d\",\"t\":\"%s\",\"w\":\"%s\",\"b\":\"%d\",\"c\":\"%d\" }"
 
 
 // the setup routine runs once when you press reset:
@@ -201,28 +197,22 @@ void getWindDirection() {
 
 
 
-
 // send data to server
 void sendData() {
-  dominantDirection();
-  getAvgWInd();
-  if (onofftmp > -1) {
-    getAir();
-    getWater();
+  dominantDirection(); if (DEBUG) {Serial.println("direction done");}
+  getAvgWInd(); if (DEBUG) {Serial.println("wind done");}
+  if (onofftmp > 0) {
+    getAir();  if (DEBUG) {Serial.println("air done");}
+    getWater();  if (DEBUG) {Serial.println("water done");}
     delay(1000);
   }
+  bat=http.readVoltagePercentage(); //battery percentage
+  if (DEBUG) {Serial.println("battery done ");}
   
   http.configureBearer(bearer);
   result = http.connect();
   
-  geo.readGpsLocation(gps); // GPS location
-  delay (500);
-  http.readSignalStrength(signalq); //battery percentage
-  delay (500);
-  http.readVoltagePercentage(voltage); //battery percentage
-  delay (1000);
-
-  sprintf(body, BODY_FORMAT, id, wind_dir, wind_speed / 10, wind_speed % 10, WindGustAvg / 10, WindGustAvg % 10, tmp, wat, voltage, gps, signalq,measure_count);
+ sprintf(body, BODY_FORMAT, id, wind_dir, wind_speed / 10, wind_speed % 10, WindGustAvg / 10, WindGustAvg % 10, tmp, wat, bat,measure_count);
 
   if (DEBUG) {
     Serial.println(body);
@@ -244,23 +234,29 @@ void sendData() {
     StaticJsonDocument<200> doc;
     deserializeJson(doc, response);
     JsonObject root = doc.as<JsonObject>();
+
+    int WhenSend2 = root["w"];
+    int Offset = root["o"];
+    byte wind_delay2 = root["wd"];
+    byte tt = root["tt"];
+
     
-    if (root["w"] != WhenSend && root["w"] > 0) { // server response to when to do next update
+    if (WhenSend2 != WhenSend && WhenSend2 > 0) { // server response to when to do next update
       WhenSend = root["w"];
     }
 
-    if (root["o"] != VaneOffset && root["o"] > -999) { // server sends wind wane position
+    if (Offset != VaneOffset && Offset > -999) { // server sends wind wane position
       VaneOffset = root["o"];
     }
 
-
-    if (root["wd"] != wind_delay && root["wd"] > 0 ) { // interval for one wind measurement
+    if (wind_delay2 != wind_delay && wind_delay2 > 0 ) { // interval for one wind measurement
       wind_delay = root["wd"];
     }
 
-    if (root["tt"] != onofftmp && root["tt"] > -1) { // on/off tmp sensor
+    if (tt != onofftmp && tt > -1) { // on/off tmp sensor
       onofftmp = root["tt"];
-    }  
+      }
+         
   }
 
   http.disconnect();
