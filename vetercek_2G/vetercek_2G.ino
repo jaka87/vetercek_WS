@@ -27,8 +27,8 @@ unsigned int TX_PIN = 8; //TX pin for sim800
 unsigned int RST_PIN = 12; //RST pin for sim800 - not in use
 volatile unsigned long Rotations; // cup rotation counter used in interrupt routine
 volatile unsigned long ContactBounceTime; // Timer to avoid contact bounce in interrupt routine
-byte debounce = 15; // debounce timeout in ms
-byte wind_delay = 2; // time for each anemometer measurement in seconds
+int debounce = 15; // debounce timeout in ms
+int wind_delay = 2; // time for each anemometer measurement in seconds
 int WindSpeed; // speed
 long WindAvr = 0; //sum of all wind speed between update
 int WindGust[3] = { 0, 0, 0 }; // top three gusts
@@ -46,7 +46,7 @@ int CalDirection;    // converted value with offset applied
 int wind_dir;  //calculated wind direction
 int wind_speed;  //calculated wind speed
 int wind_gust;   //calculated wind gusts
-byte onofftmp = 0;   //on/off temperature measure
+int onofftmp = 0;   //on/off temperature measure
 unsigned int bat=0; // battery percentage
 char response[60];
 char body[160];
@@ -206,8 +206,11 @@ void sendData() {
     getWater();  if (DEBUG) {Serial.println("water done");}
     delay(1000);
   }
+  
   bat=http.readVoltagePercentage(); //battery percentage
   if (DEBUG) {Serial.println("battery done ");}
+  //signalq=http.readSignalStrength(); //signal quality
+
   
   http.configureBearer(bearer);
   result = http.connect();
@@ -237,8 +240,8 @@ void sendData() {
 
     int WhenSend2 = root["w"];
     int Offset = root["o"];
-    byte wind_delay2 = root["wd"];
-    byte tt = root["tt"];
+    int wind_delay2 = root["wd"];
+    int tt = root["tt"];
 
     
     if (WhenSend2 != WhenSend && WhenSend2 > 0) { // server response to when to do next update
