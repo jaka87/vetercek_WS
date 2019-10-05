@@ -1,3 +1,4 @@
+#include <avr/wdt.h>
 #include <Http.h>
 #include <Parser.h>
 #include <Sim800.h>
@@ -19,16 +20,21 @@ DallasTemperature sensor_water(&oneWire_out);
 #define ONE_WIRE_BUS2 4 // water
 #define DEBUG true
 
+// edit this data to suit your needs  ///////////////////////////////////////////////////////
 const char *bearer = "iot.1nce.net"; // APN address
 const char *id = API_PASSWORD; // get this unique ID in order to send data to vetercek.com
 const char *webpage = "vetercek.com/xml/post.php"; // where POST request is made
+int wind_delay = 2; // time for each anemometer measurement in seconds
+int VaneOffset = 29;      // define the anemometer offset from magnetic north
+int onofftmp = 0;   //on/off temperature measure
+int WhenSend = 3;     // after how many measurements to send data to server
+//////////////////////////////////////////////////////////////////////////////////////////////
+
 unsigned int RX_PIN = 9; //RX pin for sim800
 unsigned int TX_PIN = 8; //TX pin for sim800
 unsigned int RST_PIN = 12; //RST pin for sim800 - not in use
 volatile unsigned long Rotations; // cup rotation counter used in interrupt routine
 volatile unsigned long ContactBounceTime; // Timer to avoid contact bounce in interrupt routine
-int debounce = 15; // debounce timeout in ms
-int wind_delay = 2; // time for each anemometer measurement in seconds
 int WindSpeed; // speed
 long WindAvr = 0; //sum of all wind speed between update
 int WindGust[3] = { 0, 0, 0 }; // top three gusts
@@ -41,16 +47,13 @@ float Temp; //Stores Temperature value
 char tmp[6]; // Temperature char value
 int VaneValue;       // raw analog value from wind vane
 int Direction;       // translated 0 - 360 direction
-int VaneOffset = 29;      // define the anemometer offset from magnetic north
 int CalDirection;    // converted value with offset applied
 int wind_dir;  //calculated wind direction
 int wind_speed;  //calculated wind speed
 int wind_gust;   //calculated wind gusts
-int onofftmp = 0;   //on/off temperature measure
 unsigned int bat=0; // battery percentage
 char response[60];
 char body[160];
-int WhenSend = 3;     // after how many measurements to send data to server
 Result result;
 
 
@@ -60,6 +63,9 @@ HTTP http(9600, RX_PIN, TX_PIN, RST_PIN);
 
 // the setup routine runs once when you press reset:
 void setup() {
+  MCUSR=0;
+  wdt_disable(); // fix watchdog reset loop
+    
   if (DEBUG) {
     Serial.begin(9600);
     while (!Serial);
@@ -134,7 +140,7 @@ void anemometer() { //measure wind speed
 
 
 void isr_rotation () {  // This is the function that the interrupt calls to increment the rotation count
-  if ((millis() - ContactBounceTime) > debounce ) { // debounce the switch contact.
+  if ((millis() - ContactBounceTime) > 15 ) { // debounce the switch contact.
     Rotations++;
     ContactBounceTime = millis();
   }
