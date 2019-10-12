@@ -1,26 +1,29 @@
-#include <avr/wdt.h>
-#include <Http.h>
-#include <Parser.h>
-#include <Sim800.h>
+#include <avr/wdt.h> //watchdog
+#include <Http.h> //gprs
+#include <Parser.h> //gprs
+#include <Sim800.h> //gprs
 #include <ArduinoJson.h> //parse server response
-#include "LowPower.h"
+#include "LowPower.h" //sleep library
 #include <math.h> // wind speed calculations
-#include <OneWire.h>
-#include <DallasTemperature.h>
-#define ONE_WIRE_BUS_1 2
-#define ONE_WIRE_BUS_2 4
+#include <OneWire.h> //tmp sensor
+#include <DallasTemperature.h> //tmp sensor
+#define ONE_WIRE_BUS_1 4 //air
+#define ONE_WIRE_BUS_2 3 // water
+#define WindSensorPin 2 // The pin location of the anemometer sensor 
+#define WindVanePin (A3)       // The pin the wind vane sensor is connected to
 OneWire oneWire_in(ONE_WIRE_BUS_1);
 OneWire oneWire_out(ONE_WIRE_BUS_2);
 DallasTemperature sensor_air(&oneWire_in);
 DallasTemperature sensor_water(&oneWire_out);
-#include "config.h"
-#define WindSensorPin (3) // The pin location of the anemometer sensor 
-#define WindVanePin (A3)       // The pin the wind vane sensor is connected to
-#define ONE_WIRE_BUS 2 //air
-#define ONE_WIRE_BUS2 4 // water
-#define DEBUG true
+unsigned int RX_PIN = 9; //RX pin for sim800
+unsigned int TX_PIN = 8; //TX pin for sim800
+unsigned int RST_PIN = 7; //RST pin for sim800
+unsigned int pwr_air=11; // power for air sensor
+unsigned int pwr_water=12; // power for water sensor
 
 // edit this data to suit your needs  ///////////////////////////////////////////////////////
+#include "config.h"
+#define DEBUG true
 const char *bearer = "iot.1nce.net"; // APN address
 const char *id = API_PASSWORD; // get this unique ID in order to send data to vetercek.com
 const char *webpage = "vetercek.com/xml/post.php"; // where POST request is made
@@ -30,9 +33,6 @@ int onofftmp = 0;   //on/off temperature measure
 int WhenSend = 3;     // after how many measurements to send data to server
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-unsigned int RX_PIN = 9; //RX pin for sim800
-unsigned int TX_PIN = 8; //TX pin for sim800
-unsigned int RST_PIN = 12; //RST pin for sim800 - not in use
 volatile unsigned long Rotations; // cup rotation counter used in interrupt routine
 volatile unsigned long ContactBounceTime; // Timer to avoid contact bounce in interrupt routine
 int WindSpeed; // speed
@@ -76,8 +76,12 @@ void setup() {
    delay(1000);                       // wait 
    digitalWrite(LED_BUILTIN, LOW);    // turn the LED
 
-  sensor_air.begin();
-  sensor_water.begin();
+   pinMode(pwr_air, OUTPUT);      // sets the digital pin as output
+   pinMode(pwr_water, OUTPUT);      // sets the digital pin as output
+   sensor_air.begin();
+   sensor_water.begin();
+   digitalWrite(pwr_air, LOW);   // turn off power  
+   digitalWrite(pwr_water, LOW);   // turn off power
 
 }
 
@@ -160,17 +164,23 @@ void dominantDirection() { // get dominant wind direction
 
 
 void getAir() {
+  digitalWrite(pwr_air, HIGH);   // turn on power
+  delay(500); 
   sensor_air.requestTemperatures(); // Send the command to get temperatures
   delay (750) ;
   Temp = sensor_air.getTempCByIndex(0);
   if (Temp > -100 && Temp < 85) { dtostrf(Temp, 4, 1, tmp); }   //float Tmp to char
+  digitalWrite(pwr_air, LOW);   // turn off power
 }
 
 void getWater() {
+  digitalWrite(pwr_water, HIGH);   // turn on power
+  delay(500); 
   sensor_water.requestTemperatures(); // Send the command to get temperatures
   delay (750) ;  
   Water = sensor_water.getTempCByIndex(0);
   if (Water > -100 && Water < 85) { dtostrf(Water, 4, 1, wat); }  //float Tmp to char
+  digitalWrite(pwr_water, LOW);   // turn off power
 }
 
 
@@ -208,8 +218,8 @@ void sendData() {
   dominantDirection(); if (DEBUG) {Serial.println("direction done");}
   getAvgWInd(); if (DEBUG) {Serial.println("wind done");}
   if (onofftmp > 0) {
-    getAir();  if (DEBUG) {Serial.println("air done");}
-    getWater();  if (DEBUG) {Serial.println("water done");}
+    getAir();  if (DEBUG) {Serial.println("air done");Serial.println(tmp);}
+    getWater();  if (DEBUG) {Serial.println("water done"); Serial.println(wat);}
     delay(1000);
   }
   

@@ -22,26 +22,19 @@
   +2-3 batteries with paralel connection
 + Waterproof housing **5€**
 + GSM antena **3€**
-+ Some minor electrical parts like resistors, capacitors, diodes...
-  + R1 = 4.7KΩ resistor
-  + R2 = 4.7KΩ resistor
-  + R3 = 1.8KΩ resistor
-  + R4 = 1.8KΩ resistor
-  + R5 = 10KΩ resistor
-  + D1 = 1N4148 diode
-  + C1 = 22nF capacitor
-  + C2 = 22nF capacitor
-  + C3 = 1000uF capacitor
-  + 2x 2p screw in terminals
-  + 3p screw in terminal
-  + RJ11 connector to PCB
-  + 2 cable glands for anemometer cable, and temperature sensor
-  + ~~PG11 cable gland with tyvek foil coverig the exit functioning as an air vent~~ now i just put seal the whole box with silicone
++ Some minor electrical parts like resistors, capacitors, diodes... **5€**
++ RJ11 connector to PCB **1€**
++ 2 cable glands for anemometer cable, and temperature sensor **2€**
 
+## Arduino pro mini
+Arduino pro mini has different bootloader than Uno (older) that has watchdog bug that puts your arduino in endless loop even thou my script don't use watchdog directly. It took me months to figure it out. Station was working fine on good weather but reseted when there were storms whithc cause bad signal. After 1-10 resets this error apeared and manual intervention has to be done. I (fingers crossed) solved this with uploading with programmer (skipping bootloader). If you wish to use bootloader i suggest Minicore. Optiboot should also fix this issue, but i had trouble uploading sketches with it.
 
 ## Scheme
-![Scheme](img/scheme.png)  
+![Scheme](img/scheme_v3.png)  
 Here is the [link](https://easyeda.com/jaka87/vetercek-mod) to PCB design.  
+
+Here it is new v0.3 PCB with some extra resistors, to turn power on/off from tmp sensors, and protect the board in case of tmp sensor short ciruit  
+![Old vs new PCB](img/pcbv3.jpg)  
 
 This is how  PCB looks with all components soldered together. On the left is the new PCB with JST connectors, on the right is the old PCB that has screw in connectors and is slightly larger  
 ![Old vs new PCB](img/oldvsnew.png)  
@@ -70,7 +63,6 @@ New PCB inserted inside the 100x68x50mm box with the two 18650 batteries under P
 | DS18B20 |  0.04mA | 0.04mA |
 | sim800l |  ? | 20-100mA |
 
-We use 5800mAh battery in the field. Usually it takes 35-100s to wake up SIM800l and send update.
 
 ## Thanks!
 Thanks to all of you contributing to make this happen. Especially thanks to Tadej Tašner for drawing PCB and his advices regarding the hardware components. Also thanks to those people that took time and wrote libraries used in this project and therefore make the project easier to compile.
