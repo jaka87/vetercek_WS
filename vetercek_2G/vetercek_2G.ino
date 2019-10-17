@@ -23,7 +23,7 @@ unsigned int pwr_water=12; // power for water sensor
 
 // edit this data to suit your needs  ///////////////////////////////////////////////////////
 #include "config.h"
-#define DEBUG true
+//#define DEBUG // comment out if you want to turn offvdebugging
 const char *bearer = "iot.1nce.net"; // APN address
 const char *id = API_PASSWORD; // get this unique ID in order to send data to vetercek.com
 const char *webpage = "vetercek.com/xml/post.php"; // where POST request is made
@@ -66,11 +66,12 @@ void setup() {
   MCUSR=0;
   wdt_disable(); // fix watchdog reset loop
     
-  if (DEBUG) {
+#ifdef DEBUG
     Serial.begin(9600);
     while (!Serial);
     Serial.println("Starting!");
-  }
+#endif
+
    pinMode(LED_BUILTIN, OUTPUT);     // this part is used when you bypass bootloader to signal when board is starting...
    digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on 
    delay(1000);                       // wait 
@@ -90,8 +91,8 @@ void loop() {
   anemometer();
   getWindDirection();
   LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);
-
-  if (DEBUG) {
+  
+#ifdef DEBUG
     Serial.print("dir:");
     Serial.print(CalDirection);
     Serial.print(" speed:");
@@ -103,13 +104,10 @@ void loop() {
     Serial.print(" count:");
     Serial.print(measure_count);
     Serial.println("");
-  }
-
+#endif
 
   if (measure_count >= WhenSend) { // check if is time to send data online
-    http.wakeUp();
     sendData();
-    http.sleep();
   }
 
 }
@@ -215,16 +213,32 @@ void getWindDirection() {
 
 // send data to server
 void sendData() {
-  dominantDirection(); if (DEBUG) {Serial.println("direction done");}
-  getAvgWInd(); if (DEBUG) {Serial.println("wind done");}
+  dominantDirection(); 
+    #ifdef DEBUG
+      Serial.println("direction done");
+    #endif
+  getAvgWInd();
+    #ifdef DEBUG
+      Serial.println("wind done");
+    #endif  
   if (onofftmp > 0) {
-    getAir();  if (DEBUG) {Serial.println("air done");Serial.println(tmp);}
-    getWater();  if (DEBUG) {Serial.println("water done"); Serial.println(wat);}
-    delay(1000);
+    getAir();  
+    #ifdef DEBUG
+      Serial.println("air done");
+    #endif    
+    getWater(); 
+    #ifdef DEBUG
+      Serial.println("water done");
+    #endif    
+  delay(1000);
   }
-  
+
+  http.wakeUp();
   bat=http.readVoltagePercentage(); //battery percentage
-  if (DEBUG) {Serial.println("battery done ");}
+    #ifdef DEBUG
+      Serial.println(bat);
+      Serial.println("battery done");
+    #endif     
   //signalq=http.readSignalStrength(); //signal quality
 
   
@@ -233,11 +247,16 @@ void sendData() {
   
  sprintf(body, BODY_FORMAT, id, wind_dir, wind_speed / 10, wind_speed % 10, WindGustAvg / 10, WindGustAvg % 10, tmp, wat, bat,measure_count);
 
-  if (DEBUG) {
+  #ifdef DEBUG
     Serial.println(body);
-  }
+  #endif    
+
 
   result = http.post(webpage, body, response);
+  http.disconnect();
+  http.sleep();
+  delay(500);
+  
   if (result == SUCCESS) {
 
     measure_count = 0;
@@ -274,10 +293,7 @@ void sendData() {
 
     if (tt != onofftmp && tt > -1) { // on/off tmp sensor
       onofftmp = root["tt"];
-      }
-         
+      }         
   }
-
-  http.disconnect();
 
 }
