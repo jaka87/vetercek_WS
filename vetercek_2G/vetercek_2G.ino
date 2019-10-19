@@ -9,7 +9,7 @@
 #include <DallasTemperature.h> //tmp sensor
 #define ONE_WIRE_BUS_1 4 //air
 #define ONE_WIRE_BUS_2 3 // water
-#define WindSensorPin 2 // The pin location of the anemometer sensor 
+#define WindSensorPin 2 // The pin location of the anemometer sensor
 #define WindVanePin (A3)       // The pin the wind vane sensor is connected to
 OneWire oneWire_in(ONE_WIRE_BUS_1);
 OneWire oneWire_out(ONE_WIRE_BUS_2);
@@ -56,7 +56,6 @@ char response[60];
 char body[160];
 Result result;
 
-
 HTTP http(9600, RX_PIN, TX_PIN, RST_PIN);
 #define BODY_FORMAT "{\"id\":\"%s\",\"d\":\"%d\",\"s\":\"%d.%d\",\"g\":\"%d.%d\",\"t\":\"%s\",\"w\":\"%s\",\"b\":\"%d\",\"c\":\"%d\" }"
 
@@ -65,7 +64,7 @@ HTTP http(9600, RX_PIN, TX_PIN, RST_PIN);
 void setup() {
   MCUSR=0;
   wdt_disable(); // fix watchdog reset loop
-    
+
 #ifdef DEBUG
     Serial.begin(9600);
     while (!Serial);
@@ -73,15 +72,15 @@ void setup() {
 #endif
 
    pinMode(LED_BUILTIN, OUTPUT);     // this part is used when you bypass bootloader to signal when board is starting...
-   digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on 
-   delay(1000);                       // wait 
+   digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on
+   delay(1000);                       // wait
    digitalWrite(LED_BUILTIN, LOW);    // turn the LED
 
    pinMode(pwr_air, OUTPUT);      // sets the digital pin as output
    pinMode(pwr_water, OUTPUT);      // sets the digital pin as output
    sensor_air.begin();
    sensor_water.begin();
-   digitalWrite(pwr_air, LOW);   // turn off power  
+   digitalWrite(pwr_air, LOW);   // turn off power
    digitalWrite(pwr_water, LOW);   // turn off power
 
 }
@@ -91,7 +90,7 @@ void loop() {
   anemometer();
   getWindDirection();
   LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);
-  
+
 #ifdef DEBUG
     Serial.print("dir:");
     Serial.print(CalDirection);
@@ -163,7 +162,7 @@ void dominantDirection() { // get dominant wind direction
 
 void getAir() {
   digitalWrite(pwr_air, HIGH);   // turn on power
-  delay(500); 
+  delay(500);
   sensor_air.requestTemperatures(); // Send the command to get temperatures
   delay (750) ;
   Temp = sensor_air.getTempCByIndex(0);
@@ -173,9 +172,9 @@ void getAir() {
 
 void getWater() {
   digitalWrite(pwr_water, HIGH);   // turn on power
-  delay(500); 
+  delay(500);
   sensor_water.requestTemperatures(); // Send the command to get temperatures
-  delay (750) ;  
+  delay (750) ;
   Water = sensor_water.getTempCByIndex(0);
   if (Water > -100 && Water < 85) { dtostrf(Water, 4, 1, wat); }  //float Tmp to char
   digitalWrite(pwr_water, LOW);   // turn off power
@@ -213,23 +212,23 @@ void getWindDirection() {
 
 // send data to server
 void sendData() {
-  dominantDirection(); 
+  dominantDirection();
     #ifdef DEBUG
       Serial.println("direction done");
     #endif
   getAvgWInd();
     #ifdef DEBUG
       Serial.println("wind done");
-    #endif  
+    #endif
   if (onofftmp > 0) {
-    getAir();  
+    getAir();
     #ifdef DEBUG
       Serial.println("air done");
-    #endif    
-    getWater(); 
+    #endif
+    getWater();
     #ifdef DEBUG
       Serial.println("water done");
-    #endif    
+    #endif
   delay(1000);
   }
 
@@ -238,25 +237,25 @@ void sendData() {
     #ifdef DEBUG
       Serial.println(bat);
       Serial.println("battery done");
-    #endif     
+    #endif
   //signalq=http.readSignalStrength(); //signal quality
 
-  
+
   http.configureBearer(bearer);
   result = http.connect();
-  
+
  sprintf(body, BODY_FORMAT, id, wind_dir, wind_speed / 10, wind_speed % 10, WindGustAvg / 10, WindGustAvg % 10, tmp, wat, bat,measure_count);
 
   #ifdef DEBUG
     Serial.println(body);
-  #endif    
+  #endif
 
 
   result = http.post(webpage, body, response);
   http.disconnect();
   http.sleep();
   delay(500);
-  
+
   if (result == SUCCESS) {
 
     measure_count = 0;
@@ -268,7 +267,7 @@ void sendData() {
     memset(WindGust, 0, sizeof(WindGust)); // empty direction array
     memset(tmp, 0, sizeof(tmp));
     memset(wat, 0, sizeof(wat));
-    
+
     StaticJsonDocument<200> doc;
     deserializeJson(doc, response);
     JsonObject root = doc.as<JsonObject>();
@@ -278,7 +277,7 @@ void sendData() {
     int wind_delay2 = root["wd"];
     int tt = root["tt"];
 
-    
+
     if (WhenSend2 != WhenSend && WhenSend2 > 0) { // server response to when to do next update
       WhenSend = root["w"];
     }
@@ -293,7 +292,7 @@ void sendData() {
 
     if (tt != onofftmp && tt > -1) { // on/off tmp sensor
       onofftmp = root["tt"];
-      }         
+      }
   }
 
 }
