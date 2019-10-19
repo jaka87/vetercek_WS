@@ -36,10 +36,11 @@ Here is the [link](https://easyeda.com/jaka87/vetercek-mod) to PCB design.
 Here it is new v0.3 PCB with some extra resistors, to turn power on/off from tmp sensors, and protect the board in case of tmp sensor short ciruit  
 ![Old vs new PCB](img/pcbv3.jpg)  
 
-This is how  PCB looks with all components soldered together. On the left is the new PCB with JST connectors, on the right is the old PCB that has screw in connectors and is slightly larger  
+Legacy
+Here are v0.2 and v0.1 versions of PCB
 ![Old vs new PCB](img/oldvsnew.png)  
 
-New PCB inserted inside the 100x68x50mm box with the two 18650 batteries under PCB  
+Both v0.2 and v0.3 fits inside the 100x68x50mm box with the two or three 18650 batteries under PCB  
 ![Old vs new PCB](img/inbox.png)  
 
 ## TO-DO
@@ -61,7 +62,8 @@ New PCB inserted inside the 100x68x50mm box with the two 18650 batteries under P
 | arduino |  0.57mA | 4.17mA |
 | anemometer |  0.18mA | 0.18mA |
 | DS18B20 |  0.04mA | 0.04mA |
-| sim800l |  ? | 20-100mA |
+| sim800l |  2mA | 20-100mA |
+| SUM |  ? | ? |
 
 
 ## Thanks!
