@@ -36,7 +36,6 @@ Here is the [link](https://easyeda.com/jaka87/vetercek-mod) to PCB design.
 Here it is new v0.3 PCB with some extra resistors, to turn power on/off from tmp sensors, and protect the board in case of tmp sensor short ciruit  
 ![Old vs new PCB](img/pcbv3.jpg)  
 
-Legacy
 Here are v0.2 and v0.1 versions of PCB
 ![Old vs new PCB](img/oldvsnew.png)  
 
