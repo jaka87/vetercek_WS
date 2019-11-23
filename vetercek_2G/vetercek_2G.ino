@@ -20,7 +20,7 @@ unsigned int TX_PIN = 8; //TX pin for sim800
 unsigned int RST_PIN = 7; //RST pin for sim800
 unsigned int pwr_air=11; // power for air sensor
 unsigned int pwr_water=12; // power for water sensor
-
+byte reset_why = MCUSR;
 // edit this data to suit your needs  ///////////////////////////////////////////////////////
 #include "config.h"
 //#define DEBUG // comment out if you want to turn offvdebugging
@@ -28,10 +28,11 @@ const char *bearer = "iot.1nce.net"; // APN address
 const char *id = API_PASSWORD; // get this unique ID in order to send data to vetercek.com
 const char *webpage = "vetercek.com/xml/post.php"; // where POST request is made
 int wind_delay = 2; // time for each anemometer measurement in seconds
-int VaneOffset = 29;      // define the anemometer offset from magnetic north
 int onofftmp = 0;   //on/off temperature measure
 int WhenSend = 3;     // after how many measurements to send data to server
+// int VaneOffset=0; // now defined in config file for each station
 //////////////////////////////////////////////////////////////////////////////////////////////
+
 
 volatile unsigned long Rotations; // cup rotation counter used in interrupt routine
 volatile unsigned long ContactBounceTime; // Timer to avoid contact bounce in interrupt routine
@@ -57,14 +58,13 @@ char body[160];
 Result result;
 
 HTTP http(9600, RX_PIN, TX_PIN, RST_PIN);
-#define BODY_FORMAT "{\"id\":\"%s\",\"d\":\"%d\",\"s\":\"%d.%d\",\"g\":\"%d.%d\",\"t\":\"%s\",\"w\":\"%s\",\"b\":\"%d\",\"c\":\"%d\" }"
+#define BODY_FORMAT "{\"id\":\"%s\",\"d\":\"%d\",\"s\":\"%d.%d\",\"g\":\"%d.%d\",\"t\":\"%s\",\"w\":\"%s\",\"b\":\"%d\",\"c\":\"%d\",\"r\":\"%d\" }"
 
 
 // the setup routine runs once when you press reset:
 void setup() {
-  MCUSR=0;
-  wdt_disable(); // fix watchdog reset loop
-
+  MCUSR = 0; // clear reset flags
+  wdt_disable();
 #ifdef DEBUG
     Serial.begin(9600);
     while (!Serial);
@@ -114,6 +114,7 @@ void loop() {
 void anemometer() { //measure wind speed
   ContactBounceTime = millis();
   Rotations = 0; // Set Rotations count to 0 ready for calculations
+  EIFR = (1 << INTF0); // clear interrupt flag
   attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); //setup interrupt on anemometer input pin, interrupt will occur whenever falling edge is detected
   delay (wind_delay * 1000); // Wait x second to average
   detachInterrupt(digitalPinToInterrupt(WindSensorPin));
@@ -244,7 +245,7 @@ void sendData() {
   http.configureBearer(bearer);
   result = http.connect();
 
- sprintf(body, BODY_FORMAT, id, wind_dir, wind_speed / 10, wind_speed % 10, WindGustAvg / 10, WindGustAvg % 10, tmp, wat, bat,measure_count);
+ sprintf(body, BODY_FORMAT, id, wind_dir, wind_speed / 10, wind_speed % 10, WindGustAvg / 10, WindGustAvg % 10, tmp, wat, bat,measure_count,reset_why);
 
   #ifdef DEBUG
     Serial.println(body);
