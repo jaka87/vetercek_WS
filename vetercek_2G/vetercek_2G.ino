@@ -36,6 +36,10 @@ int WhenSend = 3;     // after how many measurements to send data to server
 
 volatile unsigned long Rotations; // cup rotation counter used in interrupt routine
 volatile unsigned long ContactBounceTime; // Timer to avoid contact bounce in interrupt routine
+volatile unsigned long lastPulseMillis; // last anemometer measured time
+volatile unsigned long firstPulseMillis; // fisrt anemometer measured time
+volatile unsigned long currentMillis;
+byte firstWindPulse; // ignore 1st anemometer rotation since it didn't make full circle
 int WindSpeed; // speed
 long WindAvr = 0; //sum of all wind speed between update
 int WindGust[3] = { 0, 0, 0 }; // top three gusts
@@ -112,6 +116,7 @@ void loop() {
 }
 
 void anemometer() { //measure wind speed
+  firstWindPulse=1;
   ContactBounceTime = millis();
   Rotations = 0; // Set Rotations count to 0 ready for calculations
   EIFR = (1 << INTF0); // clear interrupt flag
@@ -119,7 +124,11 @@ void anemometer() { //measure wind speed
   delay (wind_delay * 1000); // Wait x second to average
   detachInterrupt(digitalPinToInterrupt(WindSensorPin));
 
-  WindSpeed = Rotations * (2.25 / wind_delay) * 0.868976242 * 10 ; // convert to mp/h using the formula V=P(2.25/Time);    *0.868976242 to get knots
+  if(Rotations==0)  {   WindSpeed=0;  } 
+  else  {   
+    wind_delay=lastPulseMillis-firstPulseMillis;
+    WindSpeed = Rotations * (2.25 / wind_delay) * 0.868976242 * 10 ; // convert to mp/h using the formula V=P(2.25/Time);
+    }  
   ++measure_count; // add +1 to counter
   WindAvr += WindSpeed; // add to sum of average wind values
 
@@ -140,13 +149,21 @@ void anemometer() { //measure wind speed
   WindGustAvg = (WindGust[0] + WindGust[1] + WindGust[2]) / 3;
 }
 
-
 void isr_rotation () {  // This is the function that the interrupt calls to increment the rotation count
-  if ((millis() - ContactBounceTime) > 15 ) { // debounce the switch contact.
-    Rotations++;
-    ContactBounceTime = millis();
+  currentMillis=millis(); //we have to read millis at the same position in ISR each time to get the most accurate readings
+  if(firstWindPulse==1) { //discard first pulse as we don't know exactly when it happened
+    ContactBounceTime=currentMillis;
+    firstWindPulse=0;
+    firstPulseMillis=currentMillis;
   }
+    else if ((currentMillis - ContactBounceTime) > 15 ) { // debounce the switch contact.
+      Rotations++;
+      ContactBounceTime = currentMillis;
+      lastPulseMillis=currentMillis;
+    }
 }
+
+
 
 
 void dominantDirection() { // get dominant wind direction
