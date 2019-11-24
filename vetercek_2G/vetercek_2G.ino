@@ -9,51 +9,50 @@
 #include <DallasTemperature.h> //tmp sensor
 #define ONE_WIRE_BUS_1 4 //air
 #define ONE_WIRE_BUS_2 3 // water
-#define WindSensorPin 2 // The pin location of the anemometer sensor
-#define WindVanePin (A3)       // The pin the wind vane sensor is connected to
+#define windSensorPin 2 // The pin location of the anemometer sensor
+#define windVanePin (A3)       // The pin the wind vane sensor is connected to
 OneWire oneWire_in(ONE_WIRE_BUS_1);
 OneWire oneWire_out(ONE_WIRE_BUS_2);
 DallasTemperature sensor_air(&oneWire_in);
 DallasTemperature sensor_water(&oneWire_out);
-unsigned int RX_PIN = 9; //RX pin for sim800
-unsigned int TX_PIN = 8; //TX pin for sim800
-unsigned int RST_PIN = 7; //RST pin for sim800
-unsigned int pwr_air=11; // power for air sensor
-unsigned int pwr_water=12; // power for water sensor
-byte reset_why = MCUSR;
+unsigned int RX_Pin = 9; //RX pin for sim800
+unsigned int TX_Pin = 8; //TX pin for sim800
+unsigned int RST_Pin = 7; //RST pin for sim800
+unsigned int pwrAir=11; // power for air sensor
+unsigned int pwrWater=12; // power for water sensor
+byte resetReason = MCUSR;
 // edit this data to suit your needs  ///////////////////////////////////////////////////////
 #include "config.h"
 //#define DEBUG // comment out if you want to turn offvdebugging
 const char *bearer = "iot.1nce.net"; // APN address
-const char *id = API_PASSWORD; // get this unique ID in order to send data to vetercek.com
+const char *id = apiPassword; // get this unique ID in order to send data to vetercek.com
 const char *webpage = "vetercek.com/xml/post.php"; // where POST request is made
-int wind_delay = 2; // time for each anemometer measurement in seconds
-int onofftmp = 0;   //on/off temperature measure
-int WhenSend = 3;     // after how many measurements to send data to server
-// int VaneOffset=0; // now defined in config file for each station
+int windDelay = 2; // time for each anemometer measurement in seconds
+int onOffTmp = 0;   //on/off temperature measure
+int whenSend = 3;     // after how many measurements to send data to server
+// int vaneOffset=0; // now defined in config file for each station
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-
-volatile unsigned long Rotations; // cup rotation counter used in interrupt routine
-volatile unsigned long ContactBounceTime; // Timer to avoid contact bounce in interrupt routine
+volatile unsigned long rotations; // cup rotation counter used in interrupt routine
+volatile unsigned long contactBounceTime; // Timer to avoid contact bounce in interrupt routine
 volatile unsigned long lastPulseMillis; // last anemometer measured time
 volatile unsigned long firstPulseMillis; // fisrt anemometer measured time
 volatile unsigned long currentMillis;
 byte firstWindPulse; // ignore 1st anemometer rotation since it didn't make full circle
-int WindSpeed; // speed
-long WindAvr = 0; //sum of all wind speed between update
-int WindGust[3] = { 0, 0, 0 }; // top three gusts
-int WindGustAvg = 0; //wind gust average
+int windSpeed; // speed
+long windAvr = 0; //sum of all wind speed between update
+int windGust[3] = { 0, 0, 0 }; // top three gusts
+int windGustAvg = 0; //wind gust average
 int avrDir[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; // array where wind direction are saved and later one with highest value is selected as dominant
-int measure_count = 0; // count each mesurement
-float Water; // water Temperature
-char wat[6]; // Water char value
-float Temp; //Stores Temperature value
+int measureCount = 0; // count each mesurement
+float water; // water Temperature
+char wat[6]; // water char value
+float temp; //Stores Temperature value
 char tmp[6]; // Temperature char value
-int VaneValue;       // raw analog value from wind vane
-int Direction;       // translated 0 - 360 direction
-int CalDirection;    // converted value with offset applied
-int wind_dir;  //calculated wind direction
+int vaneValue;       // raw analog value from wind vane
+int direction;       // translated 0 - 360 direction
+int calDirection;    // converted value with offset applied
+int windDir;  //calculated wind direction
 int wind_speed;  //calculated wind speed
 int wind_gust;   //calculated wind gusts
 unsigned int bat=0; // battery percentage
@@ -61,7 +60,7 @@ char response[60];
 char body[160];
 Result result;
 
-HTTP http(9600, RX_PIN, TX_PIN, RST_PIN);
+HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);
 #define BODY_FORMAT "{\"id\":\"%s\",\"d\":\"%d\",\"s\":\"%d.%d\",\"g\":\"%d.%d\",\"t\":\"%s\",\"w\":\"%s\",\"b\":\"%d\",\"c\":\"%d\",\"r\":\"%d\" }"
 
 
@@ -80,85 +79,88 @@ void setup() {
    delay(1000);                       // wait
    digitalWrite(LED_BUILTIN, LOW);    // turn the LED
 
-   pinMode(pwr_air, OUTPUT);      // sets the digital pin as output
-   pinMode(pwr_water, OUTPUT);      // sets the digital pin as output
+   pinMode(pwrAir, OUTPUT);      // sets the digital pin as output
+   pinMode(pwrWater, OUTPUT);      // sets the digital pin as output
    sensor_air.begin();
    sensor_water.begin();
-   digitalWrite(pwr_air, LOW);   // turn off power
-   digitalWrite(pwr_water, LOW);   // turn off power
+   digitalWrite(pwrAir, LOW);   // turn off power
+   digitalWrite(pwrWater, LOW);   // turn off power
 
 }
 
 // the loop routine runs over and over again forever:
 void loop() {
-  anemometer();
-  getWindDirection();
+  Anemometer();
+  GetWindDirection();
   LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);
 
 #ifdef DEBUG
     Serial.print("dir:");
-    Serial.print(CalDirection);
+    Serial.print(calDirection);
     Serial.print(" speed:");
-    Serial.print(WindSpeed);
+    Serial.print(windSpeed);
     Serial.print(" gust:");
-    Serial.print(WindGustAvg);
+    Serial.print(windGustAvg);
     Serial.print(" next:");
-    Serial.print(WhenSend - measure_count);
+    Serial.print(whenSend - measureCount);
     Serial.print(" count:");
-    Serial.print(measure_count);
+    Serial.print(measureCount);
     Serial.println("");
 #endif
 
-  if (measure_count >= WhenSend) { // check if is time to send data online
-    sendData();
+  if (measureCount >= whenSend) { // check if is time to send data online
+    SendData();
   }
 
 }
 
-void anemometer() { //measure wind speed
-  firstWindPulse=1;
-  ContactBounceTime = millis();
-  Rotations = 0; // Set Rotations count to 0 ready for calculations
+void Anemometer() { //measure wind speed
+  int actualWindDelay; //time between first and last measured anemometer rotation
+  firstWindPulse=1; // dont count first rotation
+  contactBounceTime = millis();
+  rotations = 0; // Set rotations count to 0 ready for calculations
   EIFR = (1 << INTF0); // clear interrupt flag
-  attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); //setup interrupt on anemometer input pin, interrupt will occur whenever falling edge is detected
-  delay (wind_delay * 1000); // Wait x second to average
-  detachInterrupt(digitalPinToInterrupt(WindSensorPin));
+  attachInterrupt(digitalPinToInterrupt(windSensorPin), ISRrotation, FALLING); //setup interrupt on anemometer input pin, interrupt will occur whenever falling edge is detected
+  delay (windDelay * 1000); // Wait x second to average
+  detachInterrupt(digitalPinToInterrupt(windSensorPin));
 
-  if(Rotations==0)  {   WindSpeed=0;  } 
+  if(rotations==0)  {
+    windSpeed=0;  
+  } 
   else  {   
-    wind_delay=lastPulseMillis-firstPulseMillis;
-    WindSpeed = Rotations * (2.25 / wind_delay) * 0.868976242 * 10 ; // convert to mp/h using the formula V=P(2.25/Time);
+    actualWindDelay=lastPulseMillis-firstPulseMillis;
+    windSpeed = rotations * (2.25 / actualWindDelay) * 0.868976242 * 10 ; // convert to mp/h using the formula V=P(2.25/Time);
     }  
-  ++measure_count; // add +1 to counter
-  WindAvr += WindSpeed; // add to sum of average wind values
+  ++measureCount; // add +1 to counter
+  windAvr += windSpeed; // add to sum of average wind values
 
-  if (WindSpeed > WindGust[2]) { // check if > than old gust3 of wind
-    WindGust[0] = WindGust[1];
-    WindGust[1] = WindGust[2];
-    WindGust[2] = WindSpeed;
+  if (windSpeed > windGust[2]) { // check if > than old gust3 of wind
+    windGust[0] = windGust[1];
+    windGust[1] = windGust[2];
+    windGust[2] = windSpeed;
   }
 
-  else if (WindSpeed > WindGust[1]) { // check if > than old gust2 of wind
-    WindGust[0] = WindGust[1];
-    WindGust[1] = WindSpeed;
+  else if (windSpeed > windGust[1]) { // check if > than old gust2 of wind
+    windGust[0] = windGust[1];
+    windGust[1] = windSpeed;
   }
 
-  else if (WindSpeed > WindGust[0]) { // check if > than old gust1 of wind
-    WindGust[0] = WindSpeed;
+  else if (windSpeed > windGust[0]) { // check if > than old gust1 of wind
+    windGust[0] = windSpeed;
   }
-  WindGustAvg = (WindGust[0] + WindGust[1] + WindGust[2]) / 3;
+  windGustAvg = (windGust[0] + windGust[1] + windGust[2]) / 3;
 }
 
-void isr_rotation () {  // This is the function that the interrupt calls to increment the rotation count
+void ISRrotation () {  // This is the function that the interrupt calls to increment the rotation count
   currentMillis=millis(); //we have to read millis at the same position in ISR each time to get the most accurate readings
   if(firstWindPulse==1) { //discard first pulse as we don't know exactly when it happened
-    ContactBounceTime=currentMillis;
+    contactBounceTime=currentMillis;
     firstWindPulse=0;
     firstPulseMillis=currentMillis;
   }
-    else if ((currentMillis - ContactBounceTime) > 15 ) { // debounce the switch contact.
-      Rotations++;
-      ContactBounceTime = currentMillis;
+    else if ((currentMillis - contactBounceTime) > 15 ) { // debounce the switch contact.
+      rotations++;
+      contactBounceTime = currentMillis;
       lastPulseMillis=currentMillis;
     }
 }
@@ -166,59 +168,59 @@ void isr_rotation () {  // This is the function that the interrupt calls to incr
 
 
 
-void dominantDirection() { // get dominant wind direction
+void DominantDirection() { // get dominant wind direction
   int maxIndex = 0;
   int max = avrDir[maxIndex];
   for (int i = 1; i < 16; i++) {
     if (max < avrDir[i]) {
       max = avrDir[i];
-      wind_dir = i * 22; //this is just approximate calculation so server can return the right char value
+      windDir = i * 22; //this is just approximate calculation so server can return the right char value
     }
   }
 }
 
 
-void getAir() {
-  digitalWrite(pwr_air, HIGH);   // turn on power
+void GetAir() {
+  digitalWrite(pwrAir, HIGH);   // turn on power
   delay(500);
   sensor_air.requestTemperatures(); // Send the command to get temperatures
   delay (750) ;
-  Temp = sensor_air.getTempCByIndex(0);
-  if (Temp > -100 && Temp < 85) { dtostrf(Temp, 4, 1, tmp); }   //float Tmp to char
-  digitalWrite(pwr_air, LOW);   // turn off power
+  temp = sensor_air.getTempCByIndex(0);
+  if (temp > -100 && temp < 85) { dtostrf(temp, 4, 1, tmp); }   //float Tmp to char
+  digitalWrite(pwrAir, LOW);   // turn off power
 }
 
-void getWater() {
-  digitalWrite(pwr_water, HIGH);   // turn on power
+void GetWater() {
+  digitalWrite(pwrWater, HIGH);   // turn on power
   delay(500);
   sensor_water.requestTemperatures(); // Send the command to get temperatures
   delay (750) ;
-  Water = sensor_water.getTempCByIndex(0);
-  if (Water > -100 && Water < 85) { dtostrf(Water, 4, 1, wat); }  //float Tmp to char
-  digitalWrite(pwr_water, LOW);   // turn off power
+  water = sensor_water.getTempCByIndex(0);
+  if (water > -100 && water < 85) { dtostrf(water, 4, 1, wat); }  //float Tmp to char
+  digitalWrite(pwrWater, LOW);   // turn off power
 }
 
 
-void getAvgWInd() {
-  wind_speed = WindAvr / measure_count; // calculate average wind
+void GetAvgWInd() {
+  wind_speed = windAvr / measureCount; // calculate average wind
 }
 
 
-// Get Wind Direction, and split it in 16 parts and save it to array
-void getWindDirection() {
-  VaneValue = analogRead(WindVanePin);
-  Direction = map(VaneValue, 0, 1023, 0, 360);
-  CalDirection = Direction + VaneOffset;
+// Get Wind direction, and split it in 16 parts and save it to array
+void GetWindDirection() {
+  vaneValue = analogRead(windVanePin);
+  direction = map(vaneValue, 0, 1023, 0, 360);
+  calDirection = direction + vaneOffset;
 
-  if (CalDirection > 360)
-    CalDirection = CalDirection - 360;
+  if (calDirection > 360)
+    calDirection = calDirection - 360;
 
-  if (CalDirection < 0)
-    CalDirection = CalDirection + 360;
+  if (calDirection < 0)
+    calDirection = calDirection + 360;
 
-  CalDirection = (CalDirection + 11.25) / 22.5;
-  if (CalDirection < 16) {
-    ++avrDir[CalDirection];
+  calDirection = (calDirection + 11.25) / 22.5;
+  if (calDirection < 16) {
+    ++avrDir[calDirection];
   }
   else {
     ++avrDir[0];
@@ -229,21 +231,21 @@ void getWindDirection() {
 
 
 // send data to server
-void sendData() {
-  dominantDirection();
+void SendData() {
+  DominantDirection();
     #ifdef DEBUG
       Serial.println("direction done");
     #endif
-  getAvgWInd();
+  GetAvgWInd();
     #ifdef DEBUG
       Serial.println("wind done");
     #endif
-  if (onofftmp > 0) {
-    getAir();
+  if (onOffTmp > 0) {
+    GetAir();
     #ifdef DEBUG
       Serial.println("air done");
     #endif
-    getWater();
+    GetWater();
     #ifdef DEBUG
       Serial.println("water done");
     #endif
@@ -262,7 +264,7 @@ void sendData() {
   http.configureBearer(bearer);
   result = http.connect();
 
- sprintf(body, BODY_FORMAT, id, wind_dir, wind_speed / 10, wind_speed % 10, WindGustAvg / 10, WindGustAvg % 10, tmp, wat, bat,measure_count,reset_why);
+ sprintf(body, BODY_FORMAT, id, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, bat,measureCount,resetReason);
 
   #ifdef DEBUG
     Serial.println(body);
@@ -276,13 +278,13 @@ void sendData() {
 
   if (result == SUCCESS) {
 
-    measure_count = 0;
-    WindAvr = 0;
-    WindGustAvg = 0;
-    Water = 0;
-    Temp = 0;
+    measureCount = 0;
+    windAvr = 0;
+    windGustAvg = 0;
+    water = 0;
+    temp = 0;
     memset(avrDir, 0, sizeof(avrDir)); // empty direction array
-    memset(WindGust, 0, sizeof(WindGust)); // empty direction array
+    memset(windGust, 0, sizeof(windGust)); // empty direction array
     memset(tmp, 0, sizeof(tmp));
     memset(wat, 0, sizeof(wat));
 
@@ -292,24 +294,24 @@ void sendData() {
 
     int WhenSend2 = root["w"];
     int Offset = root["o"];
-    int wind_delay2 = root["wd"];
+    int windDelay2 = root["wd"];
     int tt = root["tt"];
 
 
-    if (WhenSend2 != WhenSend && WhenSend2 > 0) { // server response to when to do next update
-      WhenSend = root["w"];
+    if (WhenSend2 != whenSend && WhenSend2 > 0) { // server response to when to do next update
+      whenSend = root["w"];
     }
 
-    if (Offset != VaneOffset && Offset > -999) { // server sends wind wane position
-      VaneOffset = root["o"];
+    if (Offset != vaneOffset && Offset > -999) { // server sends wind wane position
+      vaneOffset = root["o"];
     }
 
-    if (wind_delay2 != wind_delay && wind_delay2 > 0 ) { // interval for one wind measurement
-      wind_delay = root["wd"];
+    if (windDelay2 != windDelay && windDelay2 > 0 ) { // interval for one wind measurement
+      windDelay = root["wd"];
     }
 
-    if (tt != onofftmp && tt > -1) { // on/off tmp sensor
-      onofftmp = root["tt"];
+    if (tt != onOffTmp && tt > -1) { // on/off tmp sensor
+      onOffTmp = root["tt"];
       }
   }
 
