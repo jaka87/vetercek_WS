@@ -130,7 +130,7 @@ void Anemometer() { //measure wind speed
   else  {   
     actualWindDelay=(lastPulseMillis-firstPulseMillis;
     windSpeed = rotations * (2250 / actualWindDelay) * 0.868976242 * 10 ; // convert to mp/h using the formula V=P(2.25/Time); 
-    // 2250 instead of 2.25 because we need time in seconds not ms & * 0.868976242 to convert in knots  & *10 so we can calculate decimals later
+    // 2250 instead of 2.25 because formula is in seconds not millis   & * 0.868976242 to convert in knots   & *10 so we can calculate decimals later
     }  
   ++measureCount; // add +1 to counter
   windAvr += windSpeed; // add to sum of average wind values
