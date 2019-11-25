@@ -301,6 +301,7 @@ void SendData() {
 
     if (whenSend2 != whenSend && whenSend2 > 0) { // server response to when to do next update
       whenSend = root["w"];
+      resetReason = 0;
     }
 
     if (offset != vaneOffset && offset > -999) { // server sends wind wane position
