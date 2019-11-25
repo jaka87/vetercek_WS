@@ -292,17 +292,17 @@ void SendData() {
     deserializeJson(doc, response);
     JsonObject root = doc.as<JsonObject>();
 
-    int WhenSend2 = root["w"];
-    int Offset = root["o"];
+    int whenSend2 = root["w"];
+    int offset = root["o"];
     int windDelay2 = root["wd"];
     int tt = root["tt"];
 
 
-    if (WhenSend2 != whenSend && WhenSend2 > 0) { // server response to when to do next update
+    if (whenSend2 != whenSend && whenSend2 > 0) { // server response to when to do next update
       whenSend = root["w"];
     }
 
-    if (Offset != vaneOffset && Offset > -999) { // server sends wind wane position
+    if (offset != vaneOffset && offset > -999) { // server sends wind wane position
       vaneOffset = root["o"];
     }
 
