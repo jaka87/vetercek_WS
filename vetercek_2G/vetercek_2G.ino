@@ -135,13 +135,13 @@ void Anemometer() { //measure wind speed
   ++measureCount; // add +1 to counter
   windAvr += windSpeed; // add to sum of average wind values
 
-  if (windSpeed > windGust[2]) { // check if > than old gust3 of wind
+  if (windSpeed >= windGust[2]) { // check if > than old gust3 of wind
     windGust[0] = windGust[1];
     windGust[1] = windGust[2];
     windGust[2] = windSpeed;
   }
 
-  else if (windSpeed > windGust[1]) { // check if > than old gust2 of wind
+  else if (windSpeed >= windGust[1]) { // check if > than old gust2 of wind
     windGust[0] = windGust[1];
     windGust[1] = windSpeed;
   }
