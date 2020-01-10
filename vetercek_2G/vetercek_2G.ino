@@ -172,7 +172,7 @@ void ISRrotation () {  // This is the function that the interrupt calls to incre
 void DominantDirection() { // get dominant wind direction
   int maxIndex = 0;
   int max = avrDir[maxIndex];
-  for (int i = 1; i < 16; i++) {
+  for (int i = 0; i < 16; i++) {
     if (max < avrDir[i]) {
       max = avrDir[i];
       windDir = i * 22; //this is just approximate calculation so server can return the right char value
@@ -282,6 +282,7 @@ void SendData() {
     measureCount = 0;
     windAvr = 0;
     windGustAvg = 0;
+    windDir = 0; 
     water = 0;
     temp = 0;
     memset(avrDir, 0, sizeof(avrDir)); // empty direction array
