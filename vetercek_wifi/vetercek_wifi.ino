@@ -10,7 +10,7 @@
 #include <math.h> // wind speed calculations
 #include <DoubleResetDetect.h>
 #define WindSensorPin (D2) // The pin location of the anemometer sensor
-#define WindVanePin A0       // The pin the wind vane sensor is connected to
+#define windVanePin A0       // The pin the wind vane sensor is connected to
 #define ONE_WIRE_BUS (D4)
 #define BODY_FORMAT "{\"id\": \"%s\", \"d\": \"%d\", \"s\": \"%d.%d\", \"g\": \"%d.%d\", \"t\": \"%s\"}"
 #define DRD_TIMEOUT 5.0
@@ -23,19 +23,23 @@ DoubleResetDetect drd(DRD_TIMEOUT, DRD_ADDRESS);
 
 const char *id=API_PASSWORD;  // get this unique ID in order to send data to vetercek.com
 const char *webpage="http://vetercek.com/xml/post.php";  // where POST request is made
-volatile unsigned long Rotations; // cup rotation counter used in interrupt routine
-volatile unsigned long ContactBounceTime; // Timer to avoid contact bounce in interrupt routine
-int WindSpeed; // speed
-long WindAvr=0; //sum of all wind speed between update
-int WindGust[3] = { 0, 0, 0 }; // top three gusts
-int WindGustAvg = 0; //wind gust average
+volatile unsigned long rotations; // cup rotation counter used in interrupt routine
+volatile unsigned long contactBounceTime; // Timer to avoid contact bounce in interrupt routine
+volatile unsigned long lastPulseMillis; // last anemometer measured time
+volatile unsigned long firstPulseMillis; // fisrt anemometer measured time
+volatile unsigned long currentMillis;
+byte firstWindPulse; // ignore 1st anemometer rotation since it didn't make full circle
+int windSpeed; // speed
+long windAvr=0; //sum of all wind speed between update
+int windGust[3] = { 0, 0, 0 }; // top three gusts
+int windGustAvg = 0; //wind gust average
 int avrDir[16] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 }; // array where wind direction are saved and later one with highest value is selected as dominant
-int measure_count=0; // count each mesurement
+int measureCount=0; // count each mesurement
 int VaneValue;       // raw analog value from wind vane
 int Direction;       // translated 0 - 360 direction
-int VaneOffset=0;        // define the anemometer offset from magnetic north
+// int vaneOffset=0; // now defined in config file for each station
 int CalDirection;    // converted value with offset applied
-int wind_dir;  //calculated wind direction
+int windDir;  //calculated wind direction
 int wind_speed;  //calculated wind speed
 int wind_gust;   //calculated wind gusts
 float Temp; //Stores Temperature value
@@ -47,10 +51,17 @@ int wind_delay = 2; // time for each anemometer measurement in seconds
 int WhenSend=150;       // after how many measurements to send data to server
 
 void ICACHE_RAM_ATTR isr_rotation () {  // This is the function that the interrupt calls to increment the rotation count
-  if ((millis() - ContactBounceTime) > 15 ) { // debounce the switch contact.
-  Rotations++;
-  ContactBounceTime = millis();
+    currentMillis=millis(); //we have to read millis at the same position in ISR each time to get the most accurate readings
+  if(firstWindPulse==1) { //discard first pulse as we don't know exactly when it happened
+    contactBounceTime=currentMillis;
+    firstWindPulse=0;
+    firstPulseMillis=currentMillis;
   }
+    else if ((currentMillis - contactBounceTime) > 15 ) { // debounce the switch contact.
+      rotations++;
+      contactBounceTime = currentMillis;
+      lastPulseMillis=currentMillis;
+    }
 }
 
   WiFiManager wifiManager;
@@ -77,30 +88,41 @@ WiFi.forceSleepBegin(); // Wifi off
 }
 
   void loop() {
-  Rotations = 0; // Set Rotations count to 0 ready for calculations
+ 
+  int actualWindDelay; //time between first and last measured anemometer rotation
+  firstWindPulse=1; // dont count first rotation
+  contactBounceTime = millis();
+  rotations = 0; // Set rotations count to 0 ready for calculations
   attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); //setup interrupt on anemometer input pin, interrupt will occur whenever falling edge is detected
   delay (wind_delay * 1000); // Wait x second to average
   detachInterrupt(digitalPinToInterrupt(WindSensorPin));
 
-  WindSpeed = Rotations * 1.125 * 0.868976242 * 10 ;  // convert to mp/h using the formula V=P(2.25/Time);    *0.868976242 to get knots
-  ++measure_count; // add +1 to counter
-  WindAvr += WindSpeed; // add to sum of average wind values
+  if(rotations==0)  {
+    windSpeed=0;  
+  } 
+  else  {   
+    actualWindDelay=(lastPulseMillis-firstPulseMillis);
+    windSpeed = rotations * (2250 / actualWindDelay) * 0.868976242 * 10 ; // convert to mp/h using the formula V=P(2.25/Time); 
+    // 2250 instead of 2.25 because formula is in seconds not millis   & * 0.868976242 to convert in knots   & *10 so we can calculate decimals later
+    }  
+  ++measureCount; // add +1 to counter
+  windAvr += windSpeed; // add to sum of average wind values
 
-  if (WindSpeed > WindGust[2]) { // check if > than old gust3 of wind
-    WindGust[0] = WindGust[1];
-    WindGust[1] = WindGust[2];
-    WindGust[2] = WindSpeed;
+  if (windSpeed >= windGust[2]) { // check if > than old gust3 of wind
+    windGust[0] = windGust[1];
+    windGust[1] = windGust[2];
+    windGust[2] = windSpeed;
   }
 
-  else if (WindSpeed > WindGust[1]) { // check if > than old gust2 of wind
-    WindGust[0] = WindGust[1];
-    WindGust[1] = WindSpeed;
+  else if (windSpeed >= windGust[1]) { // check if > than old gust2 of wind
+    windGust[0] = windGust[1];
+    windGust[1] = windSpeed;
   }
 
-  else if (WindSpeed > WindGust[0]) { // check if > than old gust1 of wind
-    WindGust[0] = WindSpeed;
+  else if (windSpeed > windGust[0]) { // check if > than old gust1 of wind
+    windGust[0] = windSpeed;
   }
-  WindGustAvg = (WindGust[0] + WindGust[1] + WindGust[2]) / 3;
+  windGustAvg = (windGust[0] + windGust[1] + windGust[2]) / 3;
 
   getWindDirection();
 
@@ -108,18 +130,18 @@ WiFi.forceSleepBegin(); // Wifi off
       Serial.print("dir:");
       Serial.print(CalDirection);
       Serial.print(" speed:");
-      Serial.print(WindSpeed);
+      Serial.print(windSpeed);
       Serial.print(" gust:");
-      Serial.print(WindGustAvg);
+      Serial.print(windGustAvg);
       Serial.print(" next:");
-      Serial.print(WhenSend-measure_count);
+      Serial.print(WhenSend-measureCount);
       Serial.print(" count:");
-      Serial.print(measure_count);
+      Serial.print(measureCount);
       Serial.println("");
 #endif
 
 
-    if (measure_count >= WhenSend) { // check if is time to send data online
+    if (measureCount >= WhenSend) { // check if is time to send data online
 WiFi.forceSleepWake(); // Wifi on
 wifiManager.autoConnect("WEATHER STATION");
 //WiFi.begin();
@@ -143,19 +165,19 @@ void dominantDirection(){ // get dominant wind direction
  for (int i=1; i<16; i++){
    if (max<avrDir[i]){
      max = avrDir[i];
-     wind_dir = i*22; //this is just approximate calculation so server can return the right char value
+     windDir = i*22; //this is just approximate calculation so server can return the right char value
    }
  }
 }
 
 void getAvgWInd() {
-  wind_speed=WindAvr/measure_count; // calculate average wind
+  wind_speed=windAvr/measureCount; // calculate average wind
 }
 
 
 // Get Wind Direction, and split it in 16 parts and save it to array
 void getWindDirection() {
-   VaneValue = analogRead(WindVanePin);
+   VaneValue = analogRead(windVanePin);
    Direction = map(VaneValue, 0, 1023, 0, 360);
    CalDirection = Direction + VaneOffset;
 
@@ -182,7 +204,7 @@ HTTPClient http;
 http.begin(webpage);
 http.addHeader("Content-Type", "application/json");
 
-sprintf(body, BODY_FORMAT, id,wind_dir,wind_speed/10,wind_speed%10,WindGustAvg/10,WindGustAvg%10,tmp);
+sprintf(body, BODY_FORMAT, id,windDir,wind_speed/10,wind_speed%10,windGustAvg/10,windGustAvg%10,tmp);
 
 int httpCode = http.POST(body);
 #ifdef DEBUG
@@ -195,12 +217,13 @@ String payload = http.getString();
 #endif
 
 if (httpCode == HTTP_CODE_OK) {
-      measure_count=0;
-      WindAvr=0;
-      WindGustAvg=0;
+      measureCount=0;
+      windAvr=0;
+      windGustAvg=0;
+      windDir = 0; 
       Temp=0;
       memset(avrDir,0,sizeof(avrDir)); // empty direction array
-      memset(WindGust, 0, sizeof(WindGust)); // empty direction array
+      memset(windGust, 0, sizeof(windGust)); // empty direction array
 
       StaticJsonDocument<200> doc;
       deserializeJson(doc, payload);
