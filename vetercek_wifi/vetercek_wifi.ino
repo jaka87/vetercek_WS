@@ -10,8 +10,8 @@
 #include <math.h> // wind speed calculations
 #include <DoubleResetDetect.h>
 #define WindSensorPin (D2) // The pin location of the anemometer sensor
-#define windVanePin A0       // The pin the wind vane sensor is connected to
-#define ONE_WIRE_BUS (D4)
+#define windVanePin (A0)       // The pin the wind vane sensor is connected to
+#define ONE_WIRE_BUS (D1)
 #define BODY_FORMAT "{\"id\": \"%s\", \"d\": \"%d\", \"s\": \"%d.%d\", \"g\": \"%d.%d\", \"t\": \"%s\"}"
 #define DRD_TIMEOUT 5.0
 #define DRD_ADDRESS 0x00
@@ -28,6 +28,7 @@ volatile unsigned long contactBounceTime; // Timer to avoid contact bounce in in
 volatile unsigned long lastPulseMillis; // last anemometer measured time
 volatile unsigned long firstPulseMillis; // fisrt anemometer measured time
 volatile unsigned long currentMillis;
+unsigned int pwrAir=(D3); // power for air sensor
 byte firstWindPulse; // ignore 1st anemometer rotation since it didn't make full circle
 int windSpeed; // speed
 long windAvr=0; //sum of all wind speed between update
@@ -42,13 +43,14 @@ int CalDirection;    // converted value with offset applied
 int windDir;  //calculated wind direction
 int wind_speed;  //calculated wind speed
 int wind_gust;   //calculated wind gusts
-float Temp; //Stores Temperature value
+float temp; //Stores Temperature value
 char tmp[6]; // Temperature char value
 char response[100];
 char body[200];
 //const int SleepTime=8000;       // delay between each masurement
-int wind_delay = 2; // time for each anemometer measurement in seconds
-int WhenSend=150;       // after how many measurements to send data to server
+int whenSend=15;       // after how many measurements to send data to server
+int onOffTmp = 1;   //on/off temperature measure
+int windDelay = 2; // time for each anemometer measurement in seconds
 
 void ICACHE_RAM_ATTR isr_rotation () {  // This is the function that the interrupt calls to increment the rotation count
     currentMillis=millis(); //we have to read millis at the same position in ISR each time to get the most accurate readings
@@ -84,6 +86,9 @@ void setup() {
 wifiManager.autoConnect("WEATHER STATION");
 WiFi.forceSleepBegin(); // Wifi off
 
+  pinMode(pwrAir, OUTPUT);      // sets the digital pin as output
+   sensors.begin();
+   digitalWrite(pwrAir, LOW);   // turn off power
 
 }
 
@@ -94,7 +99,7 @@ WiFi.forceSleepBegin(); // Wifi off
   contactBounceTime = millis();
   rotations = 0; // Set rotations count to 0 ready for calculations
   attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); //setup interrupt on anemometer input pin, interrupt will occur whenever falling edge is detected
-  delay (wind_delay * 1000); // Wait x second to average
+  delay (windDelay * 1000); // Wait x second to average
   detachInterrupt(digitalPinToInterrupt(WindSensorPin));
 
   if(rotations==0)  {
@@ -134,14 +139,14 @@ WiFi.forceSleepBegin(); // Wifi off
       Serial.print(" gust:");
       Serial.print(windGustAvg);
       Serial.print(" next:");
-      Serial.print(WhenSend-measureCount);
+      Serial.print(whenSend-measureCount);
       Serial.print(" count:");
       Serial.print(measureCount);
       Serial.println("");
 #endif
 
 
-    if (measureCount >= WhenSend) { // check if is time to send data online
+    if (measureCount >= whenSend) { // check if is time to send data online
 WiFi.forceSleepWake(); // Wifi on
 wifiManager.autoConnect("WEATHER STATION");
 //WiFi.begin();
@@ -153,9 +158,15 @@ WiFi.forceSleepBegin(); // Wifi off
 }
 
 void getTemp() {
+    digitalWrite(pwrAir, HIGH);   // turn on power
+  delay(500);
     sensors.requestTemperatures(); // get Temperature
-    Temp=sensors.getTempCByIndex(0);
-  dtostrf(Temp, 4, 1, tmp); //float Tmp to char
+  delay (750) ;
+    temp=sensors.getTempCByIndex(0);
+
+  dtostrf(temp, 4, 1, tmp); //float Tmp to char
+  if (temp > -100 && temp < 85) { dtostrf(temp, 4, 1, tmp); }   //float Tmp to char
+  digitalWrite(pwrAir, LOW);   // turn off power
 
 }
 
@@ -198,7 +209,10 @@ void getWindDirection() {
 void sendData() {
   dominantDirection();
   getAvgWInd();
-  getTemp();
+    if (onOffTmp > 0) {
+      getTemp();
+      delay(500);
+  }
 
 HTTPClient http;
 http.begin(webpage);
@@ -221,23 +235,35 @@ if (httpCode == HTTP_CODE_OK) {
       windAvr=0;
       windGustAvg=0;
       windDir = 0; 
-      Temp=0;
+      temp=0;
       memset(avrDir,0,sizeof(avrDir)); // empty direction array
       memset(windGust, 0, sizeof(windGust)); // empty direction array
+      memset(tmp, 0, sizeof(tmp));
 
       StaticJsonDocument<200> doc;
       deserializeJson(doc, payload);
       JsonObject root = doc.as<JsonObject>();
       const char* idd = root["id"];
-      int WhenSend2 = root["whensend"];
-      int Offset = root["offset"];
+   
+    int whenSend2 = root["w"];
+    int Offset = root["o"];
+    int windDelay2 = root["wd"];
+    int tt = root["tt"];
 
-        if (WhenSend2> 0){  // server response to when to do next update
-        // WhenSend=WhenSend2;
-        }
+     if (whenSend2 != whenSend && whenSend2 > 0) { // server response to when to do next update
+        whenSend = root["w"];
+      }
 
       if (Offset > -999){  // server response to when to do next update
         VaneOffset=Offset;
         }
+
+   if (windDelay2 != windDelay && windDelay2 > 0 ) { // interval for one wind measurement
+      windDelay = root["wd"];   
+         }
+         
+      if (tt != onOffTmp && tt > -1) { // on/off tmp sensor
+        onOffTmp = root["tt"];
+      }
       }
 }
