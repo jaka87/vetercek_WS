@@ -159,9 +159,9 @@ WiFi.forceSleepBegin(); // Wifi off
 
 void getTemp() {
     digitalWrite(pwrAir, HIGH);   // turn on power
-  delay(500);
+  delay(1000);
     sensors.requestTemperatures(); // get Temperature
-  delay (750) ;
+  delay(1000);
     temp=sensors.getTempCByIndex(0);
 
   dtostrf(temp, 4, 1, tmp); //float Tmp to char
@@ -262,8 +262,8 @@ if (httpCode == HTTP_CODE_OK) {
       windDelay = root["wd"];   
          }
          
-      if (tt != onOffTmp && tt > -1) { // on/off tmp sensor
-        onOffTmp = root["tt"];
-      }
+     // if (tt != onOffTmp && tt > -1) { // on/off tmp sensor
+      //  onOffTmp = root["tt"];
+     // }
       }
 }
