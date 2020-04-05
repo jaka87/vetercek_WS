@@ -50,7 +50,7 @@ char body[200];
 //const int SleepTime=8000;       // delay between each masurement
 int whenSend=15;       // after how many measurements to send data to server
 int onOffTmp = 1;   //on/off temperature measure
-int windDelay = 2; // time for each anemometer measurement in seconds
+int windDelay = 4000; // time for each anemometer measurement in seconds
 
 void ICACHE_RAM_ATTR isr_rotation () {  // This is the function that the interrupt calls to increment the rotation count
     currentMillis=millis(); //we have to read millis at the same position in ISR each time to get the most accurate readings
@@ -94,12 +94,12 @@ WiFi.forceSleepBegin(); // Wifi off
 
   void loop() {
  
-  int actualWindDelay; //time between first and last measured anemometer rotation
+  float actualWindDelay; //time between first and last measured anemometer rotation
   firstWindPulse=1; // dont count first rotation
   contactBounceTime = millis();
   rotations = 0; // Set rotations count to 0 ready for calculations
   attachInterrupt(digitalPinToInterrupt(WindSensorPin), isr_rotation, FALLING); //setup interrupt on anemometer input pin, interrupt will occur whenever falling edge is detected
-  delay (windDelay * 1000); // Wait x second to average
+  delay (windDelay); // Wait x second to average
   detachInterrupt(digitalPinToInterrupt(WindSensorPin));
 
   if(rotations==0)  {
@@ -132,7 +132,11 @@ WiFi.forceSleepBegin(); // Wifi off
   getWindDirection();
 
 #ifdef DEBUG
-      Serial.print("dir:");
+      Serial.print(" rot:");
+      Serial.print(rotations);
+      Serial.print(" sec:");
+      Serial.print(actualWindDelay);
+      Serial.print(" dir:");
       Serial.print(CalDirection);
       Serial.print(" speed:");
       Serial.print(windSpeed);

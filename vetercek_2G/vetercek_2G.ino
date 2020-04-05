@@ -27,7 +27,7 @@ byte resetReason = MCUSR;
 const char *bearer = "iot.1nce.net"; // APN address
 const char *id = apiPassword; // get this unique ID in order to send data to vetercek.com
 const char *webpage = "vetercek.com/xml/post.php"; // where POST request is made
-int windDelay = 2; // time for each anemometer measurement in seconds
+int windDelay = 2000; // time for each anemometer measurement in seconds
 int onOffTmp = 0;   //on/off temperature measure
 int whenSend = 3;     // after how many measurements to send data to server
 // int vaneOffset=0; // now defined in config file for each station
@@ -55,6 +55,7 @@ int calDirection;    // converted value with offset applied
 int windDir;  //calculated wind direction
 int wind_speed;  //calculated wind speed
 int wind_gust;   //calculated wind gusts
+float actualWindDelay; //time between first and last measured anemometer rotation
 unsigned int bat=0; // battery percentage
 char response[60];
 char body[160];
@@ -68,11 +69,11 @@ HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);
 void setup() {
   MCUSR = 0; // clear reset flags
   wdt_disable();
-#ifdef DEBUG
-    Serial.begin(9600);
-    while (!Serial);
-    Serial.println("Starting!");
-#endif
+  #ifdef DEBUG
+      Serial.begin(9600);
+      while (!Serial);
+      Serial.println("Starting!");
+  #endif
 
    pinMode(LED_BUILTIN, OUTPUT);     // this part is used when you bypass bootloader to signal when board is starting...
    digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on
@@ -94,34 +95,37 @@ void loop() {
   GetWindDirection();
   LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);
 
-#ifdef DEBUG
-    Serial.print("dir:");
-    Serial.print(calDirection);
-    Serial.print(" speed:");
-    Serial.print(windSpeed);
-    Serial.print(" gust:");
-    Serial.print(windGustAvg);
-    Serial.print(" next:");
-    Serial.print(whenSend - measureCount);
-    Serial.print(" count:");
-    Serial.print(measureCount);
-    Serial.println("");
-#endif
-
+    #ifdef DEBUG
+      Serial.print(" rot:");
+      Serial.print(rotations);
+      Serial.print(" delay:");
+      Serial.print(actualWindDelay);
+      Serial.print(" dir:");
+      Serial.print(calDirection);
+      Serial.print(" speed:");
+      Serial.print(windSpeed);
+      Serial.print(" gust:");
+      Serial.print(windGustAvg);
+      Serial.print(" next:");
+      Serial.print(whenSend - measureCount);
+      Serial.print(" count:");
+      Serial.print(measureCount);
+      Serial.println("");
+  #endif
+  
   if (measureCount >= whenSend) { // check if is time to send data online
-    SendData();
+      SendData();
   }
 
 }
 
 void Anemometer() { //measure wind speed
-  int actualWindDelay; //time between first and last measured anemometer rotation
   firstWindPulse=1; // dont count first rotation
   contactBounceTime = millis();
   rotations = 0; // Set rotations count to 0 ready for calculations
   EIFR = (1 << INTF0); // clear interrupt flag
   attachInterrupt(digitalPinToInterrupt(windSensorPin), ISRrotation, FALLING); //setup interrupt on anemometer input pin, interrupt will occur whenever falling edge is detected
-  delay (windDelay * 1000); // Wait x second to average
+    delay (windDelay); // Wait x second to average
   detachInterrupt(digitalPinToInterrupt(windSensorPin));
 
   if(rotations==0)  {
@@ -131,7 +135,7 @@ void Anemometer() { //measure wind speed
     actualWindDelay=(lastPulseMillis-firstPulseMillis);
     windSpeed = rotations * (2250 / actualWindDelay) * 0.868976242 * 10 ; // convert to mp/h using the formula V=P(2.25/Time); 
     // 2250 instead of 2.25 because formula is in seconds not millis   & * 0.868976242 to convert in knots   & *10 so we can calculate decimals later
-    }  
+   }  
   ++measureCount; // add +1 to counter
   windAvr += windSpeed; // add to sum of average wind values
 
@@ -150,6 +154,7 @@ void Anemometer() { //measure wind speed
     windGust[0] = windSpeed;
   }
   windGustAvg = (windGust[0] + windGust[1] + windGust[2]) / 3;
+
 }
 
 void ISRrotation () {  // This is the function that the interrupt calls to increment the rotation count
@@ -159,11 +164,11 @@ void ISRrotation () {  // This is the function that the interrupt calls to incre
     firstWindPulse=0;
     firstPulseMillis=currentMillis;
   }
-    else if ((currentMillis - contactBounceTime) > 15 ) { // debounce the switch contact.
+  else if ((currentMillis - contactBounceTime) > 15 ) { // debounce the switch contact.
       rotations++;
       contactBounceTime = currentMillis;
       lastPulseMillis=currentMillis;
-    }
+  }
 }
 
 
@@ -183,22 +188,22 @@ void DominantDirection() { // get dominant wind direction
 
 void GetAir() {
   digitalWrite(pwrAir, HIGH);   // turn on power
-  delay(500);
+    delay(500);
   sensor_air.requestTemperatures(); // Send the command to get temperatures
-  delay (750) ;
+    delay (750) ;
   temp = sensor_air.getTempCByIndex(0);
   if (temp > -100 && temp < 85) { dtostrf(temp, 4, 1, tmp); }   //float Tmp to char
-  digitalWrite(pwrAir, LOW);   // turn off power
+    digitalWrite(pwrAir, LOW);   // turn off power
 }
 
 void GetWater() {
   digitalWrite(pwrWater, HIGH);   // turn on power
-  delay(500);
+    delay(500);
   sensor_water.requestTemperatures(); // Send the command to get temperatures
-  delay (750) ;
+    delay (750) ;
   water = sensor_water.getTempCByIndex(0);
   if (water > -100 && water < 85) { dtostrf(water, 4, 1, wat); }  //float Tmp to char
-  digitalWrite(pwrWater, LOW);   // turn off power
+    digitalWrite(pwrWater, LOW);   // turn off power
 }
 
 
@@ -261,9 +266,9 @@ void SendData() {
     #endif
   //signalq=http.readSignalStrength(); //signal quality
 
+  
+  result = http.connect(bearer);
 
-  http.configureBearer(bearer);
-  result = http.connect();
 
  sprintf(body, BODY_FORMAT, id, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, bat,measureCount,resetReason);
 
