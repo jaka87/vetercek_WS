@@ -12,7 +12,7 @@
 #define WindSensorPin (D2) // The pin location of the anemometer sensor
 #define windVanePin (A0)       // The pin the wind vane sensor is connected to
 #define ONE_WIRE_BUS (D1)
-#define BODY_FORMAT "{\"id\": \"%s\", \"d\": \"%d\", \"s\": \"%d.%d\", \"g\": \"%d.%d\", \"t\": \"%s\"}"
+#define BODY_FORMAT "{\"id\": \"%s\", \"d\": \"%d\", \"s\": \"%d.%d\", \"g\": \"%d.%d\", \"t\": \"%s\", \"sig\": \"%d\"}"
 #define DRD_TIMEOUT 5.0
 #define DRD_ADDRESS 0x00
 #define DEBUG // comment out if you want to turn off debugging
@@ -193,7 +193,7 @@ void getAvgWInd() {
 // Get Wind Direction, and split it in 16 parts and save it to array
 void getWindDirection() {
    VaneValue = analogRead(windVanePin);
-   Direction = map(VaneValue, 0, 1023, 0, 360);
+   Direction = map(VaneValue, 0, 1023, 0, 360);         
    CalDirection = Direction + VaneOffset;
 
    if(CalDirection > 360)
@@ -218,11 +218,12 @@ void sendData() {
       delay(500);
   }
 
+long rssi = WiFi.RSSI();  
 HTTPClient http;
 http.begin(webpage);
 http.addHeader("Content-Type", "application/json");
 
-sprintf(body, BODY_FORMAT, id,windDir,wind_speed/10,wind_speed%10,windGustAvg/10,windGustAvg%10,tmp);
+sprintf(body, BODY_FORMAT, id,windDir,wind_speed/10,wind_speed%10,windGustAvg/10,windGustAvg%10,tmp,rssi);
 
 int httpCode = http.POST(body);
 #ifdef DEBUG
@@ -247,8 +248,7 @@ if (httpCode == HTTP_CODE_OK) {
       StaticJsonDocument<200> doc;
       deserializeJson(doc, payload);
       JsonObject root = doc.as<JsonObject>();
-      const char* idd = root["id"];
-   
+      
     int whenSend2 = root["w"];
     int Offset = root["o"];
     int windDelay2 = root["wd"];
@@ -258,16 +258,17 @@ if (httpCode == HTTP_CODE_OK) {
         whenSend = root["w"];
       }
 
-      if (Offset > -999){  // server response to when to do next update
+    if (Offset!=VaneOffset && Offset > -999) { // server sends wind wane position
         VaneOffset=Offset;
+
         }
 
    if (windDelay2 != windDelay && windDelay2 > 0 ) { // interval for one wind measurement
       windDelay = root["wd"];   
          }
          
-     // if (tt != onOffTmp && tt > -1) { // on/off tmp sensor
-      //  onOffTmp = root["tt"];
-     // }
+      if (tt != onOffTmp && tt > -1) { // on/off tmp sensor
+        onOffTmp = root["tt"];
       }
+    }
 }
