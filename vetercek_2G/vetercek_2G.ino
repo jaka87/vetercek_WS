@@ -23,7 +23,7 @@ unsigned int pwrWater=12; // power for water sensor
 byte resetReason = MCUSR;
 // edit this data to suit your needs  ///////////////////////////////////////////////////////
 #include "config.h"
-//#define DEBUG // comment out if you want to turn offvdebugging
+//#define DEBUG // comment out if you want to turn off debugging
 const char *bearer = "iot.1nce.net"; // APN address
 const char *id = apiPassword; // get this unique ID in order to send data to vetercek.com
 const char *webpage = "vetercek.com/xml/post.php"; // where POST request is made
@@ -56,13 +56,12 @@ int windDir;  //calculated wind direction
 int wind_speed;  //calculated wind speed
 int wind_gust;   //calculated wind gusts
 float actualWindDelay; //time between first and last measured anemometer rotation
-unsigned int bat=0; // battery percentage
 char response[60];
 char body[160];
 Result result;
 
 HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);
-#define BODY_FORMAT "{\"id\":\"%s\",\"d\":\"%d\",\"s\":\"%d.%d\",\"g\":\"%d.%d\",\"t\":\"%s\",\"w\":\"%s\",\"b\":\"%d\",\"c\":\"%d\",\"r\":\"%d\" }"
+#define BODY_FORMAT "{\"id\":\"%s\",\"d\":\"%d\",\"s\":\"%d.%d\",\"g\":\"%d.%d\",\"t\":\"%s\",\"w\":\"%s\",\"b\":\"%d\",\"sig\":\"%d\",\"c\":\"%d\",\"r\":\"%d\" }"
 
 
 // the setup routine runs once when you press reset:
@@ -235,6 +234,27 @@ void GetWindDirection() {
 }
 
 
+unsigned int SignalStrenght() {
+  unsigned int signal = 0;
+  for (unsigned int i = 0; i < 10; ++i) {
+    unsigned int cv = http.readSignalStrength();
+    if (cv > signal) {
+      signal = cv;
+    }
+  }
+  return signal;
+}
+unsigned int BatteryPercentage() {
+  unsigned int voltage = 0;
+  for (unsigned int i = 0; i < 10; ++i) {
+    unsigned int cv = http.readVoltagePercentage();
+    if (cv > voltage) {
+      voltage = cv;
+    }
+  }
+  return voltage;
+}
+
 
 // send data to server
 void SendData() {
@@ -258,19 +278,20 @@ void SendData() {
   delay(1000);
   }
 
-  http.wakeUp();
-  bat=http.readVoltagePercentage(); //battery percentage
-    #ifdef DEBUG
-      Serial.println(bat);
-      Serial.println("battery done");
-    #endif
-  //signalq=http.readSignalStrength(); //signal quality
 
+  http.wakeUp();
+  
+  unsigned int bat = BatteryPercentage();
+  unsigned int sig = SignalStrenght();
+    #ifdef DEBUG
+      Serial.print("battery ");
+      Serial.println(bat);
+      Serial.print("sig ");
+      Serial.println(sig);
+    #endif
   
   result = http.connect(bearer);
-
-
- sprintf(body, BODY_FORMAT, id, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, bat,measureCount,resetReason);
+ sprintf(body, BODY_FORMAT, id, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, bat, sig, measureCount, resetReason);
 
   #ifdef DEBUG
     Serial.println(body);
