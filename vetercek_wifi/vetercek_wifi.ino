@@ -18,6 +18,8 @@
 #define DEBUG // comment out if you want to turn off debugging
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
+#define DRD_TIMEOUT 2.0
+#define DRD_ADDRESS 0x00
 DoubleResetDetect drd(DRD_TIMEOUT, DRD_ADDRESS);
 
 
