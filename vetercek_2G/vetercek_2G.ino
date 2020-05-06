@@ -11,6 +11,7 @@
 #define ONE_WIRE_BUS_2 3 // water
 #define windSensorPin 2 // The pin location of the anemometer sensor
 #define windVanePin (A3)       // The pin the wind vane sensor is connected to
+#define BODY_FORMAT "{\"id\":\"%s\",\"d\":\"%d\",\"s\":\"%d.%d\",\"g\":\"%d.%d\",\"t\":\"%s\",\"w\":\"%s\",\"b\":\"%d\",\"sig\":\"%d\",\"c\":\"%d\",\"r\":\"%d\" }"
 OneWire oneWire_in(ONE_WIRE_BUS_1);
 OneWire oneWire_out(ONE_WIRE_BUS_2);
 DallasTemperature sensor_air(&oneWire_in);
@@ -27,7 +28,7 @@ byte resetReason = MCUSR;
 const char *bearer = "iot.1nce.net"; // APN address
 const char *id = apiPassword; // get this unique ID in order to send data to vetercek.com
 const char *webpage = "vetercek.com/xml/post.php"; // where POST request is made
-int windDelay = 2000; // time for each anemometer measurement in seconds
+int windDelay = 2300; // time for each anemometer measurement in seconds
 int onOffTmp = 0;   //on/off temperature measure
 int whenSend = 3;     // after how many measurements to send data to server
 // int vaneOffset=0; // now defined in config file for each station
@@ -59,9 +60,6 @@ float actualWindDelay; //time between first and last measured anemometer rotatio
 char response[60];
 char body[160];
 Result result;
-
-HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);
-#define BODY_FORMAT "{\"id\":\"%s\",\"d\":\"%d\",\"s\":\"%d.%d\",\"g\":\"%d.%d\",\"t\":\"%s\",\"w\":\"%s\",\"b\":\"%d\",\"sig\":\"%d\",\"c\":\"%d\",\"r\":\"%d\" }"
 
 
 // the setup routine runs once when you press reset:
@@ -235,6 +233,7 @@ void GetWindDirection() {
 
 
 unsigned int SignalStrenght() {
+HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);
   unsigned int signal = 0;
   for (unsigned int i = 0; i < 10; ++i) {
     unsigned int cv = http.readSignalStrength();
@@ -245,6 +244,7 @@ unsigned int SignalStrenght() {
   return signal;
 }
 unsigned int BatteryPercentage() {
+HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);
   unsigned int voltage = 0;
   for (unsigned int i = 0; i < 10; ++i) {
     unsigned int cv = http.readVoltagePercentage();
@@ -278,7 +278,7 @@ void SendData() {
   delay(1000);
   }
 
-
+HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);
   http.wakeUp();
   
   unsigned int bat = BatteryPercentage();
