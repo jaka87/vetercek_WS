@@ -99,7 +99,7 @@ void setup() {
 
 // the loop routine runs over and over again forever:
 void loop() {
-  Anemometer();
+  Anemometer();                           // anemometer
   GetWindDirection();
     #ifdef EEPROMSEND
       if (firstrun==0) { 
@@ -107,14 +107,14 @@ void loop() {
       }
     #endif
     
-  #ifdef WATCHDOG
+  #ifdef WATCHDOG                        
     wdt_reset();
   #endif
   #ifdef DEBUG || def WATCHDOG
       Serial.println("watchdog reset!");
   #endif  
     
-  LowPower.powerDown(SLEEP_4S, ADC_ON, BOD_ON);
+  LowPower.powerDown(SLEEP_4S, ADC_ON, BOD_ON);  // sleep
   #ifdef WATCHDOG
     wdt_reset();
   #endif
@@ -130,7 +130,7 @@ void loop() {
   #endif
 
 
-    #ifdef DEBUG
+    #ifdef DEBUG                            // debug data
       Serial.print(" rot:");
       Serial.print(rotations);
       Serial.print(" delay:");
@@ -148,7 +148,7 @@ void loop() {
       Serial.println("");
   #endif
   
-  if (measureCount >= whenSend) { // check if is time to send data online
+  if (measureCount >= whenSend) {               // check if is time to send data online
       SendData();
   }
   else { // check if is time to send data online
@@ -377,7 +377,7 @@ HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);  // connect to network
       }
     #endif  
     
- result = http.connect(bearer);  // GPRS connection
+ result = http.connect(bearer);           // GPRS connection
     #ifdef EEPROMSEND
       if (firstrun==0) { 
           EEPROM.write(0, 6);
@@ -400,7 +400,7 @@ HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);  // connect to network
   #endif
 
 
-  result = http.post(webpage, body, response);  // get post data
+  result = http.post(webpage, body, response);            // get post data
    #ifdef WATCHDOG
     wdt_enable(WDTO_8S);
   #endif
@@ -413,13 +413,13 @@ HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);  // connect to network
       }
     #endif 
   
-  http.disconnect();
+  http.disconnect();                                     // http disconnect
     #ifdef EEPROMSEND
       if (firstrun==0) { 
           EEPROM.write(0, 8);
       }
     #endif 
-  http.sleep();
+  http.sleep();                                          // http sleep
     #ifdef EEPROMSEND
       if (firstrun==0) { 
           EEPROM.write(0, 9);
@@ -427,7 +427,7 @@ HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);  // connect to network
     #endif 
   delay(500);
 
-  if (result == SUCCESS) {
+  if (result == SUCCESS) {                               // if success
 
     #ifdef EEPROMSEND
       if (firstrun==0) { 
