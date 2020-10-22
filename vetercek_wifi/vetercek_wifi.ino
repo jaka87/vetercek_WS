@@ -81,11 +81,12 @@ void setup() {
       if (drd.detect())
     {
         wifiManager.resetSettings(); // double reset
+        wifiManager.autoConnect("WEATHER STATION");
+
     }
 
   //WiFiManagerParameter dir_offset("offset", "Vane offset", 0, 5);
   //wifiManager.addParameter(&dir_offset);
-wifiManager.autoConnect("WEATHER STATION");
 WiFi.forceSleepBegin(); // Wifi off
 
   pinMode(pwrAir, OUTPUT);      // sets the digital pin as output
