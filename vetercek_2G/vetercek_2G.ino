@@ -1,4 +1,5 @@
 #include <avr/wdt.h> //watchdog
+#include <EEPROM.h>
 #include <Http.h> //gprs
 #include <Parser.h> //gprs
 #include <Sim800.h> //gprs
@@ -25,12 +26,17 @@ byte resetReason = MCUSR;
 // edit this data to suit your needs  ///////////////////////////////////////////////////////
 #include "config.h"
 //#define DEBUG // comment out if you want to turn off debugging
+#define WATCHDOG // comment out if you want to turn off wachdog timer
+#define EEPROMSEND // comment out if you want to turn off eeprom log
+byte firstrun = 1; // if data is written or read from EEPROM
+
 const char *bearer = "iot.1nce.net"; // APN address
 const char *id = apiPassword; // get this unique ID in order to send data to vetercek.com
 const char *webpage = "vetercek.com/xml/post.php"; // where POST request is made
 int windDelay = 2300; // time for each anemometer measurement in seconds
 int onOffTmp = 0;   //on/off temperature measure
 int whenSend = 3;     // after how many measurements to send data to server
+int resettime = 0; // what caused reset
 // int vaneOffset=0; // now defined in config file for each station
 //////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -65,13 +71,18 @@ Result result;
 // the setup routine runs once when you press reset:
 void setup() {
   MCUSR = 0; // clear reset flags
-  wdt_disable();
   #ifdef DEBUG
       Serial.begin(9600);
       while (!Serial);
       Serial.println("Starting!");
   #endif
-
+  #ifdef DEBUG || def WATCHDOG
+    wdt_enable(WDTO_8S);
+  #endif
+  #ifdef DEBUG || def WATCHDOG
+      Serial.println("watchdog start!");
+  #endif  
+  
    pinMode(LED_BUILTIN, OUTPUT);     // this part is used when you bypass bootloader to signal when board is starting...
    digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on
    delay(1000);                       // wait
@@ -90,7 +101,35 @@ void setup() {
 void loop() {
   Anemometer();
   GetWindDirection();
-  LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 0);
+      }
+    #endif
+    
+  #ifdef WATCHDOG
+    wdt_reset();
+  #endif
+  #ifdef DEBUG || def WATCHDOG
+      Serial.println("watchdog reset!");
+  #endif  
+    
+  LowPower.powerDown(SLEEP_4S, ADC_ON, BOD_ON);
+  #ifdef WATCHDOG
+    wdt_reset();
+  #endif
+  #ifdef DEBUG || def WATCHDOG
+      Serial.println("watchdog reset!");
+  #endif    
+  LowPower.powerDown(SLEEP_4S, ADC_ON, BOD_ON);
+  #ifdef WATCHDOG
+    wdt_reset();
+  #endif  
+  #ifdef DEBUG || def WATCHDOG
+      Serial.println("watchdog reset!");
+  #endif
+
+
 
     #ifdef DEBUG
       Serial.print(" rot:");
@@ -113,7 +152,14 @@ void loop() {
   if (measureCount >= whenSend) { // check if is time to send data online
       SendData();
   }
-
+  else { // check if is time to send data online
+      #ifdef WATCHDOG
+        wdt_reset();
+      #endif  
+      #ifdef DEBUG || def WATCHDOG
+          Serial.println("watchdog reset!");
+      #endif
+  }
 }
 
 void Anemometer() { //measure wind speed
@@ -257,31 +303,66 @@ HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);
 
 
 // send data to server
-void SendData() {
+void SendData() {  
+  #ifdef WATCHDOG
+    wdt_enable(WDTO_8S);
+  #endif
+  #ifdef DEBUG || def WATCHDOG
+      Serial.println("watchdog start!");
+  #endif  
   DominantDirection();
     #ifdef DEBUG
       Serial.println("direction done");
     #endif
   GetAvgWInd();
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 1);
+      }
+  #endif  
     #ifdef DEBUG
       Serial.println("wind done");
     #endif
+    
   if (onOffTmp > 0) {
-    GetAir();
-    #ifdef DEBUG
-      Serial.println("air done");
-    #endif
-    GetWater();
-    #ifdef DEBUG
-      Serial.println("water done");
-    #endif
-  delay(1000);
-  }
+        GetAir();
+        #ifdef DEBUG
+          Serial.println("air done");
+        #endif
+        GetWater();
+        #ifdef DEBUG
+          Serial.println("water done");
+        #endif
+      delay(1000);
+        #ifdef EEPROMSEND
+          if (firstrun==0) { 
+              EEPROM.write(0, 2);
+          }
+        #endif      
+    }
+    
+  #ifdef WATCHDOG
+    wdt_disable();
+  #endif  
+  #ifdef DEBUG || def WATCHDOG
+      Serial.println("watchdog stop!");
+  #endif  
 
-HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);
+HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);  // connect to network
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 3);
+      }
+    #endif  
+    
   http.wakeUp();
-  
-  unsigned int bat = BatteryPercentage();
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 4);
+      }
+    #endif  
+    
+  unsigned int bat = BatteryPercentage(); //  check battery and signal
   unsigned int sig = SignalStrenght();
     #ifdef DEBUG
       Serial.print("battery ");
@@ -289,22 +370,72 @@ HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);
       Serial.print("sig ");
       Serial.println(sig);
     #endif
-  
-  result = http.connect(bearer);
- sprintf(body, BODY_FORMAT, id, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, bat, sig, measureCount, resetReason);
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 5);
+          EEPROM.write(1, bat);
+          EEPROM.write(2, sig);
+      }
+    #endif  
+    
+ result = http.connect(bearer);  // GPRS connection
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 6);
+      }
+    #endif 
 
+
+     if (firstrun ==1) { // check if is time to send data online
+        measureCount = EEPROM.read(0);
+        bat = EEPROM.read(1);
+        sig = EEPROM.read(1);
+         }
+
+     sprintf(body, BODY_FORMAT, id, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, bat, sig, measureCount, resetReason);      
+         
+        
+
+  
   #ifdef DEBUG
     Serial.println(body);
   #endif
 
 
-  result = http.post(webpage, body, response);
+  result = http.post(webpage, body, response);  // get post data
+   #ifdef WATCHDOG
+    wdt_enable(WDTO_8S);
+  #endif
+  #ifdef DEBUG || def WATCHDOG
+      Serial.println("watchdog start!");
+  #endif   
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 7);
+      }
+    #endif 
+  
   http.disconnect();
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 8);
+      }
+    #endif 
   http.sleep();
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 9);
+      }
+    #endif 
   delay(500);
 
   if (result == SUCCESS) {
 
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 10);
+      }
+    #endif 
     measureCount = 0;
     windAvr = 0;
     windGustAvg = 0;
@@ -342,6 +473,18 @@ HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);
     if (tt != onOffTmp && tt > -1) { // on/off tmp sensor
       onOffTmp = root["tt"];
       }
+    firstrun=0;  
   }
 
+  #ifdef WATCHDOG
+    wdt_reset();
+  #endif
+  #ifdef DEBUG || def WATCHDOG
+      Serial.println("watchdog reset!");
+  #endif    
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 11);
+      }
+    #endif   
 }
