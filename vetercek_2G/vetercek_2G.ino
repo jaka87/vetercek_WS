@@ -388,7 +388,7 @@ HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);  // connect to network
      if (firstrun ==1) { // check if is time to send data online
         measureCount = EEPROM.read(0);
         bat = EEPROM.read(1);
-        sig = EEPROM.read(1);
+        sig = EEPROM.read(2);
          }
 
      sprintf(body, BODY_FORMAT, id, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, bat, sig, measureCount, resetReason);      
