@@ -34,8 +34,13 @@ const char *bearer = "iot.1nce.net"; // APN address
 const char *id = apiPassword; // get this unique ID in order to send data to vetercek.com
 const char *webpage = "vetercek.com/xml/post.php"; // where POST request is made
 int windDelay = 2300; // time for each anemometer measurement in seconds
-int onOffTmp = 0;   //on/off temperature measure
-int whenSend = 3;     // after how many measurements to send data to server
+int onOffTmp = 1;   //on/off temperature measure
+if(firstrun==1 and resetReason==2)  { // when button on arduino is pressed
+    whenSend=3;  // after how many measurements to send data to server
+}
+else {
+    whenSend=25; 
+}
 int resettime = 0; // what caused reset
 // int vaneOffset=0; // now defined in config file for each station
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -391,6 +396,7 @@ HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);       // connect to network
     #endif  
     
  result = http.connect(bearer);                // GPRS connection
+   delay(2000);                               // wait
     #ifdef EEPROMSEND
       if (firstrun==0) { 
           EEPROM.write(0, 6);                                   // EEPROM 6
