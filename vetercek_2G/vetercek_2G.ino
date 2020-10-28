@@ -8,6 +8,7 @@
 #include <math.h> // wind speed calculations
 #include <OneWire.h> //tmp sensor
 #include <DallasTemperature.h> //tmp sensor
+#include <TimerOne.h>
 #define ONE_WIRE_BUS_1 4 //air
 #define ONE_WIRE_BUS_2 3 // water
 #define windSensorPin 2 // The pin location of the anemometer sensor
@@ -26,8 +27,7 @@ byte resetReason = MCUSR;
 // edit this data to suit your needs  ///////////////////////////////////////////////////////
 #include "config.h"
 //#define DEBUG // comment out if you want to turn off debugging
-#define WATCHDOG // comment out if you want to turn off wachdog timer
-#define EEPROMSEND // comment out if you want to turn off eeprom log
+//#define EEPROMSEND // comment out if you want to turn off eeprom log
 byte firstrun = 1; // if data is written or read from EEPROM
 
 const char *bearer = "iot.1nce.net"; // APN address
@@ -36,7 +36,8 @@ const char *webpage = "vetercek.com/xml/post.php"; // where POST request is made
 int windDelay = 2300; // time for each anemometer measurement in seconds
 int onOffTmp = 1;   //on/off temperature measure
 int whenSend= 25; // when button on arduino is pressed
-int resettime = 0; // what caused reset
+//int resettime = 0; // what caused reset
+int timergprs=0; // timer to check if GPRS is taking to long to complete
 // int vaneOffset=0; // now defined in config file for each station
 //////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -90,15 +91,17 @@ void setup() {
    digitalWrite(pwrAir, LOW);   // turn off power
    digitalWrite(pwrWater, LOW);   // turn off power
 
+   Timer1.initialize(1000000);         // initialize timer1, and set a 1 second period
+   Timer1.attachInterrupt(CheckTimerGPRS);  // attaches checkTimer() as a timer overflow interrupt
+
+
    if (firstrun==1 and resetReason==2)  { // when button on arduino is pressed
        whenSend=3;  // after how many measurements to send data to server
    }
 
-   #ifdef DEBUG || def WATCHDOG
-     wdt_enable(WDTO_8S);
-   #endif 
-
 }
+
+
 
 // the loop routine runs over and over again forever:
 void loop() {
@@ -112,19 +115,8 @@ void loop() {
       }
     #endif
     
-  #ifdef WATCHDOG                         // wdt reset                     
-    WatchdogSet(11);
-  #endif  
     
-  LowPower.powerDown(SLEEP_4S, ADC_ON, BOD_ON);  // sleep
-  #ifdef WATCHDOG                                // wdt reset                     
-    WatchdogSet(11);
-  #endif  
-  LowPower.powerDown(SLEEP_4S, ADC_ON, BOD_ON);
-  #ifdef WATCHDOG                                // wdt reset                     
-    WatchdogSet(11);
-  #endif  
-
+  LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);  // sleep
 
     #ifdef DEBUG                                 // debug data
       Serial.print(" rot:");
@@ -143,15 +135,31 @@ void loop() {
       Serial.print(measureCount);
       Serial.println("");
   #endif
-  
+
   if (measureCount >= whenSend) {               // check if is time to send data online
       SendData();
   }
   else { // check if is time to send data online
-    #ifdef WATCHDOG                             // wdt reset                     
-      WatchdogSet(11);
-    #endif  
+    timergprs=0;
   }
+
+
+}
+
+
+void CheckTimerGPRS() { // if unable to send data in 100s
+  timergprs++;
+      #ifdef DEBUG  
+        Serial.println(timergprs);  
+      #endif   
+  if (timergprs > 150) {
+    timergprs=0;
+    reset();
+  }
+}
+
+void reset() {
+  wdt_enable(WDTO_250MS);  
 }
 
 void Anemometer() { //measure wind speed
@@ -206,32 +214,6 @@ void ISRrotation () {  // This is the function that the interrupt calls to incre
   }
 }
 
-
-#ifdef WATCHDOG                        
-  void WatchdogSet(byte todo) { // watchdog manipulation
-    if (todo==0) { // watchdog disable
-      wdt_disable();
-    }
-    else if (todo==1) { // watchdog enable
-      wdt_enable(WDTO_8S);
-    }
-    else if (todo==11) { // watchdog reset
-      wdt_reset();
-    }
-    
-    #ifdef DEBUG || def WATCHDOG
-      if (todo==0) { 
-        Serial.println("watchdog disabled!"); 
-      }
-      else if (todo==1) {
-        Serial.println("watchdog started!"); 
-      }
-      else if (todo==11) {
-        Serial.println("watchdog reset!"); 
-      }  
-    #endif 
-  }
-#endif 
 
 
 void DominantDirection() { // get dominant wind direction
@@ -319,11 +301,8 @@ HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);
 }
 
 
-// send data to server
-void SendData() {  
-  #ifdef WATCHDOG                               // wdt start                     
-    WatchdogSet(1);
-  #endif  
+
+void BeforePostCalculations() {  
   DominantDirection();                          // wind direction
     #ifdef DEBUG
       Serial.println("direction done");
@@ -355,11 +334,12 @@ void SendData() {
         #endif      
     }
     
-  #ifdef WATCHDOG                               // wdt stop                     
-    WatchdogSet(0);
-  #endif  
+}
 
-HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);       // connect to network
+
+
+void PostData() { 
+  HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);       // connect to network
     #ifdef EEPROMSEND
       if (firstrun==0) { 
           EEPROM.write(0, 3);                                   // EEPROM 3
@@ -394,19 +374,16 @@ HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);       // connect to network
       }     
     #endif  
     
- result = http.connect(bearer);                // GPRS connection
-   delay(600);                               // wait
+ http.connect(bearer);                // GPRS connection
+   delay(1000);                               // wait
     #ifdef EEPROMSEND
       if (firstrun==0) { 
           EEPROM.write(0, 6);                                   // EEPROM 6
       }
     #endif 
 
-
-
      sprintf(body, BODY_FORMAT, id, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, bat, sig, measureCount, resetReason);      
          
-        
   
   #ifdef DEBUG
     Serial.println(body);
@@ -414,21 +391,17 @@ HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);       // connect to network
 
     #ifdef EEPROMSEND
       if (firstrun==0) { 
-            EEPROM.write(0, 66);                                // EEPROM 6
+            EEPROM.write(0, 7);                                // EEPROM 7
         }
     #endif 
-  delay(4000);                       // wait
 
-
+  delay(3000);                               // wait
   result = http.post(webpage, body, response);            // get post data
-  delay(4000);                      // wait
+  delay(3000);                               // wait
 
-  #ifdef WATCHDOG                                        // wdt start                     
-    WatchdogSet(1);
-  #endif  
     #ifdef EEPROMSEND
       if (firstrun==0) { 
-          EEPROM.write(0, 7);                                   // EEPROM 7
+          EEPROM.write(0, 8);                                   // EEPROM 8
       }
     #endif 
   
@@ -436,34 +409,27 @@ HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);       // connect to network
   delay(4000);                       // wait
     #ifdef EEPROMSEND
       if (firstrun==0) { 
-          EEPROM.write(0, 8);                                   // EEPROM 8
-      }
-    #endif 
-
-
-  #ifdef WATCHDOG                                        // wdt reset                     
-    WatchdogSet(11);
-  #endif  
-
-    
-    #ifdef EEPROMSEND
-      if (firstrun==0) { 
           EEPROM.write(0, 9);                                   // EEPROM 9
       }
     #endif 
+
   http.sleep();                                          // http sleep
     #ifdef EEPROMSEND
       if (firstrun==0) { 
           EEPROM.write(0, 10);                                   // EEPROM 10
       }
     #endif 
-  #ifdef WATCHDOG                                        // wdt reset                     
-    WatchdogSet(11);
-  #endif  
-
-    
+   
   delay(2000);
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 12);                                   // EEPROM 12
+      }
+    #endif   
+}
 
+
+void AfterPost() {  
   if (result == SUCCESS) {                               // if success
 
     #ifdef EEPROMSEND
@@ -510,13 +476,16 @@ HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);       // connect to network
       }
     firstrun=0;  
   }
+}
 
-  #ifdef WATCHDOG                                        // wdt reset                     
-    WatchdogSet(11);
-  #endif  
-    #ifdef EEPROMSEND
-      if (firstrun==0) { 
-          EEPROM.write(0, 12);                                   // EEPROM 12
-      }
-    #endif   
+
+
+// send data to server
+void SendData() {  
+  timergprs=0;
+  BeforePostCalculations();   
+  PostData();
+  AfterPost(); 
+  timergprs=0;
+
 }
