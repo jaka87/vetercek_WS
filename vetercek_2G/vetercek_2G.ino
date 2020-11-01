@@ -37,7 +37,7 @@ int windDelay = 2300; // time for each anemometer measurement in seconds
 int onOffTmp = 1;   //on/off temperature measure
 int whenSend= 25; // when button on arduino is pressed
 //int resettime = 0; // what caused reset
-int timergprs=0; // timer to check if GPRS is taking to long to complete
+volatile unsigned long timergprs=0; // timer to check if GPRS is taking to long to complete
 // int vaneOffset=0; // now defined in config file for each station
 //////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -140,7 +140,9 @@ void loop() {
       SendData();
   }
   else { // check if is time to send data online
+    noInterrupts();
     timergprs=0;
+    interrupts();  
   }
 
 
@@ -148,10 +150,7 @@ void loop() {
 
 
 void CheckTimerGPRS() { // if unable to send data in 100s
-  timergprs++;
-      #ifdef DEBUG  
-        Serial.println(timergprs);  
-      #endif   
+  timergprs++; 
   if (timergprs > 150) {
     timergprs=0;
     reset();
@@ -482,10 +481,13 @@ void AfterPost() {
 
 // send data to server
 void SendData() {  
-  timergprs=0;
+    noInterrupts();
+    timergprs=0;
+    interrupts();  
   BeforePostCalculations();   
   PostData();
   AfterPost(); 
-  timergprs=0;
-
+    noInterrupts();
+    timergprs=0;
+    interrupts();  
 }
