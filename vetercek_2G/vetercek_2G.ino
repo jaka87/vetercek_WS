@@ -1,4 +1,5 @@
 #include <avr/wdt.h> //watchdog
+#include <EEPROM.h>
 #include <Http.h> //gprs
 #include <Parser.h> //gprs
 #include <Sim800.h> //gprs
@@ -7,6 +8,7 @@
 #include <math.h> // wind speed calculations
 #include <OneWire.h> //tmp sensor
 #include <DallasTemperature.h> //tmp sensor
+#include <TimerOne.h>
 #define ONE_WIRE_BUS_1 4 //air
 #define ONE_WIRE_BUS_2 3 // water
 #define windSensorPin 2 // The pin location of the anemometer sensor
@@ -25,12 +27,17 @@ byte resetReason = MCUSR;
 // edit this data to suit your needs  ///////////////////////////////////////////////////////
 #include "config.h"
 //#define DEBUG // comment out if you want to turn off debugging
+//#define EEPROMSEND // comment out if you want to turn off eeprom log
+byte firstrun = 1; // if data is written or read from EEPROM
+
 const char *bearer = "iot.1nce.net"; // APN address
 const char *id = apiPassword; // get this unique ID in order to send data to vetercek.com
 const char *webpage = "vetercek.com/xml/post.php"; // where POST request is made
 int windDelay = 2300; // time for each anemometer measurement in seconds
-int onOffTmp = 0;   //on/off temperature measure
-int whenSend = 3;     // after how many measurements to send data to server
+int onOffTmp = 1;   //on/off temperature measure
+int whenSend= 25; // when button on arduino is pressed
+//int resettime = 0; // what caused reset
+volatile unsigned long timergprs=0; // timer to check if GPRS is taking to long to complete
 // int vaneOffset=0; // now defined in config file for each station
 //////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -66,12 +73,12 @@ Result result;
 void setup() {
   MCUSR = 0; // clear reset flags
   wdt_disable();
-  #ifdef DEBUG
+
+   #ifdef DEBUG
       Serial.begin(9600);
       while (!Serial);
       Serial.println("Starting!");
-  #endif
-
+   #endif
    pinMode(LED_BUILTIN, OUTPUT);     // this part is used when you bypass bootloader to signal when board is starting...
    digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on
    delay(1000);                       // wait
@@ -84,15 +91,34 @@ void setup() {
    digitalWrite(pwrAir, LOW);   // turn off power
    digitalWrite(pwrWater, LOW);   // turn off power
 
+   Timer1.initialize(1000000);         // initialize timer1, and set a 1 second period
+   Timer1.attachInterrupt(CheckTimerGPRS);  // attaches checkTimer() as a timer overflow interrupt
+
+
+   if (firstrun==1 and resetReason==2)  { // when button on arduino is pressed
+       whenSend=3;  // after how many measurements to send data to server
+   }
+
 }
+
+
 
 // the loop routine runs over and over again forever:
 void loop() {
-  Anemometer();
+  Anemometer();                           // anemometer
   GetWindDirection();
-  LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 0);                             // EEPROM 0
+          EEPROM.write(1, 0);
+          EEPROM.write(2, 0);
+      }
+    #endif
+    
+    
+  LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);  // sleep
 
-    #ifdef DEBUG
+    #ifdef DEBUG                                 // debug data
       Serial.print(" rot:");
       Serial.print(rotations);
       Serial.print(" delay:");
@@ -109,11 +135,30 @@ void loop() {
       Serial.print(measureCount);
       Serial.println("");
   #endif
-  
-  if (measureCount >= whenSend) { // check if is time to send data online
+
+  if (measureCount >= whenSend) {               // check if is time to send data online
       SendData();
   }
+  else { // check if is time to send data online
+    noInterrupts();
+    timergprs=0;
+    interrupts();  
+  }
 
+
+}
+
+
+void CheckTimerGPRS() { // if unable to send data in 100s
+  timergprs++; 
+  if (timergprs > 150) {
+    timergprs=0;
+    reset();
+  }
+}
+
+void reset() {
+  wdt_enable(WDTO_250MS);  
 }
 
 void Anemometer() { //measure wind speed
@@ -167,7 +212,6 @@ void ISRrotation () {  // This is the function that the interrupt calls to incre
       lastPulseMillis=currentMillis;
   }
 }
-
 
 
 
@@ -256,32 +300,59 @@ HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);
 }
 
 
-// send data to server
-void SendData() {
-  DominantDirection();
+
+void BeforePostCalculations() {  
+  DominantDirection();                          // wind direction
     #ifdef DEBUG
       Serial.println("direction done");
     #endif
-  GetAvgWInd();
+  GetAvgWInd();                                 // avg wind
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 1);                                   // EEPROM 1
+      }
+  #endif  
     #ifdef DEBUG
       Serial.println("wind done");
     #endif
+    
   if (onOffTmp > 0) {
-    GetAir();
-    #ifdef DEBUG
-      Serial.println("air done");
-    #endif
-    GetWater();
-    #ifdef DEBUG
-      Serial.println("water done");
-    #endif
-  delay(1000);
-  }
+        GetAir();                               // air
+        #ifdef DEBUG
+          Serial.println("air done");
+        #endif
+        GetWater();                             // water
+        #ifdef DEBUG
+          Serial.println("water done");
+        #endif
+      delay(1000);
+        #ifdef EEPROMSEND
+          if (firstrun==0) { 
+              EEPROM.write(0, 2);                               // EEPROM 2
+          }
+        #endif      
+    }
+    
+}
 
-HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);
-  http.wakeUp();
-  
-  unsigned int bat = BatteryPercentage();
+
+
+void PostData() { 
+  HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);       // connect to network
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 3);                                   // EEPROM 3
+      }
+    #endif  
+    
+  http.wakeUp();                                // http wake up
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 4);                                   // EEPROM 4
+      }
+    #endif  
+    
+  unsigned int bat = BatteryPercentage();      //  check battery and signal
   unsigned int sig = SignalStrenght();
     #ifdef DEBUG
       Serial.print("battery ");
@@ -289,23 +360,82 @@ HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);
       Serial.print("sig ");
       Serial.println(sig);
     #endif
-  
-  result = http.connect(bearer);
- sprintf(body, BODY_FORMAT, id, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, bat, sig, measureCount, resetReason);
+    #ifdef EEPROMSEND
+      if (firstrun==0) {             
+          EEPROM.write(0, 5);                                   // EEPROM 5
+          EEPROM.write(1, bat);
+          EEPROM.write(2, sig);
+      }
+       else { 
+          measureCount = EEPROM.read(0);
+          bat = EEPROM.read(1);
+          sig = EEPROM.read(2);
+      }     
+    #endif  
+    
+ http.connect(bearer);                // GPRS connection
+   delay(1000);                               // wait
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 6);                                   // EEPROM 6
+      }
+    #endif 
 
+     sprintf(body, BODY_FORMAT, id, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, bat, sig, measureCount, resetReason);      
+         
+  
   #ifdef DEBUG
     Serial.println(body);
   #endif
 
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+            EEPROM.write(0, 7);                                // EEPROM 7
+        }
+    #endif 
 
-  result = http.post(webpage, body, response);
-  http.disconnect();
-  delay(4000);
-  http.sleep();
-  delay(500);
+  delay(3000);                               // wait
+  result = http.post(webpage, body, response);            // get post data
+  delay(3000);                               // wait
 
-  if (result == SUCCESS) {
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 8);                                   // EEPROM 8
+      }
+    #endif 
+  
+  http.disconnect();                                     // http disconnect
+  delay(4000);                       // wait
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 9);                                   // EEPROM 9
+      }
+    #endif 
 
+  http.sleep();                                          // http sleep
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 10);                                   // EEPROM 10
+      }
+    #endif 
+   
+  delay(2000);
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 12);                                   // EEPROM 12
+      }
+    #endif   
+}
+
+
+void AfterPost() {  
+  if (result == SUCCESS) {                               // if success
+
+    #ifdef EEPROMSEND
+      if (firstrun==0) { 
+          EEPROM.write(0, 11);                                   // EEPROM 11
+      }
+    #endif 
     measureCount = 0;
     windAvr = 0;
     windGustAvg = 0;
@@ -343,6 +473,21 @@ HTTP http(9600, RX_Pin, TX_Pin, RST_Pin);
     if (tt != onOffTmp && tt > -1) { // on/off tmp sensor
       onOffTmp = root["tt"];
       }
+    firstrun=0;  
   }
+}
 
+
+
+// send data to server
+void SendData() {  
+    noInterrupts();
+    timergprs=0;
+    interrupts();  
+  BeforePostCalculations();   
+  PostData();
+  AfterPost(); 
+    noInterrupts();
+    timergprs=0;
+    interrupts();  
 }
