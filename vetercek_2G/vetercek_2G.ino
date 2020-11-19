@@ -46,12 +46,12 @@ volatile unsigned long contactBounceTime; // Timer to avoid contact bounce in in
 volatile unsigned long lastPulseMillis; // last anemometer measured time
 volatile unsigned long firstPulseMillis; // fisrt anemometer measured time
 volatile unsigned long currentMillis;
+volatile unsigned long timeoutGPRS = 0;
 byte firstWindPulse; // ignore 1st anemometer rotation since it didn't make full circle
 int windSpeed; // speed
 long windAvr = 0; //sum of all wind speed between update
 int windGust[3] = { 0, 0, 0 }; // top three gusts
 int windGustAvg = 0; //wind gust average
-int avrDir[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; // array where wind direction are saved and later one with highest value is selected as dominant
 int measureCount = 0; // count each mesurement
 float water; // water Temperature
 char wat[6]; // water char value
@@ -61,6 +61,8 @@ int vaneValue;       // raw analog value from wind vane
 int direction;       // translated 0 - 360 direction
 int calDirection;    // converted value with offset applied
 int windDir;  //calculated wind direction
+float windAvgX; //x and y wind dirrection component
+float windAvgY;
 int wind_speed;  //calculated wind speed
 int wind_gust;   //calculated wind gusts
 float actualWindDelay; //time between first and last measured anemometer rotation
@@ -91,7 +93,7 @@ void setup() {
    digitalWrite(pwrAir, LOW);   // turn off power
    digitalWrite(pwrWater, LOW);   // turn off power
 
-   Timer1.initialize(1000000);         // initialize timer1, and set a 1 second period
+   Timer1.initialize(10000000);         // initialize timer1, and set a 1 second period
    Timer1.attachInterrupt(CheckTimerGPRS);  // attaches checkTimer() as a timer overflow interrupt
 
 
@@ -151,7 +153,7 @@ void loop() {
 
 void CheckTimerGPRS() { // if unable to send data in 100s
   timergprs++; 
-  if (timergprs > 150) {
+  if (timergprs > 50) {
     timergprs=0;
     reset();
   }
@@ -216,14 +218,8 @@ void ISRrotation () {  // This is the function that the interrupt calls to incre
 
 
 void DominantDirection() { // get dominant wind direction
-  int maxIndex = 0;
-  int max = avrDir[maxIndex];
-  for (int i = 0; i < 16; i++) {
-    if (max < avrDir[i]) {
-      max = avrDir[i];
-      windDir = i * 22; //this is just approximate calculation so server can return the right char value
-    }
-  }
+  windDir =  atan2(windAvgY, windAvgX) / PI * 180;
+    if(windDir < 0) windDir += 360;
 }
 
 
@@ -265,13 +261,11 @@ void GetWindDirection() {
   if (calDirection < 0)
     calDirection = calDirection + 360;
 
-  calDirection = (calDirection + 11.25) / 22.5;
-  if (calDirection < 16) {
-    ++avrDir[calDirection];
-  }
-  else {
-    ++avrDir[0];
-  }
+ // convert reading to radians  
+  float theta = calDirection / 180.0 * PI;
+  // running average
+  windAvgX = windAvgX * .75 + cos(theta) * .25;
+  windAvgY = windAvgY * .75 + sin(theta) * .25;
 
 }
 
@@ -372,8 +366,15 @@ void PostData() {
           sig = EEPROM.read(2);
       }     
     #endif  
+
+  timeoutGPRS=millis();
+  result= http.connect(bearer);                               // GPRS connection
+   while ( result!=SUCCESS) {
+     if( millis()-timeoutGPRS > 60000){ 
+          wdt_enable(WDTO_250MS); //watchdog reset                          
+          }
+   }
     
- http.connect(bearer);                // GPRS connection
    delay(1000);                               // wait
     #ifdef EEPROMSEND
       if (firstrun==0) { 
@@ -394,18 +395,40 @@ void PostData() {
         }
     #endif 
 
-  delay(3000);                               // wait
-  result = http.post(webpage, body, response);            // get post data
-  delay(3000);                               // wait
+  delay(1000);                               // wait
 
+
+  timeoutGPRS=millis();
+  result= http.post(webpage, body, response);                 // post data
+   while ( result!=SUCCESS) {
+     if( millis()-timeoutGPRS > 20000 ){ 
+          wdt_enable(WDTO_250MS); //watchdog reset
+          }
+   }
+
+  delay(1000);                               // wait
+  AfterPost(); 
+  delay(1000);                               // wait
+  
     #ifdef EEPROMSEND
       if (firstrun==0) { 
           EEPROM.write(0, 8);                                   // EEPROM 8
       }
     #endif 
-  
-  http.disconnect();                                     // http disconnect
-  delay(4000);                       // wait
+
+
+  timeoutGPRS=millis();
+  result = http.disconnect();                                     // http disconnect
+   while ( result!=SUCCESS) {
+     if( millis()-timeoutGPRS > 7000){ 
+          wdt_enable(WDTO_250MS); //watchdog reset
+          }
+
+   }
+ timeoutGPRS = 0; 
+
+
+  delay(1000);                       // wait
     #ifdef EEPROMSEND
       if (firstrun==0) { 
           EEPROM.write(0, 9);                                   // EEPROM 9
@@ -442,7 +465,8 @@ void AfterPost() {
     windDir = 0; 
     water = 0;
     temp = 0;
-    memset(avrDir, 0, sizeof(avrDir)); // empty direction array
+    windAvgX=0;
+    windAvgY=0;
     memset(windGust, 0, sizeof(windGust)); // empty direction array
     memset(tmp, 0, sizeof(tmp));
     memset(wat, 0, sizeof(wat));
@@ -486,7 +510,6 @@ void SendData() {
     interrupts();  
   BeforePostCalculations();   
   PostData();
-  AfterPost(); 
     noInterrupts();
     timergprs=0;
     interrupts();  
