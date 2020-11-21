@@ -8,6 +8,7 @@
 /vetercek_wifi/config.h
 !/vetercek_nb-iot/*
 /vetercek_nb-iot/config.h
+!/3D prints/
 !/3D prints/*
 !.gitignore
 
