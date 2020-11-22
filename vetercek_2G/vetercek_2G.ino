@@ -93,7 +93,7 @@ void setup() {
    digitalWrite(pwrAir, LOW);   // turn off power
    digitalWrite(pwrWater, LOW);   // turn off power
 
-   Timer1.initialize(10000000);         // initialize timer1, and set a 1 second period
+   Timer1.initialize(10000000);         // initialize timer1, and set a 10 second period
    Timer1.attachInterrupt(CheckTimerGPRS);  // attaches checkTimer() as a timer overflow interrupt
 
 
@@ -153,7 +153,7 @@ void loop() {
 
 void CheckTimerGPRS() { // if unable to send data in 100s
   timergprs++; 
-  if (timergprs > 50) {
+  if (timergprs > 15) {
     timergprs=0;
     reset();
   }
