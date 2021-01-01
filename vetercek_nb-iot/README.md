@@ -1,4 +1,6 @@
-# Vetercek.com weather station 2G
+# Vetercek.com weather station nb-iot
+New PCB  
+![PCB](img/pcb.jpg)  
 
 ## Features of the WS
 + Send wind speed and gusts to the server
@@ -34,8 +36,6 @@ Arduino pro mini has different bootloader than Uno (older) that has watchdog bug
 ![Scheme](img/scheme.png)  
 Here is the [link](https://easyeda.com/jaka87/new-vetercek) to PCB design.  
 
-New PCB  
-![PCB](img/pcb.jpg)  
 
 ## TO-DO
 + I will try to figure out how to get PSM to work - I theory this would enable very low power consumption of 6uA for SIM7000
