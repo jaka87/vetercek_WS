@@ -14,10 +14,8 @@ New PCB
 
 ## Required parts
 + Arduino pro mini 3.3V **3€**
-  + LED is removed to save battery life
 + Davis 6410 anemometer **160€**
 + Sim7000E gsm module **20€**
-  + LED is removed to save battery life
 + DS18B20 temperature sensor **3€**
 + DS18B20 water temperature sensor **4€**
 + TP4056 li-ion charger **1€**
@@ -45,9 +43,9 @@ All the libraries are uploaded in src folder. Previously I just post links since
 
 
 ## Power consumption
-In sleep 1-1.5mA
-Idle 4-5 mA
-Sending data 100-200mA
+In sleep 1-1.5mA  
+Idle 4-5 mA  
+Sending data 100-200mA  
 
 
 ## Thanks!
