@@ -38,10 +38,7 @@ New PCB
 ![PCB](img/pcb.jpg)  
 
 ## TO-DO
-+  ~~create PCB and make larger test outside~~
-+ ~~allow for larger ints in order to have possibility for longer time between updates~~
-+ ~~sending GPS cordinates to server (in case WS get stolen)~~
-+ support for other web services - long term goal, not planned for near future
++ I will try to figure out how to get PSM to work - I theory this would enable very low power consumption of 6uA for SIM7000
 
 ## Libraries used in this project
 All the libraries are uploaded in src folder. Previously I just post links since i was using libraries directly from the repositories, but now i had to make changes to some of them, mostly to delete some unused functions to decrease sketch size.
