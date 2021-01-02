@@ -1,6 +1,6 @@
 # Vetercek.com weather station nb-iot
 New PCB  
-![PCB](img/pcb.jpg)  [PCB back](img/pcb2.jpg)  
+![PCB](img/pcb.jpg)  ![PCB back](img/pcb2.jpg)  
 
 ## Features of the WS
 + Send wind speed and gusts to the server
