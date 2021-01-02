@@ -145,7 +145,8 @@ void setup() {
   modem.sleepEnable(true); // sleep
   //modem.sendAT("+CPSMS=1"); // PSM
   //modem.waitResponse(500);
-  modem.sendAT("+cpsms=1,,,\"00101110\",\"00000101\""); // PSM
+  modem.sendAT("+CPSMS=0"); // PSM
+  //modem.sendAT("+CPSMS=1,,,\"00101110\",\"00000101\""); // PSM
   modem.waitResponse(500);
   //modem.sendAT("+CPSMS?"); // PSM
   //modem.waitResponse(500);
@@ -185,7 +186,6 @@ void loop() {
     Serial.print(whenSend - measureCount);
     Serial.print(" count:");
     Serial.println(measureCount);
-    Serial.println("");
   #endif
 
   GetAvgWInd();                                 // avg wind
@@ -193,7 +193,7 @@ void loop() {
   if ( (resetReason==2 and measureCount > 3) or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend) or (measureCount >= (whenSend*2) or whenSend>150) ) {   // check if is time to send data online
        digitalWrite(DTR, LOW);  //wake up
       //modem.sleepEnable(false); 
-      delay(100);
+      //delay(100);
     SendData();
       digitalWrite(DTR, HIGH);  //sleep
       //modem.sleepEnable(true);
@@ -240,7 +240,7 @@ void powerOn() {
   digitalWrite(PWRKEY, LOW);
   delay(100); // For SIM7000 
   digitalWrite(PWRKEY, HIGH);
-  delay(1000);
+  //delay(1000);
 }
 
 void powerOff() {

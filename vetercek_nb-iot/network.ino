@@ -104,16 +104,17 @@ void setupGSM() {
 
 
 void PostData() {    
-  powerOn();
+  //powerOn();
+  checkConnections();
   battLevel = modem.getBattPercent();
-  delay(100);
+  //delay(100);
   sig=modem.getSignalQuality(); 
 
  sprintf(URL, FORMAT,id, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, battLevel, sig, measureCount,resetReason);
     //#ifdef DEBUG
       //  Serial.println(URL);
     //#endif
-      checkConnections();
+      //checkConnections();
 
     if (mqtt.publish(topicPUT, URL) ) {
     #ifdef DEBUG

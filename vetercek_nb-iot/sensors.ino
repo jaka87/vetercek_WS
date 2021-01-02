@@ -63,7 +63,7 @@ void DominantDirection() { // get dominant wind direction
 
 void GetAir() {
   digitalWrite(pwrAir, HIGH);   // turn on power
-  delay(500);
+  delay(100);
   sensor_air.requestTemperatures(); // Send the command to get temperatures
   delay (750) ;
   temp = sensor_air.getTempC();
@@ -76,7 +76,7 @@ void GetAir() {
 
 void GetWater() {
   digitalWrite(pwrWater, HIGH);   // turn on power
-  delay(500);
+  delay(100);
   sensor_water.requestTemperatures(); // Send the command to get temperatures
   delay (750) ;
   water = sensor_water.getTempC();

@@ -144,8 +144,6 @@ class TinyGsmSim7000 : public TinyGsmModem<TinyGsmSim7000>,
    */
  protected:
   bool initImpl(const char* pin = NULL) {
-    DBG(GF("### TinyGSM Version:"), TINYGSM_VERSION);
-    DBG(GF("### TinyGSM Compiled Module:  TinyGsmClientSIM7000"));
 
     if (!testAT()) { return false; }
 
@@ -159,11 +157,6 @@ class TinyGsmSim7000 : public TinyGsmModem<TinyGsmSim7000>,
 #endif
     waitResponse();
 
-    DBG(GF("### Modem:"), getModemName());
-
-    // Enable Local Time Stamp for getting network time
-    sendAT(GF("+CLTS=1"));
-    if (waitResponse(10000L) != 1) { return false; }
 
     // Enable battery checks
     sendAT(GF("+CBATCHK=1"));
