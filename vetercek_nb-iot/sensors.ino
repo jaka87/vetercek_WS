@@ -123,3 +123,11 @@ void BeforePostCalculations() {
   }
 
 }
+
+// Read the module's power supply voltage
+float readVcc() {
+  // Read battery voltage
+  if (!fona.getBattPercent(&battLevel)) Serial.println(F("Failed to read batt"));
+  else Serial.print(F("battery = ")); Serial.print(battLevel); Serial.println(F("%"));
+  return battLevel;
+}
