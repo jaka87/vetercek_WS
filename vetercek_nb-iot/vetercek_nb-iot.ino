@@ -15,6 +15,8 @@
 #define DTR 6
 #define PWRKEY 10
 #define FORMAT "id=%s&d=%d&s=%d.%d&g=%d.%d&t=%s&w=%s&b=%d&sig=%d&c=%d&r=%d"
+#define FORMAT_URL "vetercek.com/xml/ws_data.php?id=%s&d=%d&s=%d.%d&g=%d.%d&t=%s&w=%s&b=%d&sig=%d&c=%d&r=%d"
+
 OneWire oneWire_in(ONE_WIRE_BUS_1);
 OneWire oneWire_out(ONE_WIRE_BUS_2);
 DS18B20 sensor_air(&oneWire_in);
@@ -27,17 +29,20 @@ SoftwareSerial fonaSS = SoftwareSerial(8, 9); // RX, TX
 Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
 
 //////////////////////////////////    EDIT THIS
-const char* apn = "internet.simobil.si"; // APN name
-//const char* apn = "iot.1nce.net"; // APN name
+//#define APN "internet.simobil.si"
+#define APN "iot.1nce.net"
 int cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
-int whenSend = 10; // interval after how many measurements data is send
+int whenSend = 40; // interval after how many measurements data is send
 const char* MQTTuser = MQTTu;
 const char* MQTTpass = MQTTp;
-#define DEBUG // comment out if you want to turn off debugging
 const char* broker = "vetercek.com";
-
-
+#define GSM_MODE 13 // 2 automatic, 38 LTE, 13 2G
+//select how to post data - uncomment only one
+//#define SEND_MQTT
+//#define HTTP
+#define UDP
+#define DEBUG // comment out if you want to turn off debugging
 //////////////////////////////////    RATHER DON'T CHANGE
 // MQTT details
 char replybuffer[255]; // For reading stuff coming through UART, like subscribed topic messages
@@ -111,37 +116,45 @@ void setup() {
   //power
   pinMode(PWRKEY, OUTPUT);
   powerOn(); // Power on the module
+  delay(4000);
+  wakeUp();
   pinMode(DTR, OUTPUT);
 
   moduleSetup(); // Establishes first-time serial comm and prints IMEI
  
-  fona.setFunctionality(1); // AT+CFUN=1
+  fona.setFunctionality(0); // AT+CFUN=0
   delay(3000);
+  fona.setFunctionality(1); // AT+CFUN=1
 //  fona.setNetworkSettings(&apn); // APN
-  fona.setNetworkSettings(F("internet.simobil.si")); // APN
-
+  fona.setNetworkSettings(F(APN)); // APN
+  delay(200);
 //  fona.setPreferredMode(38); // Use LTE only, not 2G
   //fona.setPreferredMode(13); // Use 2G
-  fona.setPreferredMode(2); // automatic
+  fona.setPreferredMode(GSM_MODE); // automatic
+  delay(200);
   fona.setNetLED(true,3,64,5000);
+  delay(200);
   //fona.setOperatingBand("NB-IOT",20); // AT&T uses band 12
   //fona.setHTTPSRedirect(true);
   //fona.enableRTC(true); 
   fona.enableSleepMode(true);
+  delay(200);
   //fona.set_eDRX(1, 5, "0010");
-  //fona.psmstatus(true);
   fona.enablePSM(false);
+  delay(200);
   
 
   uint8_t imeiLen = fona.getIMEI(IMEI);
   if (imeiLen <15) {
     char IMEI="1111111111";
   }
+  delay(200);
       Serial.print("Module IMEI: "); Serial.println(IMEI);
 
 
   sprintf(topicGET, "get/%s", IMEI);  
-   connectGPRS();
+
+  connectGPRS();
   digitalWrite(DTR, HIGH);  //sleep
 
 }
@@ -149,6 +162,8 @@ void setup() {
 void loop() {
   Anemometer();                           // anemometer
   GetWindDirection();
+
+
 
   if ( sleepBetween == 1)  { // to sleap or not to sleap between wind measurement
     LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);  // sleep
@@ -171,12 +186,14 @@ void loop() {
   #endif
 
   GetAvgWInd();                                 // avg wind
-  getMQTTmsg();
+  //getMQTTmsg();
 
-  if ( (resetReason==2 and measureCount > 3) or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend) or (measureCount >= (whenSend*2) or whenSend>150) ) {   // check if is time to send data online
+  if ( (resetReason==2 and measureCount > 2) or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend) or (measureCount >= (whenSend*2) or whenSend>150) ) {   // check if is time to send data online
       //delay(100);
+      digitalWrite(DTR, LOW);  //wake up  
     SendData();
-      digitalWrite(DTR, HIGH);  //sleep
+
+      digitalWrite(DTR, HIGH);  //sleep  
 
   }
   else { // check if is time to send data online
@@ -224,7 +241,7 @@ void powerOn() {
 
 void wakeUp() {
   digitalWrite(PWRKEY, LOW);
-  delay(3000); // For SIM7000 
+  delay(100); // For SIM7000 
   digitalWrite(PWRKEY, HIGH);
   delay(1000);
 }

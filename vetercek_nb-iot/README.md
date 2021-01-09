@@ -9,7 +9,7 @@ New PCB
 + Remote adjustment of the time between updates (depending on sever response)
 + Remote adjustment of wind wane offset (depending on sever response)
 + Wind speed and direction are measured for 2 second every 10 seconds. It is a good compromise for accurate measurements and long battery life.
-+ **New** switched from HTTP to MQTT protocol (with open socket MQTT data upload takes from 200-500ms compared to 2s with HTTP and also uses much less bandwidth)
++ **New** switched from HTTP to custom UDP protocol - there is also option to send HTTP and MQTT
 + **New** new GPRS modul that supports both nb-iot and also 2G (Thanks to [A1](https://www.a1.si/) and [Telekom Slovenije](https://www.telekom.si/) for providing me with nb-iot sim cards). With new module there is much faster data upload and lower battery consumption. Therefore I also enabled fast data upload that can be enabled when you need data upload every few secconds as opposed to few minutes.
 
 ## Required parts
