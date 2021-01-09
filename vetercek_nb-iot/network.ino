@@ -137,9 +137,16 @@ void PostData() {
 
   //powerOn();
   delay(300);
-  sig=fona.getRSSI(); 
-  delay(100);
-  battLevel = readVcc(); // Get voltage %
+
+  if (sendBatTemp >= 10) {  // send data about battery and signal every 10 measurements
+    sig=fona.getRSSI(); 
+    delay(100);
+    battLevel = readVcc(); // Get voltage %
+    sendBatTemp=0;
+}
+  else {
+    sendBatTemp=sendBatTemp+1;
+}
 
 #ifdef SEND_MQTT
  sprintf(URL, FORMAT,IMEI, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, battLevel, sig, measureCount,resetReason);
@@ -179,14 +186,19 @@ void PostData() {
 bool isConnected = fona.UDPconnected();
 
     if (isConnected !=1) {
-        fona.UDPconnect("vetercek.com",6789);
-      }     
+    int8_t GPRSstate = fona.GPRSstate();
+      if (GPRSstate !=1) {
+          connectGPRS();
+       } 
+     fona.UDPconnect("vetercek.com",6789);
+     }     
 
   char response[50];  
-  fona.UDPsend(URL,strlen(URL),response);
+    if ( fona.UDPsend(URL,strlen(URL),response)) {
   Serial.println(response);
   parseResponse(response);
   AfterPost(); 
+   } 
 #endif 
 
 

@@ -56,8 +56,6 @@
 // Set the preferred SMS storage.
 //   Use "SM" for storage on the SIM.
 //   Use "ME" for internal storage on the FONA chip
-#define FONA_PREF_SMS_STORAGE "\"SM\""
-//#define FONA_PREF_SMS_STORAGE "\"ME\""
 
 #define FONA_HEADSETAUDIO 0
 #define FONA_EXTAUDIO 1
@@ -180,10 +178,6 @@ class Adafruit_FONA : public FONAStreamType {
   boolean HTTP_ssl(boolean onoff);
 
   // HTTP high level interface (easier to use, less flexible).
-  boolean HTTP_GET_start(char *url, uint16_t *status, uint16_t *datalen);
-  void HTTP_GET_end(void);
-  boolean HTTP_POST_start(char *url, FONAFlashStringPtr contenttype, const uint8_t *postdata, uint16_t postdatalen,  uint16_t *status, uint16_t *datalen);
-  void HTTP_POST_end(void);
   void setUserAgent(FONAFlashStringPtr useragent);
 
   // HTTPS

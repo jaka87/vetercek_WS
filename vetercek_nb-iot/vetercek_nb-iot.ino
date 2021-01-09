@@ -85,6 +85,7 @@ unsigned int sig = 0;
 float actualWindDelay; //time between first and last measured anemometer rotation
 char IMEI[16] = {0}; // Use this for device ID
 byte sleepBetween=1;
+byte sendBatTemp=10;
 
 
 

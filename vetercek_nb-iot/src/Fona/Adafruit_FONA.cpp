@@ -152,9 +152,6 @@ boolean Adafruit_FONA::begin(Stream &port) {
     }
   }
 
-#if defined(FONA_PREF_SMS_STORAGE)
-    sendCheckReply(F("AT+CPMS=" FONA_PREF_SMS_STORAGE "," FONA_PREF_SMS_STORAGE "," FONA_PREF_SMS_STORAGE), ok_reply);
-#endif
 
   return true;
 }
@@ -863,9 +860,6 @@ boolean Adafruit_FONA_LTE::MQTT_dataFormatHex(bool yesno) {
   if (yesno) sendCheckReply(F("AT+SMPUBHEX="), yesno, ok_reply);
 }
 
-/********* SSL FUNCTIONS  ************************************/
-
-
 
 /********* UDP FUNCTIONS  ************************************/
 
@@ -937,23 +931,21 @@ boolean Adafruit_FONA::UDPsend(char *packet, uint8_t len, char *response) {
   mySerial->println(len);
   readline();
 
-  //DEBUG_PRINT (F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
-
   if (replybuffer[0] != '>') return false;
 
   mySerial->write(packet, len);
-  //readline(700); // wait up to 3 seconds to send the data
-  //readline();
 
   readline(5000); // return SEND OK
+  int ok_response= (strcmp(replybuffer, "SEND OK") == 0);
   readline(5000); // RETURN DATA
 
    strcpy(response, replybuffer);
 
   //DEBUG_PRINT (F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
 
+  if (ok_response==1) return true;
 
-  return (strcmp(replybuffer, ";") == 0);
+  else return false;
 }
 
 uint16_t Adafruit_FONA::UDPavailable(void) {
@@ -1080,64 +1072,9 @@ boolean Adafruit_FONA::HTTP_ssl(boolean onoff) {
 
 /********* HTTP HIGH LEVEL FUNCTIONS ***************************/
 
-boolean Adafruit_FONA::HTTP_GET_start(char *url, uint16_t *status, uint16_t *datalen) {
-  if (! HTTP_setup(url))
-    return false;
-
-  // HTTP GET
-  if (! HTTP_action(FONA_HTTP_GET, status, datalen, 30000))
-    return false;
-
-  DEBUG_PRINT(F("Status: ")); DEBUG_PRINTLN(*status);
-  DEBUG_PRINT(F("Len: ")); DEBUG_PRINTLN(*datalen);
-
-  // HTTP response data
-  if (! HTTP_readall(datalen))
-    return false;
-
-  return true;
-}
 
 
-void Adafruit_FONA::HTTP_GET_end(void) {
-  HTTP_term();
-}
 
-boolean Adafruit_FONA::HTTP_POST_start(char *url,
-              FONAFlashStringPtr contenttype,
-              const uint8_t *postdata, uint16_t postdatalen,
-              uint16_t *status, uint16_t *datalen){
-  if (! HTTP_setup(url))
-    return false;
-
-  if (! HTTP_para(F("CONTENT"), contenttype)) {
-    return false;
-  }
-
-  // HTTP POST data
-  if (! HTTP_data(postdatalen, 10000))
-    return false;
-  mySerial->write(postdata, postdatalen);
-  if (! expectReply(ok_reply))
-    return false;
-
-  // HTTP POST
-  if (! HTTP_action(FONA_HTTP_POST, status, datalen))
-    return false;
-
-  DEBUG_PRINT(F("Status: ")); DEBUG_PRINTLN(*status);
-  DEBUG_PRINT(F("Len: ")); DEBUG_PRINTLN(*datalen);
-
-  // HTTP response data
-  if (! HTTP_readall(datalen))
-    return false;
-
-  return true;
-}
-
-void Adafruit_FONA::HTTP_POST_end(void) {
-  HTTP_term();
-}
 
 void Adafruit_FONA::setUserAgent(FONAFlashStringPtr useragent) {
   this->useragent = useragent;
