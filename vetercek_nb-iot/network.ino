@@ -183,6 +183,8 @@ void PostData() {
       Serial.println(URL);
     #endif
 
+//byte data[] = { 86,52,23,40,31,87,31,16,6,  2,77, 0,0, 0,0, 1,0,0, 1,0,0, 77,18,40,0 }; // data
+
 bool isConnected = fona.UDPconnected();
 
     if (isConnected !=1) {
@@ -194,8 +196,10 @@ bool isConnected = fona.UDPconnected();
      }     
 
   char response[50];  
-    if ( fona.UDPsend(URL,strlen(URL),response)) {
+  //if ( fona.UDPsend(data,sizeof(data),response)) { //25
+  if ( fona.UDPsend(URL,strlen(URL),response)) { ///61
   Serial.println(response);
+  
   parseResponse(response);
   AfterPost(); 
    } 

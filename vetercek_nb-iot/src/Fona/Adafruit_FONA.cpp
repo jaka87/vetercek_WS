@@ -934,6 +934,7 @@ boolean Adafruit_FONA::UDPsend(char *packet, uint8_t len, char *response) {
   if (replybuffer[0] != '>') return false;
 
   mySerial->write(packet, len);
+DEBUG_PRINTLN(packet);
 
   readline(5000); // return SEND OK
   int ok_response= (strcmp(replybuffer, "SEND OK") == 0);

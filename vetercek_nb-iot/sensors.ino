@@ -60,32 +60,30 @@ void DominantDirection() { // get dominant wind direction
   if (windDir < 0) windDir += 360;
 }
 
-
 void GetAir() {
   digitalWrite(pwrAir, HIGH);   // turn on power
   delay(100);
   sensor_air.requestTemperatures(); // Send the command to get temperatures
   delay (750) ;
-  temp = sensor_air.getTempC();
-
-  if (temp > -100 && temp < 85  && fabs(temp + 0.0625) >= 0.01 * fabs(temp)) {
+  temp = sensor_air.getTempCByIndex(0);
+  if (temp > -100 && temp < 85) {
     dtostrf(temp, 4, 1, tmp);  //float Tmp to char
   }
   digitalWrite(pwrAir, LOW);   // turn off power
 }
 
+
 void GetWater() {
   digitalWrite(pwrWater, HIGH);   // turn on power
-  delay(100);
+  delay(500);
   sensor_water.requestTemperatures(); // Send the command to get temperatures
   delay (750) ;
-  water = sensor_water.getTempC();
-  if (water > -100 && water < 85 && fabs(water + 0.0625) >= 0.01 * fabs(water)) {
+  water = sensor_water.getTempCByIndex(0);
+  if (water > -100 && water < 85) {
     dtostrf(water, 4, 1, wat);  //float Tmp to char
   }
   digitalWrite(pwrWater, LOW);   // turn off power
 }
-
 
 void GetAvgWInd() {
   wind_speed = windAvr / measureCount; // calculate average wind

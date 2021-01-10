@@ -2,7 +2,7 @@
 #include "src/LowPower/LowPower.h" //sleep library
 #include <math.h> // wind speed calculations
 #include "src/OneWire/OneWire.h" //tmp sensor
-#include "src/DS18B20/DS18B20.h"
+#include "src/DS18B20/DallasTemperature.h"
 #include "src/TimerOne/TimerOne.h"
 #define TINY_GSM_MODEM_SIM7000
 #include "src/Fona/Adafruit_FONA.h"
@@ -16,11 +16,12 @@
 #define PWRKEY 10
 #define FORMAT "id=%s&d=%d&s=%d.%d&g=%d.%d&t=%s&w=%s&b=%d&sig=%d&c=%d&r=%d"
 #define FORMAT_URL "vetercek.com/xml/ws_data.php?id=%s&d=%d&s=%d.%d&g=%d.%d&t=%s&w=%s&b=%d&sig=%d&c=%d&r=%d"
+byte data[] = { 86,52,23,40,31,87,31,16,6,  2,77, 0,0, 0,0, 1,0,0, 1,0,0, 77,18,40,0 }; // data
 
 OneWire oneWire_in(ONE_WIRE_BUS_1);
 OneWire oneWire_out(ONE_WIRE_BUS_2);
-DS18B20 sensor_air(&oneWire_in);
-DS18B20 sensor_water(&oneWire_out);
+DallasTemperature sensor_air(&oneWire_in);
+DallasTemperature sensor_water(&oneWire_out);
 
 
 #include <SoftwareSerial.h>
@@ -31,15 +32,15 @@ Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
 //////////////////////////////////    EDIT THIS
 //#define APN "internet.simobil.si"
 #define APN "iot.1nce.net"
+#define GSM_MODE 13 // 2 automatic, 38 LTE, 13 2G
 int cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 40; // interval after how many measurements data is send
-const char* MQTTuser = MQTTu;
-const char* MQTTpass = MQTTp;
 const char* broker = "vetercek.com";
-#define GSM_MODE 13 // 2 automatic, 38 LTE, 13 2G
 //select how to post data - uncomment only one
 //#define SEND_MQTT
+  const char* MQTTuser = MQTTu;
+  const char* MQTTpass = MQTTp;
 //#define HTTP
 #define UDP
 #define DEBUG // comment out if you want to turn off debugging
