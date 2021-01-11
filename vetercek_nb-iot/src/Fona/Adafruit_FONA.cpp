@@ -914,13 +914,13 @@ boolean Adafruit_FONA::UDPconnected(void) {
   return (strcmp(replybuffer, "STATE: CONNECT OK") == 0);
 }
 
-boolean Adafruit_FONA::UDPsend(char *packet, uint8_t len, char *response) {
+boolean Adafruit_FONA::UDPsend(char *packet, uint8_t len, byte response[10],uint8_t charr) {
 
   DEBUG_PRINT(F("AT+CIPSEND="));
   DEBUG_PRINTLN(len);
 #ifdef ADAFRUIT_FONA_DEBUG
   for (uint16_t i=0; i<len; i++) {
-  DEBUG_PRINT(F(" 0x"));
+  //DEBUG_PRINT(F(" 0x"));
   DEBUG_PRINT(packet[i], HEX);
   }
 #endif
@@ -934,17 +934,16 @@ boolean Adafruit_FONA::UDPsend(char *packet, uint8_t len, char *response) {
   if (replybuffer[0] != '>') return false;
 
   mySerial->write(packet, len);
-DEBUG_PRINTLN(packet);
 
   readline(5000); // return SEND OK
-  int ok_response= (strcmp(replybuffer, "SEND OK") == 0);
-  readline(5000); // RETURN DATA
+  readline2(5000,charr); // RETURN DATA
+   
+     for (uint16_t i=0; i<charr;i++) {
+		response[i]=replybuffer2[i];
+		//DEBUG_PRINTLN(replybuffer2[i]);
+	}
 
-   strcpy(response, replybuffer);
-
-  //DEBUG_PRINT (F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
-
-  if (ok_response==1) return true;
+  if (replybuffer2[0] > 0) return true;
 
   else return false;
 }
@@ -1206,6 +1205,32 @@ uint8_t Adafruit_FONA::readline(uint16_t timeout, boolean multiline) {
     delay(1);
   }
   replybuffer[replyidx] = 0;  // null term
+  return replyidx;
+}
+
+uint8_t Adafruit_FONA::readline2(uint16_t timeout, uint8_t characters) {
+  uint16_t replyidx = 0;
+
+  while (timeout--) {
+    if (replyidx >= characters) {
+      break;
+    }
+
+    while(mySerial->available() ) {
+      int c =  mySerial->read();
+      replybuffer2[replyidx] = c;
+      replyidx++;
+     if (replyidx == characters) {
+      break;
+		}
+    }
+
+    if (timeout == 0) {
+      break;
+    }
+    delay(1);
+  }
+  replybuffer2[replyidx] = 0;  // null term
   return replyidx;
 }
 

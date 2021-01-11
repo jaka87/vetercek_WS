@@ -16,7 +16,7 @@
 #define PWRKEY 10
 #define FORMAT "id=%s&d=%d&s=%d.%d&g=%d.%d&t=%s&w=%s&b=%d&sig=%d&c=%d&r=%d"
 #define FORMAT_URL "vetercek.com/xml/ws_data.php?id=%s&d=%d&s=%d.%d&g=%d.%d&t=%s&w=%s&b=%d&sig=%d&c=%d&r=%d"
-byte data[] = { 86,52,23,40,31,87,31,16,6,  2,77, 0,0, 0,0, 1,0,0, 1,0,0, 77,18,40,0 }; // data
+byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0 }; // data
 
 OneWire oneWire_in(ONE_WIRE_BUS_1);
 OneWire oneWire_out(ONE_WIRE_BUS_2);
@@ -52,7 +52,7 @@ const char* topicPUT="ws";
 char URL[90]; // Make sure this is long enough
 unsigned int pwrAir = 11; // power for air sensor
 unsigned int pwrWater = 12; // power for water sensor
-byte resetReason = MCUSR;
+int resetReason = MCUSR;
 int windDelay = 2300; // time for each anemometer measurement in seconds
 byte onOffTmp = 1;   //on/off temperature measure
 volatile unsigned long timergprs = 0; // timer to check if GPRS is taking to long to complete
@@ -84,11 +84,10 @@ int wind_gust;   //calculated wind gusts
 int battLevel = 0; // Battery level (percentage)
 unsigned int sig = 0;
 float actualWindDelay; //time between first and last measured anemometer rotation
-char IMEI[16] = {0}; // Use this for device ID
-byte sleepBetween=1;
+char IMEI[15]; // Use this for device ID
+int idd[15];
+int sleepBetween=1;
 byte sendBatTemp=10;
-
-
 
 
 void setup() {
@@ -144,17 +143,34 @@ void setup() {
   //fona.set_eDRX(1, 5, "0010");
   fona.enablePSM(false);
   delay(200);
+
   
 
-  uint8_t imeiLen = fona.getIMEI(IMEI);
-  if (imeiLen <15) {
-    char IMEI="1111111111";
+  uint8_t imeiLen = fona.getIMEI(IMEI);  // imei to byte array
+    delay(200);
+  if (imeiLen >13 and imeiLen < 17) {
+  for(int i=0; i<15; i++)
+    {
+      idd[i]=(int)IMEI[i] - 48;
+    }
+    data[0]=((idd[0]*10)+idd[1]);
+    data[1]=((idd[2]*10)+idd[3]);
+    data[2]=((idd[4]*10)+idd[5]);
+    data[3]=((idd[6]*10)+idd[7]);
+    data[4]=((idd[8]*10)+idd[9]);
+    data[5]=((idd[10]*10)+idd[11]);
+    data[6]=((idd[12]*10)+idd[13]);
+    data[7]=(idd[14]);
   }
-  delay(200);
-      Serial.print("Module IMEI: "); Serial.println(IMEI);
 
+  
+#ifdef DEBUG
+  Serial.print("Module IMEI: "); Serial.println(IMEI);
+#endif 
 
+#ifdef SEND_MQTT
   sprintf(topicGET, "get/%s", IMEI);  
+#endif 
 
   connectGPRS();
   digitalWrite(DTR, HIGH);  //sleep
@@ -171,16 +187,16 @@ void loop() {
     LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);  // sleep
   }
   #ifdef DEBUG                                 // debug data
-    //Serial.print(" rot:");
-    //Serial.print(rotations);
-    //Serial.print(" delay:");
-    //Serial.print(actualWindDelay);
-    //Serial.print(" dir:");
-    //Serial.print(calDirection);
+    Serial.print(" rot:");
+    Serial.print(rotations);
+    Serial.print(" delay:");
+    Serial.print(actualWindDelay);
+    Serial.print(" dir:");
+    Serial.print(calDirection);
     Serial.print(" speed:");
     Serial.print(windSpeed);
-    //Serial.print(" gust:");
-    //Serial.print(windGustAvg);
+    Serial.print(" gust:");
+    Serial.print(windGustAvg);
     Serial.print(" next:");
     Serial.print(whenSend - measureCount);
     Serial.print(" count:");
@@ -188,19 +204,20 @@ void loop() {
   #endif
 
   GetAvgWInd();                                 // avg wind
-  //getMQTTmsg();
+
+#ifdef SEND_MQTT
+  getMQTTmsg(); 
+#endif 
 
   if ( (resetReason==2 and measureCount > 2) or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend) or (measureCount >= (whenSend*2) or whenSend>150) ) {   // check if is time to send data online
-      //delay(100);
       digitalWrite(DTR, LOW);  //wake up  
     SendData();
-
       digitalWrite(DTR, HIGH);  //sleep  
 
   }
   else { // check if is time to send data online
   #ifdef DEBUG
-      //Serial.print("tim: ");
+      Serial.print("tim: ");
       Serial.println(timergprs);
   #endif
     noInterrupts();
@@ -210,7 +227,7 @@ void loop() {
 }
 
 
-void CheckTimerGPRS() { // if unable to send data in 100s
+void CheckTimerGPRS() { // if unable to send data in 200s
   timergprs++;
   if (timergprs > 200) {
     timergprs = 0;

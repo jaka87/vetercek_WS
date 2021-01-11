@@ -1,6 +1,6 @@
 bool netStatus() {
   int n = fona.getNetworkStatus();
-  
+  #ifdef DEBUG
   Serial.print(F("Network status ")); Serial.print(n); Serial.print(F(": "));
   if (n == 0) Serial.println(F("Not registered"));
   if (n == 1) Serial.println(F("Registered (home)"));
@@ -8,7 +8,8 @@ bool netStatus() {
   if (n == 3) Serial.println(F("Denied"));
   if (n == 4) Serial.println(F("Unknown"));
   if (n == 5) Serial.println(F("Registered roaming"));
-
+  #endif
+  
   if (!(n == 1 || n == 5)) return false;
   else return true;
 }
@@ -95,9 +96,7 @@ void getMQTTmsg() {
         char *topic_p = strtok(NULL, ",\"");
         char *payload_string = strtok(NULL, ",\"");
 
-      parseResponse(payload_string);
- 
-  
+      parseResponse(payload_string);  
       }
     }
 
@@ -109,7 +108,9 @@ void getMQTTmsg() {
 
 void connectGPRS() {
     while (!netStatus()) {
-      Serial.println(F("Failed to connect to cell network, retrying..."));
+      #ifdef DEBUG
+        Serial.println(F("Failed to connect to cell network, retrying..."));
+      #endif 
       delay(2000); // Retry every 2s
     }
     Serial.println(F("Connected to cell network!"));
@@ -118,15 +119,21 @@ void connectGPRS() {
     // Open wireless connection if not already activated
     if (!fona.wirelessConnStatus()) {
       while (!fona.openWirelessConnection(true)) {
-        Serial.println(F("Failed to enable connection, retrying..."));
+        #ifdef DEBUG
+          Serial.println(F("Failed to enable connection, retrying..."));
+        #endif 
         delay(2000); // Retry every 2s
       }
-      Serial.println(F("Enabled data!"));
+      #ifdef DEBUG
+        Serial.println(F("Enabled data!"));
+      #endif 
     }
 
 #else
   if (fona.enableGPRS(true)) {
-  Serial.println(F("Enabled data"));
+  #ifdef DEBUG  
+    Serial.println(F("Enabled data"));
+  #endif 
   }
 #endif 
 
@@ -170,7 +177,7 @@ void PostData() {
     if (fona.MQTT_publish("ws", URL, strlen(URL), 0, 0)) {
         fona.MQTT_subscribe(topicGET, 0); // Topic name, QoS
     #ifdef DEBUG
-    Serial.println("MQTT UPLOADED");
+      Serial.println("MQTT UPLOADED");
     #endif  
     AfterPost(); 
       }     
@@ -178,12 +185,39 @@ void PostData() {
 
 
 #ifdef UDP
- sprintf(URL, FORMAT,IMEI, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, battLevel, sig, measureCount,resetReason);
-    #ifdef DEBUG
-      Serial.println(URL);
-    #endif
+ //sprintf(URL, FORMAT,IMEI, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, battLevel, sig, measureCount,resetReason);
+   // #ifdef DEBUG
+     // Serial.println(URL);
+    //#endif
 
-//byte data[] = { 86,52,23,40,31,87,31,16,6,  2,77, 0,0, 0,0, 1,0,0, 1,0,0, 77,18,40,0 }; // data
+data[8]=windDir/100;
+data[9]=windDir%100;
+data[10]=wind_speed/10;
+data[11]=wind_speed%10;
+data[12]=windGustAvg/10;
+data[13]=windGustAvg%10;
+data[15]=abs(temp*100)/100;
+data[16]=abs(int(temp*100))%100;
+data[18]=abs(water*100)/100;
+data[19]=abs(int(water*100))%100;
+data[20]=battLevel;
+data[21]=sig;
+data[22]=measureCount;
+data[23]=resetReason;
+
+if (temp > 0) {
+  data[14]=1;
+} 
+else {
+  data[14]=0;
+} 
+if (water > 0) {
+  data[17]=1;
+} 
+else {
+  data[17]=0;
+} 
+
 
 bool isConnected = fona.UDPconnected();
 
@@ -192,17 +226,37 @@ bool isConnected = fona.UDPconnected();
       if (GPRSstate !=1) {
           connectGPRS();
        } 
-     fona.UDPconnect("vetercek.com",6789);
+     fona.UDPconnect("vetercek.com",6788);
      }     
 
-  char response[50];  
-  //if ( fona.UDPsend(data,sizeof(data),response)) { //25
-  if ( fona.UDPsend(URL,strlen(URL),response)) { ///61
-  Serial.println(response);
+  byte response[10];  
+  if ( fona.UDPsend(data,sizeof(data),response,9)) { //25
   
-  parseResponse(response);
+  if (response[0] >0) { whenSend=response[0];}
+  if (response[1] ==1 ) {  
+    vaneOffset=(response[2]*100)+response[3];    // if byte is positive value
+  } 
+  else {  
+    vaneOffset=-1*((response[2]*100)+response[3]);
+  }
+
+  if (response[4] >0) { windDelay=response[4]*100;}
+  if (response[8] >0) { reset(); }
+
+  onOffTmp=response[5];
+  cutoffWind=response[6];
+  sleepBetween=response[7];
+
+     #ifdef DEBUG
+      Serial.println("SEND DONE");
+     #endif
   AfterPost(); 
    } 
+
+   else {
+     fona.UDPclose();
+   } 
+   
 #endif 
 
 
@@ -220,12 +274,12 @@ int8_t state = fona.GPRSstate();
 
 char response[50];  
   if (fona.postData(URL,response)) {
-    Serial.println(F("complete HTTP POST..."));
+    #ifdef DEBUG
+      Serial.println(F("complete HTTP POST..."));
+    #endif
     parseResponse(response);
     AfterPost(); 
    }
-
- 
 #endif 
 
 
@@ -244,8 +298,8 @@ void AfterPost() {
     windAvgY = 0;
     resetReason=0;
     memset(windGust, 0, sizeof(windGust)); // empty direction array
-    memset(tmp, 0, sizeof(tmp));
-    memset(wat, 0, sizeof(wat));
+    //memset(tmp, 0, sizeof(tmp));
+    //memset(wat, 0, sizeof(wat));
 }
 
 

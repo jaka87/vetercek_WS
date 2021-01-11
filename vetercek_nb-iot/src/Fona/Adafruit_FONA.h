@@ -152,7 +152,7 @@ class Adafruit_FONA : public FONAStreamType {
   boolean UDPconnect(char *server, uint16_t port);
   boolean UDPclose(void);
   boolean UDPconnected(void);
-  boolean UDPsend(char *packet, uint8_t len, char *response);
+  boolean UDPsend(char *packet, uint8_t len, byte response[10],uint8_t charr);
   uint16_t UDPavailable(void);
 
   // MQTT
@@ -199,6 +199,7 @@ class Adafruit_FONA : public FONAStreamType {
   uint8_t _type;
 
   char replybuffer[255];
+  byte replybuffer2[10];
   FONAFlashStringPtr apn;
   FONAFlashStringPtr apnusername;
   FONAFlashStringPtr apnpassword;
@@ -212,6 +213,7 @@ class Adafruit_FONA : public FONAStreamType {
   void flushInput();
   uint16_t readRaw(uint16_t b);
   uint8_t readline(uint16_t timeout = FONA_DEFAULT_TIMEOUT_MS, boolean multiline = false);
+  uint8_t readline2(uint16_t timeout, uint8_t characters);
   uint8_t getReply(const char *send, uint16_t timeout = FONA_DEFAULT_TIMEOUT_MS);
   uint8_t getReply(FONAFlashStringPtr send, uint16_t timeout = FONA_DEFAULT_TIMEOUT_MS);
   uint8_t getReply(FONAFlashStringPtr prefix, char *suffix, uint16_t timeout = FONA_DEFAULT_TIMEOUT_MS);
