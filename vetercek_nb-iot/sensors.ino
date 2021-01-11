@@ -114,7 +114,17 @@ void GetWindDirection() {
 void BeforePostCalculations() {
   DominantDirection();                          // wind direction
   GetAvgWInd();                                 // avg wind
-  if (onOffTmp > 0) {
+  if (onOffTmp == 1) {
+    GetAir();                               // air
+    data[18]=99;
+    delay(100);
+  }
+  else if (onOffTmp == 2) {                 
+    GetWater();                             // water
+    data[19]=99;
+    delay(100);
+  }
+  else if (onOffTmp > 2) {
     GetAir();                               // air
     GetWater();                             // water
     delay(100);

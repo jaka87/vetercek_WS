@@ -226,7 +226,7 @@ bool isConnected = fona.UDPconnected();
       if (GPRSstate !=1) {
           connectGPRS();
        } 
-     fona.UDPconnect("vetercek.com",6788);
+     fona.UDPconnect("vetercek.com",6789);
      }     
 
   byte response[10];  
