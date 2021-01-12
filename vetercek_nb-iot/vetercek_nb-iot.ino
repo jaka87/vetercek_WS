@@ -7,6 +7,7 @@
 #define TINY_GSM_MODEM_SIM7000
 #include "src/Fona/Adafruit_FONA.h"
 #include "config.h"
+#include <EEPROM.h>
 
 #define ONE_WIRE_BUS_1 4 //air
 #define ONE_WIRE_BUS_2 3 // water
@@ -69,9 +70,9 @@ int windGust[3] = { 0, 0, 0 }; // top three gusts
 int windGustAvg = 0; //wind gust average
 int measureCount = 0; // count each mesurement
 byte MQTTcount=0;
-float water; // water Temperature
+float water=99.0; // water Temperature
 char wat[6]; // water char value
-float temp; //Stores Temperature value
+float temp=99.0; //Stores Temperature value
 char tmp[6]; // Temperature char value
 int vaneValue;       // raw analog value from wind vane
 int direction;       // translated 0 - 360 direction
@@ -145,35 +146,9 @@ void setup() {
   delay(200);
 
   
-
-  uint8_t imeiLen = fona.getIMEI(IMEI);  // imei to byte array
-    delay(200);
-  if (imeiLen >13 and imeiLen < 17) {
-  for(int i=0; i<15; i++)
-    {
-      idd[i]=(int)IMEI[i] - 48;
-    }
-    data[0]=((idd[0]*10)+idd[1]);
-    data[1]=((idd[2]*10)+idd[3]);
-    data[2]=((idd[4]*10)+idd[5]);
-    data[3]=((idd[6]*10)+idd[7]);
-    data[4]=((idd[8]*10)+idd[9]);
-    data[5]=((idd[10]*10)+idd[11]);
-    data[6]=((idd[12]*10)+idd[13]);
-    data[7]=(idd[14]);
-  }
-
-  
-#ifdef DEBUG
-  Serial.print("Module IMEI: "); Serial.println(IMEI);
-#endif 
-
-#ifdef SEND_MQTT
-  sprintf(topicGET, "get/%s", IMEI);  
-#endif 
-
-  connectGPRS();
-  digitalWrite(DTR, HIGH);  //sleep
+checkIMEI();
+connectGPRS();
+digitalWrite(DTR, HIGH);  //sleep
 
 }
 
@@ -211,11 +186,11 @@ void loop() {
 
   if ( (resetReason==2 and measureCount > 2) or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend) or (measureCount >= (whenSend*2) or whenSend>150) ) {   // check if is time to send data online
       digitalWrite(DTR, LOW);  //wake up  
-    SendData();
+        SendData();
       digitalWrite(DTR, HIGH);  //sleep  
 
   }
-  else { // check if is time to send data online
+  else { // restart timer
   #ifdef DEBUG
       Serial.print("tim: ");
       Serial.println(timergprs);

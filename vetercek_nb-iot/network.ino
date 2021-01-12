@@ -322,3 +322,41 @@ void SendData() {
   timergprs = 0;
   interrupts();
 }
+
+void checkIMEI() {
+   if (EEPROM.read(0)==1) {  // read from EEPROM if data in it
+    
+      for (int i = 0; i < 8; i++){
+       data[i]=EEPROM.read(i+1);
+       }
+   }
+   
+   else {  // read from SIM module
+    #ifdef DEBUG
+      Serial.println("IMEI read!");
+    #endif
+      uint8_t imeiLen = fona.getIMEI(IMEI);  // imei to byte array
+        delay(200);
+        
+      for(int i=0; i<16; i++)
+        {
+          idd[i]=(int)IMEI[i] - 48;
+        }
+
+      for (int i = 0; i < 8; i++){
+        int multiply=i*2;
+        if (i > 6) {
+       data[i]=(idd[multiply]);
+       }
+        else {
+       data[i]=((idd[multiply]*10)+idd[multiply+1]);
+       }   
+      }           
+
+
+        EEPROM.write(0, 1);   // write new data to EEPROM
+        for (int i = 0; i < 8; i++){
+          EEPROM.write(i+1, data[i]);
+         }
+   }
+}
