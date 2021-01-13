@@ -40,28 +40,22 @@ void parseResponse(char *payload_string) {
    while(token != NULL)
    {
     num++;
-    if (num==1) {
-      whenSend=atoi(token); // how offten to send data
+    if (num==1) { whenSend=atoi(token); // how offten to send data
     }
 
-    else if (num==2) {
-      vaneOffset=atoi(token);  // wind vane offset
+    else if (num==2) { vaneOffset=atoi(token);  // wind vane offset
     }    
 
-    else if (num==3) {
-      windDelay=atoi(token);  // interval for wind measurement
+    else if (num==3) { windDelay=atoi(token);  // interval for wind measurement
     } 
 
-    else if (num==4) {
-      onOffTmp=atoi(token);  // turn on / off temperature measurement
+    else if (num==4) { onOffTmp=atoi(token);  // turn on / off temperature measurement
     } 
 
-    else if (num==5) {
-      cutoffWind=atoi(token);  // cuttoff wind treshold
+    else if (num==5) {cutoffWind=atoi(token);  // cuttoff wind treshold
     } 
 
-    else if (num==6) {
-      sleepBetween=atoi(token);  // sleep between wind measurements
+    else if (num==6) { sleepBetween=atoi(token);  // sleep between wind measurements
     } 
         
     else if (num==7) {
@@ -75,7 +69,7 @@ void parseResponse(char *payload_string) {
    }
 } 
 
-
+#ifdef SEND_MQTT
 void getMQTTmsg() {
     //digitalWrite(DTR, LOW);  //wake up
 
@@ -86,7 +80,6 @@ void getMQTTmsg() {
         i++;
       }
         //Serial.println(replybuffer);
-
       delay(300); // Make sure it prints and also allow other stuff to run properly
       if (strstr(replybuffer, "SMSUB:") != NULL ) {
         
@@ -101,9 +94,7 @@ void getMQTTmsg() {
     }
 
 }
-
-
-
+#endif 
 
 
 void connectGPRS() {
@@ -142,7 +133,17 @@ void connectGPRS() {
 
 void PostData() {    
 
-  //powerOn();
+//  #ifdef NBIOT
+//    wakeUp();
+//    delay(300);
+//  fonaSS.begin(9600);
+//  if (! fona.begin(fonaSS)) {
+//    #ifdef DEBUG
+//      Serial.println(F("Couldn't find FONA"));
+//    #endif  
+//    while(1); // Don't proceed if it couldn't find the device
+//  }
+
   delay(300);
 
   if (sendBatTemp >= 10) {  // send data about battery and signal every 10 measurements
@@ -185,38 +186,34 @@ void PostData() {
 
 
 #ifdef UDP
- //sprintf(URL, FORMAT,IMEI, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, battLevel, sig, measureCount,resetReason);
-   // #ifdef DEBUG
-     // Serial.println(URL);
-    //#endif
 
-data[8]=windDir/100;
-data[9]=windDir%100;
-data[10]=wind_speed/10;
-data[11]=wind_speed%10;
-data[12]=windGustAvg/10;
-data[13]=windGustAvg%10;
-data[15]=abs(temp*100)/100;
-data[16]=abs(int(temp*100))%100;
-data[18]=abs(water*100)/100;
-data[19]=abs(int(water*100))%100;
-data[20]=battLevel;
-data[21]=sig;
-data[22]=measureCount;
-data[23]=resetReason;
-
-if (temp > 0) {
-  data[14]=1;
-} 
-else {
-  data[14]=0;
-} 
-if (water > 0) {
-  data[17]=1;
-} 
-else {
-  data[17]=0;
-} 
+  data[8]=windDir/100;
+  data[9]=windDir%100;
+  data[10]=wind_speed/10;
+  data[11]=wind_speed%10;
+  data[12]=windGustAvg/10;
+  data[13]=windGustAvg%10;
+  data[15]=abs(temp*100)/100;
+  data[16]=abs(int(temp*100))%100;
+  data[18]=abs(water*100)/100;
+  data[19]=abs(int(water*100))%100;
+  data[20]=battLevel;
+  data[21]=sig;
+  data[22]=measureCount;
+  data[23]=resetReason;
+  
+  if (temp > 0) {
+    data[14]=1;
+  } 
+  else {
+    data[14]=0;
+  } 
+  if (water > 0) {
+    data[17]=1;
+  } 
+  else {
+    data[17]=0;
+  } 
 
 
 bool isConnected = fona.UDPconnected();
@@ -241,7 +238,11 @@ bool isConnected = fona.UDPconnected();
   }
 
   if (response[4] >0) { windDelay=response[4]*100;}
-  if (response[8] >0) { reset(); }
+  if (response[8] ==1) { reset(); }
+  else if (response[9] == 2 or response[9]==13 or response[9]==38) { // if new settings for network prefference
+    EEPROM.write(9, response[9]);   // write new data to EEPROM
+    reset(); 
+    }
 
   onOffTmp=response[5];
   cutoffWind=response[6];
@@ -292,8 +293,8 @@ void AfterPost() {
     windAvr = 0;
     windGustAvg = 0;
     windDir = 0;
-    water = 0;
-    temp = 0;
+    water = 99;
+    temp = 99;
     windAvgX = 0;
     windAvgY = 0;
     resetReason=0;
@@ -325,7 +326,14 @@ void SendData() {
 
 void checkIMEI() {
    if (EEPROM.read(0)==1) {  // read from EEPROM if data in it
-    
+
+    #ifdef DEBUG
+      Serial.println("IMEI from EEPROM");
+         for (int i = 1; i < 9; i++){
+             Serial.print(EEPROM.read(i));
+         }
+             Serial.println();
+    #endif    
       for (int i = 0; i < 8; i++){
        data[i]=EEPROM.read(i+1);
        }

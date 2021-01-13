@@ -41,6 +41,9 @@ uint8_t Adafruit_FONA::type(void) {
   return _type;
 }
 
+
+
+
 boolean Adafruit_FONA::begin(Stream &port) {
   mySerial = &port;
 

@@ -31,9 +31,8 @@ SoftwareSerial fonaSS = SoftwareSerial(8, 9); // RX, TX
 Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
 
 //////////////////////////////////    EDIT THIS
-//#define APN "internet.simobil.si"
-#define APN "iot.1nce.net"
-#define GSM_MODE 13 // 2 automatic, 38 LTE, 13 2G
+#define APN "internet.simobil.si"
+//#define APN "iot.1nce.net"
 int cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 40; // interval after how many measurements data is send
@@ -89,7 +88,7 @@ char IMEI[15]; // Use this for device ID
 int idd[15];
 int sleepBetween=1;
 byte sendBatTemp=10;
-
+int GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 
 void setup() {
 
@@ -114,6 +113,13 @@ void setup() {
   sensor_water.begin();
   Timer1.initialize(1000000);         // initialize timer1, and set a 1 second period
   Timer1.attachInterrupt(CheckTimerGPRS);  // attaches checkTimer() as a timer overflow interrupt
+
+  if (EEPROM.read(9)==13) { GSMstate=13; }
+  else if (EEPROM.read(9)==2) { GSMstate=2; }
+  else if (EEPROM.read(9)==38) {
+    //#define NBIOT
+    GSMstate=38; }
+
   
   //power
   pinMode(PWRKEY, OUTPUT);
@@ -127,22 +133,21 @@ void setup() {
   fona.setFunctionality(0); // AT+CFUN=0
   delay(3000);
   fona.setFunctionality(1); // AT+CFUN=1
-//  fona.setNetworkSettings(&apn); // APN
   fona.setNetworkSettings(F(APN)); // APN
   delay(200);
-//  fona.setPreferredMode(38); // Use LTE only, not 2G
-  //fona.setPreferredMode(13); // Use 2G
-  fona.setPreferredMode(GSM_MODE); // automatic
-  delay(200);
+
+  fona.setPreferredMode(GSMstate); 
+  delay(500);
   fona.setNetLED(true,3,64,5000);
-  delay(200);
+  delay(500);
+  
   //fona.setOperatingBand("NB-IOT",20); // AT&T uses band 12
-  //fona.setHTTPSRedirect(true);
-  //fona.enableRTC(true); 
   fona.enableSleepMode(true);
   delay(200);
-  //fona.set_eDRX(1, 5, "0010");
+  fona.set_eDRX(1, 5, "1001");
+  delay(200);
   fona.enablePSM(false);
+  //fona.enablePSM(true, "00100001", "00100011");
   delay(200);
 
   
@@ -230,12 +235,11 @@ void powerOn() {
   digitalWrite(PWRKEY, LOW);
   delay(3000); // For SIM7000 
   digitalWrite(PWRKEY, HIGH);
-  //delay(1000);
+  delay(1000);
 }
 
 void wakeUp() {
   digitalWrite(PWRKEY, LOW);
   delay(100); // For SIM7000 
   digitalWrite(PWRKEY, HIGH);
-  delay(1000);
 }
