@@ -239,8 +239,8 @@ bool isConnected = fona.UDPconnected();
 
   if (response[4] >0) { windDelay=response[4]*100;}
   if (response[8] ==1) { reset(); }
-  else if (response[9] == 2 or response[9]==13 or response[9]==38) { // if new settings for network prefference
-    EEPROM.write(9, response[9]);   // write new data to EEPROM
+  else if (response[8] == 2 or response[8]==13 or response[8]==38) { // if new settings for network prefference
+    EEPROM.write(9, response[8]);   // write new data to EEPROM
     reset(); 
     }
 
