@@ -135,6 +135,13 @@ void BeforePostCalculations() {
 // Read the module's power supply voltage
 float readVcc() {
   // Read battery voltage
-  fona.getBattPercent(&battLevel);
-  return battLevel;
+if (fona.getBattVoltage(&battVoltage)) {
+
+  battLevel=(battVoltage-3600)/5;
+}
+else {
+  battLevel=0;
+}
+
+return battLevel;
 }

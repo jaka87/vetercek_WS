@@ -31,6 +31,27 @@ void moduleSetup() {
     while(1); // Don't proceed if it couldn't find the device
   }
 
+ fona.setFunctionality(0); // AT+CFUN=0
+  delay(3000);
+  fona.setFunctionality(1); // AT+CFUN=1
+  fona.setNetworkSettings(F(APN)); // APN
+  delay(200);
+
+  fona.setPreferredMode(GSMstate); 
+  delay(500);
+  fona.setNetLED(true,3,64,5000);
+  delay(500);
+  
+  //fona.setOperatingBand("NB-IOT",20); // AT&T uses band 12
+  fona.enableSleepMode(true);
+  delay(200);
+  fona.set_eDRX(1, 5, "1001");
+  delay(200);
+  fona.enablePSM(false);
+  //fona.enablePSM(true, "00100001", "00100011");
+  delay(200);
+
+
 }  
 
 void parseResponse(char *payload_string) {
@@ -106,27 +127,13 @@ void connectGPRS() {
     }
     Serial.println(F("Connected to cell network!"));
 
-#ifdef SEND_MQTT
-    // Open wireless connection if not already activated
-    if (!fona.wirelessConnStatus()) {
-      while (!fona.openWirelessConnection(true)) {
-        #ifdef DEBUG
-          Serial.println(F("Failed to enable connection, retrying..."));
-        #endif 
-        delay(2000); // Retry every 2s
-      }
-      #ifdef DEBUG
-        Serial.println(F("Enabled data!"));
-      #endif 
-    }
-
-#else
   if (fona.enableGPRS(true)) {
   #ifdef DEBUG  
     Serial.println(F("Enabled data"));
   #endif 
   }
-#endif 
+
+
 
 }
 
@@ -144,11 +151,11 @@ void PostData() {
 //    while(1); // Don't proceed if it couldn't find the device
 //  }
 
-  delay(300);
+  delay(500);
 
   if (sendBatTemp >= 10) {  // send data about battery and signal every 10 measurements
     sig=fona.getRSSI(); 
-    delay(100);
+    delay(300);
     battLevel = readVcc(); // Get voltage %
     sendBatTemp=0;
 }
@@ -219,7 +226,8 @@ void PostData() {
 bool isConnected = fona.UDPconnected();
 
     if (isConnected !=1) {
-    int8_t GPRSstate = fona.GPRSstate();
+    int8_t GPRSstate=fona.GPRSstate();
+
       if (GPRSstate !=1) {
           connectGPRS();
        } 
@@ -298,6 +306,7 @@ void AfterPost() {
     windAvgX = 0;
     windAvgY = 0;
     resetReason=0;
+    PDPcount=0;
     memset(windGust, 0, sizeof(windGust)); // empty direction array
     //memset(tmp, 0, sizeof(tmp));
     //memset(wat, 0, sizeof(wat));

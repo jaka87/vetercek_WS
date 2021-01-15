@@ -174,12 +174,6 @@ boolean Adafruit_FONA_LTE::setBaudrate(uint16_t baud) {
 
 /* returns value in mV (uint16_t) */
 boolean Adafruit_FONA::getBattVoltage(uint16_t *v) {
-  if (_type == SIM5320A || _type == SIM5320E || _type == SIM7500A || _type == SIM7500E) {
-    float f;
-    boolean b = sendParseReplyFloat(F("AT+CBC"), F("+CBC: "), &f, ',', 0);
-    *v = f*1000;
-    return b;
-  } else
     return sendParseReply(F("AT+CBC"), F("+CBC: "), v, ',', 2);
 }
 
@@ -684,8 +678,8 @@ boolean Adafruit_FONA::enableGPRS(boolean onoff) {
         // bring up wireless connection
         if (! sendCheckReply(F("AT+CIICR"), ok_reply, 10000))
           return false;
-        if (! sendCheckReply(F("AT+CIFSR"), ok_reply, 10000)) //jaka
-          return false;          
+        //if (! sendCheckReply(F("AT+CIFSR"), ok_reply, 10000)) //jaka - gets ip not ok status - parse reply
+          //return false;          
           
       // } // UNCOMMENT FOR LTE ONLY!
 
@@ -720,6 +714,9 @@ int8_t Adafruit_FONA::GPRSstate(void) {
 
   if (! sendParseReply(F("AT+CGATT?"), F("+CGATT: "), &state) )
     return -1;
+    
+   //if (! sendCheckReply(F("AT+CIFSR"), ok_reply, 5000)) //jaka
+   //return -1;     
 
   return state;
 }
@@ -909,7 +906,7 @@ boolean Adafruit_FONA::UDPclose(void) {
 }
 
 boolean Adafruit_FONA::UDPconnected(void) {
-  if (! sendCheckReply(F("AT+CIPSTATUS"), ok_reply, 100) ) return false;
+  if (! sendCheckReply(F("AT+CIPSTATUS"), ok_reply, 5000) ) return false;
   readline(100);
 
   DEBUG_PRINT (F("\t<--- ")); DEBUG_PRINTLN(replybuffer);

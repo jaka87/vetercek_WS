@@ -31,8 +31,8 @@ SoftwareSerial fonaSS = SoftwareSerial(8, 9); // RX, TX
 Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
 
 //////////////////////////////////    EDIT THIS
-#define APN "internet.simobil.si"
-//#define APN "iot.1nce.net"
+//#define APN "internet.simobil.si"
+#define APN "iot.1nce.net"
 int cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 40; // interval after how many measurements data is send
@@ -82,6 +82,7 @@ float windAvgY;
 int wind_speed;  //calculated wind speed
 int wind_gust;   //calculated wind gusts
 int battLevel = 0; // Battery level (percentage)
+int battVoltage = 0; // Battery voltage
 unsigned int sig = 0;
 float actualWindDelay; //time between first and last measured anemometer rotation
 char IMEI[15]; // Use this for device ID
@@ -89,6 +90,7 @@ int idd[15];
 int sleepBetween=1;
 byte sendBatTemp=10;
 int GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
+int PDPcount=0; // first reset after 100s
 
 void setup() {
 
@@ -128,29 +130,9 @@ void setup() {
   wakeUp();
   pinMode(DTR, OUTPUT);
 
+
   moduleSetup(); // Establishes first-time serial comm and prints IMEI
- 
-  fona.setFunctionality(0); // AT+CFUN=0
-  delay(3000);
-  fona.setFunctionality(1); // AT+CFUN=1
-  fona.setNetworkSettings(F(APN)); // APN
-  delay(200);
 
-  fona.setPreferredMode(GSMstate); 
-  delay(500);
-  fona.setNetLED(true,3,64,5000);
-  delay(500);
-  
-  //fona.setOperatingBand("NB-IOT",20); // AT&T uses band 12
-  fona.enableSleepMode(true);
-  delay(200);
-  fona.set_eDRX(1, 5, "1001");
-  delay(200);
-  fona.enablePSM(false);
-  //fona.enablePSM(true, "00100001", "00100011");
-  delay(200);
-
-  
 checkIMEI();
 connectGPRS();
 digitalWrite(DTR, HIGH);  //sleep
@@ -209,7 +191,22 @@ void loop() {
 
 void CheckTimerGPRS() { // if unable to send data in 200s
   timergprs++;
-  if (timergprs > 200) {
+  if (timergprs > 100 and PDPcount == 0) {
+    #ifdef DEBUG
+      Serial.println("soft reset");
+    #endif
+    powerOn(); // Power on the module
+    delay(4000);
+    wakeUp();
+    pinMode(DTR, OUTPUT);
+    moduleSetup(); // Establishes first-time serial comm and prints IMEI
+    connectGPRS();
+  }
+  
+  else if (timergprs > 200) {
+    #ifdef DEBUG
+      Serial.println("hard reset");
+    #endif    
     timergprs = 0;
     powerOn();
     delay(1000);
