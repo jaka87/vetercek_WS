@@ -91,6 +91,7 @@ class Adafruit_FONA : public FONAStreamType {
  public:
   Adafruit_FONA(int8_t);
   boolean begin(FONAStreamType &port);
+  boolean checkAT();
   uint8_t type();
 
   // Stream
@@ -151,7 +152,7 @@ class Adafruit_FONA : public FONAStreamType {
   // TCP raw connections
   boolean UDPconnect(char *server, uint16_t port);
   boolean UDPclose(void);
-  boolean UDPconnected(void);
+  uint8_t UDPconnected(void);
   boolean UDPsend(char *packet, uint8_t len, byte response[10],uint8_t charr);
   uint16_t UDPavailable(void);
 

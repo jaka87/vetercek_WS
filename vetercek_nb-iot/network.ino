@@ -139,7 +139,12 @@ void connectGPRS() {
 
 
 void PostData() {    
-
+if (fona.checkAT()) {  // wait untill modem is active
+     #ifdef DEBUG
+      Serial.println("Modem active");
+     #endif  
+}
+      
 //  #ifdef NBIOT
 //    wakeUp();
 //    delay(300);
@@ -162,35 +167,6 @@ void PostData() {
   else {
     sendBatTemp=sendBatTemp+1;
 }
-
-#ifdef SEND_MQTT
- sprintf(URL, FORMAT,IMEI, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, battLevel, sig, measureCount,resetReason);
-    #ifdef DEBUG
-      Serial.println(URL);
-    #endif
-  if (! fona.MQTT_connectionStatus()) {
-      // Set up MQTT parameters (see MQTT app note for explanation of parameter values)
-      fona.MQTT_setParameter("URL", broker, 1883);
-      fona.MQTT_setParameter("USERNAME", MQTTuser);
-      fona.MQTT_setParameter("PASSWORD", MQTTpass);
-      fona.MQTT_setParameter("KEEPTIME", "150"); // Time to connect to server, 60s by default
-      delay(100);
-      Serial.println(F("Connecting to MQTT broker..."));
-      if (! fona.MQTT_connect(true)) {
-        Serial.println(F("Failed to connect to broker!"));
-        connectGPRS();
-      }
-    }
-
-    if (fona.MQTT_publish("ws", URL, strlen(URL), 0, 0)) {
-        fona.MQTT_subscribe(topicGET, 0); // Topic name, QoS
-    #ifdef DEBUG
-      Serial.println("MQTT UPLOADED");
-    #endif  
-    AfterPost(); 
-      }     
-#endif 
-
 
 #ifdef UDP
 
@@ -224,8 +200,11 @@ void PostData() {
 
 
 bool isConnected = fona.UDPconnected();
-
-    if (isConnected !=1) {
+     #ifdef DEBUG
+      Serial.print("UDP STATUS ");
+      Serial.println(isConnected);
+     #endif
+    if (isConnected ==0) {
     int8_t GPRSstate=fona.GPRSstate();
 
       if (GPRSstate !=1) {
@@ -233,6 +212,12 @@ bool isConnected = fona.UDPconnected();
        } 
      fona.UDPconnect("vetercek.com",6789);
      }     
+
+    else if (isConnected > 1) {
+     fona.enableGPRS(false);
+     connectGPRS();
+     fona.UDPconnect("vetercek.com",6789);
+     } 
 
   byte response[10];  
   if ( fona.UDPsend(data,sizeof(data),response,9)) { //25
@@ -264,10 +249,39 @@ bool isConnected = fona.UDPconnected();
 
    else {
      fona.UDPclose();
+     failedSend=failedSend+1;
    } 
    
 #endif 
 
+
+#ifdef SEND_MQTT
+ sprintf(URL, FORMAT,IMEI, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, battLevel, sig, measureCount,resetReason);
+    #ifdef DEBUG
+      Serial.println(URL);
+    #endif
+  if (! fona.MQTT_connectionStatus()) {
+      // Set up MQTT parameters (see MQTT app note for explanation of parameter values)
+      fona.MQTT_setParameter("URL", broker, 1883);
+      fona.MQTT_setParameter("USERNAME", MQTTuser);
+      fona.MQTT_setParameter("PASSWORD", MQTTpass);
+      fona.MQTT_setParameter("KEEPTIME", "150"); // Time to connect to server, 60s by default
+      delay(100);
+      Serial.println(F("Connecting to MQTT broker..."));
+      if (! fona.MQTT_connect(true)) {
+        Serial.println(F("Failed to connect to broker!"));
+        connectGPRS();
+      }
+    }
+
+    if (fona.MQTT_publish("ws", URL, strlen(URL), 0, 0)) {
+        fona.MQTT_subscribe(topicGET, 0); // Topic name, QoS
+    #ifdef DEBUG
+      Serial.println("MQTT UPLOADED");
+    #endif  
+    AfterPost(); 
+      }     
+#endif 
 
       
 #ifdef HTTP
@@ -307,6 +321,7 @@ void AfterPost() {
     windAvgY = 0;
     resetReason=0;
     PDPcount=0;
+    failedSend=0;
     memset(windGust, 0, sizeof(windGust)); // empty direction array
     //memset(tmp, 0, sizeof(tmp));
     //memset(wat, 0, sizeof(wat));
@@ -317,6 +332,7 @@ void AfterPost() {
 // send data to server
 void SendData() {
 #ifdef DEBUG
+  Serial.print("TIMER ");
   Serial.println(timergprs);
 #endif
     noInterrupts();

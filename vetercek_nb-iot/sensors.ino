@@ -137,7 +137,9 @@ float readVcc() {
   // Read battery voltage
 if (fona.getBattVoltage(&battVoltage)) {
 
-  battLevel=(battVoltage-3600)/5;
+  //battLevel=(battVoltage-3600)/5; //percentage
+  battLevel=battVoltage/20; // voltage
+  
 }
 else {
   battLevel=0;

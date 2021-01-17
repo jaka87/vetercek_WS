@@ -42,7 +42,11 @@ uint8_t Adafruit_FONA::type(void) {
 }
 
 
-
+boolean Adafruit_FONA::checkAT() {
+	if (sendCheckReply(F("AT"), ok_reply),5000)
+		return true;
+return false;
+}
 
 boolean Adafruit_FONA::begin(Stream &port) {
   mySerial = &port;
@@ -869,7 +873,7 @@ boolean Adafruit_FONA::UDPconnect(char *server, uint16_t port) {
 
 
   // close all old connections
-  if (! sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 20000) ) return false;
+  if (! sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 5000) ) return false;
 
   // single connection at a time
   if (! sendCheckReply(F("AT+CIPMUX=0"), ok_reply) ) return false;
@@ -878,7 +882,7 @@ boolean Adafruit_FONA::UDPconnect(char *server, uint16_t port) {
   if (! sendCheckReply(F("AT+CIPRXGET=0"), ok_reply) ) return false;  //jaka
 
   // keep alvie
-  if (! sendCheckReply(F("AT+CIPTKA=1,7200,600,9"), ok_reply) ) return false;
+  //if (! sendCheckReply(F("AT+CIPTKA=1,7200,600,9"), ok_reply) ) return false;
 
 
   DEBUG_PRINT(F("AT+CIPSTART=\"UDP\",\""));
@@ -902,16 +906,25 @@ boolean Adafruit_FONA::UDPconnect(char *server, uint16_t port) {
 }
 
 boolean Adafruit_FONA::UDPclose(void) {
-  return sendCheckReply(F("AT+CIPCLOSE"), F("CLOSE OK"));
+      if (! sendCheckReply(F("AT+CIPCLOSE"),  F("CLOSE OK"), 3000))
+        return false;
+      //if (! sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 3000))
+        //return false;	
+  return true;
 }
 
-boolean Adafruit_FONA::UDPconnected(void) {
-  if (! sendCheckReply(F("AT+CIPSTATUS"), ok_reply, 5000) ) return false;
-  readline(100);
+uint8_t Adafruit_FONA::UDPconnected(void) {
+  if (! sendCheckReply(F("AT+CIPSTATUS"), ok_reply, 200) ) return false;
+  readline(200);
 
   DEBUG_PRINT (F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
 
-  return (strcmp(replybuffer, "STATE: CONNECT OK") == 0);
+  //return (strcmp(replybuffer, "STATE: CONNECT OK") == 0);
+  
+  if (strcmp(replybuffer, "STATE: CONNECT OK") == 0) { return 1;}
+  else if (strcmp(replybuffer, "STATE:  UDP CLOSED") == 0) { return 5;}
+  else if (strcmp(replybuffer, "STATE: PDP DEACT:") == 0) { return 10;}
+  else { return 0;}
 }
 
 boolean Adafruit_FONA::UDPsend(char *packet, uint8_t len, byte response[10],uint8_t charr) {

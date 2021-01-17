@@ -91,6 +91,7 @@ int sleepBetween=1;
 byte sendBatTemp=10;
 int GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 int PDPcount=0; // first reset after 100s
+int failedSend=0; // if send fail
 
 void setup() {
 
@@ -191,7 +192,7 @@ void loop() {
 
 void CheckTimerGPRS() { // if unable to send data in 200s
   timergprs++;
-  if (timergprs > 100 and PDPcount == 0) {
+  if ((timergprs > 100 and PDPcount == 0) or failedSend > 5) {
     #ifdef DEBUG
       Serial.println("soft reset");
     #endif
@@ -203,7 +204,7 @@ void CheckTimerGPRS() { // if unable to send data in 200s
     connectGPRS();
   }
   
-  else if (timergprs > 200) {
+  else if (timergprs > 200 ) {
     #ifdef DEBUG
       Serial.println("hard reset");
     #endif    
