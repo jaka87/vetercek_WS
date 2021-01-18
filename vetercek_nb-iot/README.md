@@ -27,7 +27,7 @@ New PCB
 ## Payload
 There are three options to send data to server (HTTP,MQTT or custom UDP protocol). The lather is recomended
 UDP payload using this station is about 24 byte for upload and 9 bytes for server response
-**sample upload:**
+**sample upload:**  
 list=[11,11,11,11,11,11,11,1,   1,77, 12,2, 14,5, 1,20,3, 0,1,0, 77,18,40,0]  
 + first 8 bytes are id of the station
 + byte 9 and 10 are for wind wane -  (sample 177)
@@ -38,7 +38,7 @@ list=[11,11,11,11,11,11,11,1,   1,77, 12,2, 14,5, 1,20,3, 0,1,0, 77,18,40,0]
 + byte 21 is battery percentage (sample 77%)
 + byte 22 is signal 
 + byte 23 is count of measurements
-+ byte 24 is reset reason
++ byte 24 is reset reason  
 
 list=[40, 1,2,30, 23, 1, 5, 1, 0]  
 **sample response:**
