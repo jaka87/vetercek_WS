@@ -20,11 +20,11 @@ void moduleSetup() {
   // SIM7000 takes about 3s to turn on but SIM7500 takes about 15s
   // Press reset button if the module is still turning on and the board doesn't find it.
   // When the module is on it should communicate right after pressing reset
-  //fonaSS.begin(115200); // Default SIM7000 shield baud rate
+  fonaSS.begin(115200); // Default SIM7000 shield baud rate
   
   //Serial.println(F("Configuring to 9600 baud"));
-  //fonaSS.println("AT+IPR=9600"); // Set baud rate
-  //delay(100); // Short pause to let the command run
+  fonaSS.println("AT+IPR=9600"); // Set baud rate
+  delay(100); // Short pause to let the command run
   fonaSS.begin(9600);
   if (! fona.begin(fonaSS)) {
     Serial.println(F("Couldn't find FONA"));
@@ -54,68 +54,6 @@ void moduleSetup() {
 
 }  
 
-void parseResponse(char *payload_string) {
-  int num=0;
-   char *token;
-   token = strtok(payload_string, ";");
-   while(token != NULL)
-   {
-    num++;
-    if (num==1) { whenSend=atoi(token); // how offten to send data
-    }
-
-    else if (num==2) { vaneOffset=atoi(token);  // wind vane offset
-    }    
-
-    else if (num==3) { windDelay=atoi(token);  // interval for wind measurement
-    } 
-
-    else if (num==4) { onOffTmp=atoi(token);  // turn on / off temperature measurement
-    } 
-
-    else if (num==5) {cutoffWind=atoi(token);  // cuttoff wind treshold
-    } 
-
-    else if (num==6) { sleepBetween=atoi(token);  // sleep between wind measurements
-    } 
-        
-    else if (num==7) {
-      int num7=atoi(token);  // restart arduino
-      if (num7==1) {
-        reset();
-       } 
-    } 
-      
-      token = strtok(NULL, ";");
-   }
-} 
-
-#ifdef SEND_MQTT
-void getMQTTmsg() {
-    //digitalWrite(DTR, LOW);  //wake up
-
-   uint8_t i = 0;
-    if (fona.available()) {
-      while (fona.available()) {
-        replybuffer[i] = fona.read();
-        i++;
-      }
-        //Serial.println(replybuffer);
-      delay(300); // Make sure it prints and also allow other stuff to run properly
-      if (strstr(replybuffer, "SMSUB:") != NULL ) {
-        
-        Serial.println(F("*** Received MQTT message! ***"));
-        
-        char *p = strtok(replybuffer, ",\"");
-        char *topic_p = strtok(NULL, ",\"");
-        char *payload_string = strtok(NULL, ",\"");
-
-      parseResponse(payload_string);  
-      }
-    }
-
-}
-#endif 
 
 
 void connectGPRS() {
@@ -156,7 +94,7 @@ if (fona.checkAT()) {  // wait untill modem is active
 //    while(1); // Don't proceed if it couldn't find the device
 //  }
 
-  delay(500);
+//  delay(500);
 
   if (sendBatTemp >= 10) {  // send data about battery and signal every 10 measurements
     sig=fona.getRSSI(); 
@@ -167,8 +105,6 @@ if (fona.checkAT()) {  // wait untill modem is active
   else {
     sendBatTemp=sendBatTemp+1;
 }
-
-#ifdef UDP
 
   data[8]=windDir/100;
   data[9]=windDir%100;
@@ -220,7 +156,7 @@ bool isConnected = fona.UDPconnected();
      } 
 
   byte response[10];  
-  if ( fona.UDPsend(data,sizeof(data),response,9)) { //25
+  if ( fona.UDPsend(data,sizeof(data),response,9)) {
   
   if (response[0] >0) { whenSend=response[0];}
   if (response[1] ==1 ) {  
@@ -250,63 +186,19 @@ bool isConnected = fona.UDPconnected();
    else {
      fona.UDPclose();
      failedSend=failedSend+1;
-   } 
-   
-#endif 
 
-
-#ifdef SEND_MQTT
- sprintf(URL, FORMAT,IMEI, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, battLevel, sig, measureCount,resetReason);
-    #ifdef DEBUG
-      Serial.println(URL);
-    #endif
-  if (! fona.MQTT_connectionStatus()) {
-      // Set up MQTT parameters (see MQTT app note for explanation of parameter values)
-      fona.MQTT_setParameter("URL", broker, 1883);
-      fona.MQTT_setParameter("USERNAME", MQTTuser);
-      fona.MQTT_setParameter("PASSWORD", MQTTpass);
-      fona.MQTT_setParameter("KEEPTIME", "150"); // Time to connect to server, 60s by default
-      delay(100);
-      Serial.println(F("Connecting to MQTT broker..."));
-      if (! fona.MQTT_connect(true)) {
-        Serial.println(F("Failed to connect to broker!"));
-        connectGPRS();
+      if (failedSend > 3) {
+      #ifdef DEBUG
+        Serial.println("soft reset");
+      #endif
+      powerOn(); // Power on the module
+      delay(4000);
+      wakeUp();
+      delay(3000);
+      moduleSetup(); // Establishes first-time serial comm and prints IMEI
       }
-    }
-
-    if (fona.MQTT_publish("ws", URL, strlen(URL), 0, 0)) {
-        fona.MQTT_subscribe(topicGET, 0); // Topic name, QoS
-    #ifdef DEBUG
-      Serial.println("MQTT UPLOADED");
-    #endif  
-    AfterPost(); 
-      }     
-#endif 
-
-      
-#ifdef HTTP
- sprintf(URL, FORMAT_URL,IMEI, windDir, wind_speed / 10, wind_speed % 10, windGustAvg / 10, windGustAvg % 10, tmp, wat, battLevel, sig, measureCount,resetReason);
-    #ifdef DEBUG
-      Serial.println(URL);
-    #endif
-
-int8_t state = fona.GPRSstate();
-    if (state!=1) {
-      connectGPRS();
-    }
-
-char response[50];  
-  if (fona.postData(URL,response)) {
-    #ifdef DEBUG
-      Serial.println(F("complete HTTP POST..."));
-    #endif
-    parseResponse(response);
-    AfterPost(); 
-   }
-#endif 
-
-
-
+   } 
+  
 }
 
 
@@ -323,8 +215,6 @@ void AfterPost() {
     PDPcount=0;
     failedSend=0;
     memset(windGust, 0, sizeof(windGust)); // empty direction array
-    //memset(tmp, 0, sizeof(tmp));
-    //memset(wat, 0, sizeof(wat));
 }
 
 

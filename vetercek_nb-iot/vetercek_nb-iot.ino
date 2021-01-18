@@ -6,7 +6,6 @@
 #include "src/TimerOne/TimerOne.h"
 #define TINY_GSM_MODEM_SIM7000
 #include "src/Fona/Adafruit_FONA.h"
-#include "config.h"
 #include <EEPROM.h>
 
 #define ONE_WIRE_BUS_1 4 //air
@@ -15,8 +14,6 @@
 #define windVanePin (A3)       // The pin the wind vane sensor is connected to
 #define DTR 6
 #define PWRKEY 10
-#define FORMAT "id=%s&d=%d&s=%d.%d&g=%d.%d&t=%s&w=%s&b=%d&sig=%d&c=%d&r=%d"
-#define FORMAT_URL "vetercek.com/xml/ws_data.php?id=%s&d=%d&s=%d.%d&g=%d.%d&t=%s&w=%s&b=%d&sig=%d&c=%d&r=%d"
 byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0 }; // data
 
 OneWire oneWire_in(ONE_WIRE_BUS_1);
@@ -31,25 +28,13 @@ SoftwareSerial fonaSS = SoftwareSerial(8, 9); // RX, TX
 Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
 
 //////////////////////////////////    EDIT THIS
-//#define APN "internet.simobil.si"
 #define APN "iot.1nce.net"
 int cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 40; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
-//select how to post data - uncomment only one
-//#define SEND_MQTT
-  const char* MQTTuser = MQTTu;
-  const char* MQTTpass = MQTTp;
-//#define HTTP
-#define UDP
 #define DEBUG // comment out if you want to turn off debugging
 //////////////////////////////////    RATHER DON'T CHANGE
-// MQTT details
-char replybuffer[255]; // For reading stuff coming through UART, like subscribed topic messages
-char topicGET[20];
-const char* topicPUT="ws";
-char URL[90]; // Make sure this is long enough
 unsigned int pwrAir = 11; // power for air sensor
 unsigned int pwrWater = 12; // power for water sensor
 int resetReason = MCUSR;
@@ -61,18 +46,14 @@ volatile unsigned long contactBounceTime; // Timer to avoid contact bounce in in
 volatile unsigned long lastPulseMillis; // last anemometer measured time
 volatile unsigned long firstPulseMillis; // fisrt anemometer measured time
 volatile unsigned long currentMillis;
-volatile unsigned long MQTTping;
 byte firstWindPulse; // ignore 1st anemometer rotation since it didn't make full circle
 int windSpeed; // speed
 long windAvr = 0; //sum of all wind speed between update
 int windGust[3] = { 0, 0, 0 }; // top three gusts
 int windGustAvg = 0; //wind gust average
 int measureCount = 0; // count each mesurement
-byte MQTTcount=0;
 float water=99.0; // water Temperature
-char wat[6]; // water char value
 float temp=99.0; //Stores Temperature value
-char tmp[6]; // Temperature char value
 int vaneValue;       // raw analog value from wind vane
 int direction;       // translated 0 - 360 direction
 int calDirection;    // converted value with offset applied
@@ -82,7 +63,7 @@ float windAvgY;
 int wind_speed;  //calculated wind speed
 int wind_gust;   //calculated wind gusts
 int battLevel = 0; // Battery level (percentage)
-int battVoltage = 0; // Battery voltage
+uint16_t battVoltage = 0; // Battery voltage
 unsigned int sig = 0;
 float actualWindDelay; //time between first and last measured anemometer rotation
 char IMEI[15]; // Use this for device ID
@@ -119,9 +100,7 @@ void setup() {
 
   if (EEPROM.read(9)==13) { GSMstate=13; }
   else if (EEPROM.read(9)==2) { GSMstate=2; }
-  else if (EEPROM.read(9)==38) {
-    //#define NBIOT
-    GSMstate=38; }
+  else if (EEPROM.read(9)==38) {GSMstate=38; } //#define NBIOT
 
   
   //power
@@ -143,8 +122,6 @@ digitalWrite(DTR, HIGH);  //sleep
 void loop() {
   Anemometer();                           // anemometer
   GetWindDirection();
-
-
 
   if ( sleepBetween == 1)  { // to sleap or not to sleap between wind measurement
     LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);  // sleep
@@ -168,10 +145,6 @@ void loop() {
 
   GetAvgWInd();                                 // avg wind
 
-#ifdef SEND_MQTT
-  getMQTTmsg(); 
-#endif 
-
   if ( (resetReason==2 and measureCount > 2) or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend) or (measureCount >= (whenSend*2) or whenSend>150) ) {   // check if is time to send data online
       digitalWrite(DTR, LOW);  //wake up  
         SendData();
@@ -192,19 +165,7 @@ void loop() {
 
 void CheckTimerGPRS() { // if unable to send data in 200s
   timergprs++;
-  if ((timergprs > 100 and PDPcount == 0) or failedSend > 5) {
-    #ifdef DEBUG
-      Serial.println("soft reset");
-    #endif
-    powerOn(); // Power on the module
-    delay(4000);
-    wakeUp();
-    pinMode(DTR, OUTPUT);
-    moduleSetup(); // Establishes first-time serial comm and prints IMEI
-    connectGPRS();
-  }
-  
-  else if (timergprs > 200 ) {
+  if (timergprs > 200 ) {
     #ifdef DEBUG
       Serial.println("hard reset");
     #endif    

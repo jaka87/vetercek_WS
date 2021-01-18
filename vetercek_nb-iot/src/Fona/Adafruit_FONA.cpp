@@ -927,7 +927,7 @@ uint8_t Adafruit_FONA::UDPconnected(void) {
   else { return 0;}
 }
 
-boolean Adafruit_FONA::UDPsend(char *packet, uint8_t len, byte response[10],uint8_t charr) {
+boolean Adafruit_FONA::UDPsend(unsigned char *packet, uint8_t len, byte response[10],uint8_t charr) {
 
   DEBUG_PRINT(F("AT+CIPSEND="));
   DEBUG_PRINTLN(len);
@@ -950,13 +950,14 @@ boolean Adafruit_FONA::UDPsend(char *packet, uint8_t len, byte response[10],uint
 
   readline(5000); // return SEND OK
   readline2(5000,charr); // RETURN DATA
-   
+
+	DEBUG_PRINTLN("response :");   
      for (uint16_t i=0; i<charr;i++) {
 		response[i]=replybuffer2[i];
-		//DEBUG_PRINTLN(replybuffer2[i]);
+		DEBUG_PRINTLN(replybuffer2[i]);
 	}
-
-  if (replybuffer2[0] > 0) return true;
+	//DEBUG_PRINTLN(replybuffer2[0]);
+  if (replybuffer2[0] > 0 and replybuffer2[1] < 2) return true;
 
   else return false;
 }

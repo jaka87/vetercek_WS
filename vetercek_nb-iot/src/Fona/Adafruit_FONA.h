@@ -153,7 +153,7 @@ class Adafruit_FONA : public FONAStreamType {
   boolean UDPconnect(char *server, uint16_t port);
   boolean UDPclose(void);
   uint8_t UDPconnected(void);
-  boolean UDPsend(char *packet, uint8_t len, byte response[10],uint8_t charr);
+  boolean UDPsend(unsigned char *packet, uint8_t len, byte response[10],uint8_t charr);
   uint16_t UDPavailable(void);
 
   // MQTT
