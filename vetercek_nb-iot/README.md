@@ -25,8 +25,7 @@ New PCB
 + 2 cable glands for anemometer cable, and temperature sensor **2€**
 
 ## Payload
-There are three options to send data to server (HTTP,MQTT or custom UDP protocol). The lather is recomended
-UDP payload using this station is about 24 byte for upload and 9 bytes for server response
+UDP payload using this station is 24 byte for upload and 9 bytes for server response  
 **sample upload:**  
 list=[11,11,11,11,11,11,11,1,   1,77, 12,2, 14,5, 1,20,3, 0,1,0, 77,18,40,0]  
 + first 8 bytes are id of the station
@@ -61,7 +60,7 @@ Here is the [link](https://easyeda.com/jaka87/new-vetercek) to PCB design.
 
 
 ## TO-DO
-+ I will try to figure out how to get PSM to work - I theory this would enable very low power consumption of 6uA for SIM7000
++ I manage to get PSM to work, but it takes additional 5-10s to wake up module. I havent't figured out if it is worth using in when sending data to server frequently (every few minutes)
 
 ## Libraries used in this project
 All the libraries are uploaded in src folder. Previously I just post links since i was using libraries directly from the repositories, but now i had to make changes to some of them, mostly to delete some unused functions to decrease sketch size.

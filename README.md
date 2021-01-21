@@ -5,7 +5,7 @@ This project was created in order to provide cheap alternative to expensive auto
 ## Connecting options
 + [nb iot](vetercek_nb-iot) - stable, maintained (also has 2G fallback - that's why I abandoned 2G version)
 + [GSM 2G](vetercek_2G)  - stable, but not maintained anymore
-+ [WIFI](vetercek_wifi) - working but probably not production ready (currently I have no plans to inpruve it)
++ [WIFI](vetercek_wifi) - working but probably not production ready (currently I have no plans to improve it)
 
 
 ### RJ11 PCB socket

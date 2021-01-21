@@ -948,8 +948,8 @@ boolean Adafruit_FONA::UDPsend(unsigned char *packet, uint8_t len, byte response
 
   mySerial->write(packet, len);
 
-  readline(5000); // return SEND OK
-  readline2(5000,charr); // RETURN DATA
+  readline(10000); // return SEND OK
+  readline2(7000,charr); // RETURN DATA
 
 	DEBUG_PRINTLN("response :");   
      for (uint16_t i=0; i<charr;i++) {

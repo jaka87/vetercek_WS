@@ -31,7 +31,7 @@ void moduleSetup() {
     while(1); // Don't proceed if it couldn't find the device
   }
 
- fona.setFunctionality(0); // AT+CFUN=0
+  fona.setFunctionality(0); // AT+CFUN=0
   delay(3000);
   fona.setFunctionality(1); // AT+CFUN=1
   fona.setNetworkSettings(F(APN)); // APN
@@ -57,7 +57,20 @@ void moduleSetup() {
 
 
 void connectGPRS() {
+unsigned long startTime=millis();  
     while (!netStatus()) {
+      if (millis() - startTime >= 60000)
+      {
+        powerOn(); // Power on the module
+        delay(4000);
+        wakeUp();
+        delay(3000);
+        moduleSetup(); // Establishes first-time serial comm and prints IMEI
+       #ifdef DEBUG
+        Serial.println(F("Restart connection..."));
+       #endif 
+       startTime=millis(); 
+      }
       #ifdef DEBUG
         Serial.println(F("Failed to connect to cell network, retrying..."));
       #endif 
