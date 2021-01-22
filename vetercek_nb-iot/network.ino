@@ -59,7 +59,7 @@ void moduleSetup() {
 void connectGPRS() {
 unsigned long startTime=millis();  
     while (!netStatus()) {
-      if (millis() - startTime >= 60000)
+      if (millis() - startTime >= 40000)
       {
         powerOn(); // Power on the module
         delay(4000);
