@@ -80,6 +80,12 @@ boolean Adafruit_FONA::begin(Stream &port) {
 #ifdef ADAFRUIT_FONA_DEBUG
     DEBUG_PRINTLN(F("Timeout: No response to AT... last ditch attempt."));
 #endif
+
+    digitalWrite(10, LOW);
+    delay(4000);
+    digitalWrite(10, HIGH);
+    delay(2000);
+    
     sendCheckReply(F("AT"), ok_reply);
     delay(100);
     sendCheckReply(F("AT"), ok_reply);

@@ -29,6 +29,8 @@ Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
 
 //////////////////////////////////    EDIT THIS
 #define APN "iot.1nce.net"
+//#define APN "internet.simobil.si"
+int GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 int cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 40; // interval after how many measurements data is send
@@ -70,11 +72,11 @@ char IMEI[15]; // Use this for device ID
 int idd[15];
 int sleepBetween=1;
 byte sendBatTemp=10;
-int GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 int PDPcount=0; // first reset after 100s
 int failedSend=0; // if send fail
 
 void setup() {
+
 
   MCUSR = 0; // clear reset flags
   wdt_disable();
@@ -107,7 +109,6 @@ void setup() {
   pinMode(PWRKEY, OUTPUT);
   powerOn(); // Power on the module
   delay(4000);
-  wakeUp();
   pinMode(DTR, OUTPUT);
 
 

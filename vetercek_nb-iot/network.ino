@@ -9,6 +9,13 @@ bool netStatus() {
   if (n == 4) Serial.println(F("Unknown"));
   if (n == 5) Serial.println(F("Registered roaming"));
   #endif
+
+if (n == 0){
+  fona.setFunctionality(0); // AT+CFUN=0
+  delay(3000);
+  fona.setFunctionality(1); // AT+CFUN=1
+  delay(200);
+  }
   
   if (!(n == 1 || n == 5)) return false;
   else return true;
@@ -27,7 +34,9 @@ void moduleSetup() {
   delay(100); // Short pause to let the command run
   fonaSS.begin(9600);
   if (! fona.begin(fonaSS)) {
-    Serial.println(F("Couldn't find FONA"));
+      #ifdef DEBUG
+        Serial.println(F("Couldn't find FONA"));
+      #endif
     while(1); // Don't proceed if it couldn't find the device
   }
 
@@ -39,6 +48,12 @@ void moduleSetup() {
 
   fona.setPreferredMode(GSMstate); 
   delay(500);
+  if (GSMstate == 38) {
+    fona.setPreferredLTEMode(2);   
+    fona.setOperatingBand("NB-IOT",20); 
+
+  }
+  
   fona.setNetLED(true,3,64,5000);
   delay(500);
   
@@ -61,14 +76,12 @@ unsigned long startTime=millis();
     while (!netStatus()) {
       if (millis() - startTime >= 40000)
       {
-        powerOn(); // Power on the module
-        delay(4000);
-        wakeUp();
-        delay(3000);
-        moduleSetup(); // Establishes first-time serial comm and prints IMEI
        #ifdef DEBUG
         Serial.println(F("Restart connection..."));
-       #endif 
+       #endif         
+        powerOn(); // Power on the module
+        delay(4000);
+        moduleSetup(); // Establishes first-time serial comm and prints IMEI
        startTime=millis(); 
       }
       #ifdef DEBUG
@@ -76,7 +89,9 @@ unsigned long startTime=millis();
       #endif 
       delay(2000); // Retry every 2s
     }
+  #ifdef DEBUG  
     Serial.println(F("Connected to cell network!"));
+  #endif 
 
   if (fona.enableGPRS(true)) {
   #ifdef DEBUG  
