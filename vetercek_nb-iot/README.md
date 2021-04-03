@@ -13,16 +13,15 @@ New PCB
 + **New** new GPRS modul that supports both nb-iot and also 2G (Thanks to [A1](https://www.a1.si/) and [Telekom Slovenije](https://www.telekom.si/) for providing me with nb-iot sim cards). With new module there is much faster data upload and lower battery consumption. Therefore I also enabled fast data upload that can be enabled when you need data upload every few secconds as opposed to few minutes.
 
 ## Required parts
-+ Davis 6410 anemometer **160€**
-+ PCB with SIM7000 module **60€**
-+ SIM card **20€**
-+ 5 or 6V Monocrystalline Solar Power Panel **10€**
-+ 3.6V li-ion batteries **10-15€**
-+ Waterproof housing **5€**
-+ GSM antena **3€**
-+ DS18B20 temperature sensor **3€**
-+ DS18B20 water temperature sensor **4€**
-+ 2 cable glands for anemometer cable, and temperature sensor **2€**
++ Davis 6410 anemometer
++ PCB with SIM7000 module 
++ SIM card 
++ 5 or 6V Solar Power Panel 
++ 3.6V li-ion batteries
++ Waterproof housing
++ GSM antena
++ DS18B20 temperature sensor
++ cable gland for anemometer cable, solar and temperature sensor
 
 ## Payload
 UDP payload using this station is 24 byte for upload and 9 bytes for server response  

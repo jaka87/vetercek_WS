@@ -9,22 +9,20 @@
 + Wind speed and direction are measured for 2 second every 10 seconds. It is a good compromise for accurate measurements and long battery life.
 
 ## Required parts
-+ Arduino pro mini 3.3V **3€**
++ Arduino pro mini 3.3V 
   + LED is removed to save battery life
-+ Davis 6410 anemometer **150€**
-+ Sim800l gsm module **4€**
++ Davis 6410 anemometer 
++ Sim800l gsm module 
   + LED is removed to save battery life
-+ ~~DHT22 temperature sensor **3€**~~ replaced by another DS18B20 mounted outside of housing
-+ DS18B20 water temperature sensor **4€**
-+ TP4056 li-ion charger **1€**
-+ 5 or 6V Monocrystalline Solar Power Panel **5-10€**
-+ 3.6V li-ion batteries **10-15€**
++ DS18B20  temperature sensor 
++ TP4056 li-ion charger 
++ 5 or 6V Monocrystalline Solar Power Panel 
++ 3.6V li-ion batteries 
   +2-3 batteries with paralel connection
-+ Waterproof housing **5€**
-+ GSM antena **3€**
-+ Some minor electrical parts like resistors, capacitors, diodes... **5€**
-+ RJ11 connector to PCB **1€**
-+ 2 cable glands for anemometer cable, and temperature sensor **2€**
++ Waterproof housing 
++ GSM antena 
++ RJ11 connector to PCB 
++ 2 cable glands for anemometer cable, and temperature sensor 
 
 ## Arduino pro mini
 Arduino pro mini has different bootloader than Uno (older) that has watchdog bug that puts your arduino in endless loop even thou my script don't use watchdog directly. It took me months to figure it out. Station was working fine on good weather but reseted when there were storms whithc cause bad signal. After 1-10 resets this error apeared and manual intervention has to be done. I (fingers crossed) solved this with uploading with programmer (skipping bootloader). If you wish to use bootloader i suggest Minicore. Optiboot should also fix this issue, but i had trouble uploading sketches with it.

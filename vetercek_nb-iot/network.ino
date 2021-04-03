@@ -40,6 +40,8 @@ void moduleSetup() {
     while(1); // Don't proceed if it couldn't find the device
   }
 
+
+  fonaSS.println("AT+CIPMUX=0"); // Set baud rate
   fona.setFunctionality(0); // AT+CFUN=0
   delay(3000);
   fona.setFunctionality(1); // AT+CFUN=1
