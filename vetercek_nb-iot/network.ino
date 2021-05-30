@@ -244,6 +244,7 @@ void AfterPost() {
     resetReason=0;
     PDPcount=0;
     failedSend=0;
+    sonicError=0;
     memset(windGust, 0, sizeof(windGust)); // empty direction array
 }
 
