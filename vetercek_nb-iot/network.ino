@@ -27,7 +27,9 @@ void moduleSetup() {
   // SIM7000 takes about 3s to turn on but SIM7500 takes about 15s
   // Press reset button if the module is still turning on and the board doesn't find it.
   // When the module is on it should communicate right after pressing reset
-  fonaSS.begin(115200); // Default SIM7000 shield baud rate
+  //fonaSS.begin(115200); // Default SIM7000 shield baud rate
+
+fonaSS.begin(9600);
   
   //Serial.println(F("Configuring to 9600 baud"));
   fonaSS.println("AT+IPR=9600"); // Set baud rate

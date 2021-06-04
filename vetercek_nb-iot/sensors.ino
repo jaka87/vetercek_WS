@@ -21,11 +21,6 @@ void UltrasonicAnemometer() { //measure wind speed
               windav=windav+wind;
 
               calDirection = dir + vaneOffset;
-              if (calDirection > 360)
-                calDirection = calDirection - 360;
-            
-              if (calDirection < 0)
-                calDirection = calDirection + 360;
             
               // convert reading to radians
               float theta = calDirection / 180.0 * PI;

@@ -959,11 +959,21 @@ boolean Adafruit_FONA::UDPsend(unsigned char *packet, uint8_t len, byte response
 
 	DEBUG_PRINTLN("response :");   
      for (uint16_t i=0; i<charr;i++) {
+		 
+		if (replybuffer2[i]==128) {	 
+		response[i]=0;
+		DEBUG_PRINTLN(0);		
+		}
+
+		else {	 
 		response[i]=replybuffer2[i];
-		DEBUG_PRINTLN(replybuffer2[i]);
+		DEBUG_PRINTLN(replybuffer2[i]);		
+		}
+		
+
 	}
 	//DEBUG_PRINTLN(replybuffer2[0]);
-  if (replybuffer2[0] > 0 and replybuffer2[1] < 2) return true;
+  if (response[0] > 0 and response[1] < 4) return true;
 
   else return false;
 }

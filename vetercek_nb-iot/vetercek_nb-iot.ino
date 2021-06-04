@@ -22,9 +22,15 @@ DallasTemperature sensor_air(&oneWire_in);
 DallasTemperature sensor_water(&oneWire_out);
 
 
-#include <SoftwareSerial.h>
-SoftwareSerial fonaSS = SoftwareSerial(8, 9); // RX, TX
-SoftwareSerial ultrasonic(5,6);  //RX, STX   
+//#include <SoftwareSerial.h>
+//SoftwareSerial fonaSS = SoftwareSerial(8, 9); // RX, TX
+//SoftwareSerial ultrasonic(5,6);  //RX, STX   
+
+#include <NeoSWSerial.h>
+NeoSWSerial fonaSS( 8, 9 );
+NeoSWSerial ultrasonic( 5, 6 );
+
+
 
 //SoftwareSerial *fonaSerial = &fonaSS;
 Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
@@ -37,7 +43,6 @@ int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 40; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 #define DEBUG // comment out if you want to turn off debugging
-#define ULTRASONIC // comment out if using mechanical anemometer
 //////////////////////////////////    RATHER DON'T CHANGE
 unsigned int pwrAir = 11; // power for air sensor
 unsigned int pwrWater = 12; // power for water sensor
@@ -116,10 +121,9 @@ void setup() {
   delay(4000);
   pinMode(DTR, OUTPUT);
 
-//7/////////////////////////////////////////////dej stran /
-//moduleSetup(); // Establishes first-time serial comm and prints IMEI
-//checkIMEI();
-//connectGPRS();
+moduleSetup(); // Establishes first-time serial comm and prints IMEI
+checkIMEI();
+connectGPRS();
 digitalWrite(DTR, HIGH);  //sleep
 
     ultrasonic.begin(9600);
@@ -135,6 +139,10 @@ digitalWrite(DTR, HIGH);  //sleep
 void loop() {
 
  if ( UltrasonicAnemo==1 ) {    // if ultrasonic anemometer pluged in at boot
+
+          #ifdef DEBUG
+    Serial.println("Ultrasonic anemometer enabled");
+        #endif   
   unsigned long startedWaiting = millis();
   while (!ultrasonic.available() && millis() - startedWaiting <= 5000) {
     ultrasonic.begin(9600);
@@ -200,11 +208,14 @@ void loop() {
   GetAvgWInd();                                 // avg wind
 
 
-  if ( measureCount > 150 ) {   // check if is time to send data online
-//  if ( (resetReason==2 and measureCount > 2) or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend) or (measureCount >= (whenSend*2) or whenSend>150) ) {   // check if is time to send data online
+if ( (resetReason==2 and measureCount > 2) or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend) or (measureCount >= (whenSend*2) or whenSend>150) ) {   // check if is time to send data online
       digitalWrite(DTR, LOW);  //wake up  
+      fonaSS.listen();
+      delay(500);
         SendData();
       digitalWrite(DTR, HIGH);  //sleep  
+      ultrasonic.listen();
+      delay(500);
 
   }
   else { // restart timer
