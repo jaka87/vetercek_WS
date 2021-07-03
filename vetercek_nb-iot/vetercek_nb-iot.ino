@@ -14,6 +14,8 @@
 #define windVanePin (A3)       // The pin the wind vane sensor is connected to
 #define DTR 6
 #define PWRKEY 10
+#define RESET 7
+
 byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0 }; // data
 
 OneWire oneWire_in(ONE_WIRE_BUS_1);
@@ -30,8 +32,6 @@ DallasTemperature sensor_water(&oneWire_out);
 NeoSWSerial fonaSS( 8, 9 );
 NeoSWSerial ultrasonic( 5, 6 );
 
-
-
 //SoftwareSerial *fonaSerial = &fonaSS;
 Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
 
@@ -43,6 +43,7 @@ int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 40; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 #define DEBUG // comment out if you want to turn off debugging
+#define ULTRASONIC // comment out if you want to disable ultrasonic anemometer detection
 //////////////////////////////////    RATHER DON'T CHANGE
 unsigned int pwrAir = 11; // power for air sensor
 unsigned int pwrWater = 12; // power for water sensor
@@ -90,6 +91,18 @@ void setup() {
 
   MCUSR = 0; // clear reset flags
   wdt_disable();
+
+  Timer1.initialize(1000000);         // initialize timer1, and set a 1 second period
+  Timer1.attachInterrupt(CheckTimerGPRS);  // attaches checkTimer() as a timer overflow interrupt
+
+pinMode(DTR, OUTPUT);
+pinMode(RESET, OUTPUT);
+pinMode(PWRKEY, OUTPUT);
+digitalWrite(DTR, LOW); 
+digitalWrite(RESET, HIGH); 
+digitalWrite(PWRKEY, LOW);
+
+
   
 #ifdef DEBUG
   Serial.begin(9600);
@@ -101,38 +114,35 @@ void setup() {
   digitalWrite(13, HIGH);   // turn the LED on
   delay(1000);                       // wait
   digitalWrite(13, LOW);    // turn the LED
+  delay(100);
   pinMode(pwrAir, OUTPUT);      // sets the digital pin as output
   pinMode(pwrWater, OUTPUT);      // sets the digital pin as output
   digitalWrite(pwrAir, HIGH);   // turn on power
   digitalWrite(pwrWater, HIGH);   // turn on power  
+  delay(100);
   sensor_air.begin();
   sensor_water.begin();
-  Timer1.initialize(1000000);         // initialize timer1, and set a 1 second period
-  Timer1.attachInterrupt(CheckTimerGPRS);  // attaches checkTimer() as a timer overflow interrupt
-
+  
   if (EEPROM.read(9)==13) { GSMstate=13; }
   else if (EEPROM.read(9)==2) { GSMstate=2; }
   else if (EEPROM.read(9)==38) {GSMstate=38; } //#define NBIOT
-
   
   //power
-  pinMode(PWRKEY, OUTPUT);
-  powerOn(); // Power on the module
-  delay(4000);
-  pinMode(DTR, OUTPUT);
-
+  //powerOn(); // Power on the module
+  
 moduleSetup(); // Establishes first-time serial comm and prints IMEI
 checkIMEI();
 connectGPRS();
-digitalWrite(DTR, HIGH);  //sleep
 
+
+#ifdef ULTRASONIC
     ultrasonic.begin(9600);
     delay(4000);
-
      if ( ultrasonic.available()) { // check if ultrasonic anemometer is pluged in
       UltrasonicAnemo=1;
       windDelay=1000; // only make one measurement with sonic anemometer
      }
+#endif
 
 }
 
@@ -140,6 +150,7 @@ void loop() {
 
  if ( UltrasonicAnemo==1 ) {    // if ultrasonic anemometer pluged in at boot
 
+#ifdef ULTRASONIC
           #ifdef DEBUG
     Serial.println("Ultrasonic anemometer enabled");
         #endif   
@@ -159,10 +170,14 @@ void loop() {
    UltrasonicAnemometer();       
      }   
 
+
+
   if ( sleepBetween > 0)  { // to sleap or not to sleap between wind measurement
       ultrasonic.flush();
       ultrasonic.end();
      }
+#endif
+     
         #ifdef DEBUG
           Serial.flush();
         #endif                       
@@ -208,13 +223,23 @@ void loop() {
   GetAvgWInd();                                 // avg wind
 
 
+  digitalWrite(13, HIGH);   // turn the LED on
+  delay(50);                       // wait
+  digitalWrite(13, LOW);    // turn the LED
+  delay(50);                       // wait
+  digitalWrite(13, HIGH);   // turn the LED on
+  delay(50);                       // wait
+  digitalWrite(13, LOW);    // turn the LED
+  
 if ( (resetReason==2 and measureCount > 2) or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend) or (measureCount >= (whenSend*2) or whenSend>150) ) {   // check if is time to send data online
       digitalWrite(DTR, LOW);  //wake up  
       fonaSS.listen();
       delay(500);
         SendData();
       digitalWrite(DTR, HIGH);  //sleep  
+      #ifdef ULTRASONIC        
       ultrasonic.listen();
+      #endif
       delay(500);
 
   }
@@ -237,8 +262,8 @@ void CheckTimerGPRS() { // if unable to send data in 200s
       Serial.println("hard reset");
     #endif    
     timergprs = 0;
-    powerOn();
-    delay(1000);
+    //powerOn();
+    //delay(1000);
     reset();
   }
 }
@@ -258,9 +283,13 @@ void reset() {
 
 // Power on the module
 void powerOn() {
+    pinMode(PWRKEY, OUTPUT);
   digitalWrite(PWRKEY, LOW);
   delay(3000); // For SIM7000 
   digitalWrite(PWRKEY, HIGH);
+   #ifdef DEBUG
+    Serial.println("Power on");
+   #endif   
   delay(1000);
 }
 

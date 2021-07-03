@@ -51,15 +51,15 @@ return false;
 boolean Adafruit_FONA::begin(Stream &port) {
   mySerial = &port;
 
-  if (_rstpin != 99) { // Pulse the reset pin only if it's not an LTE module
-    DEBUG_PRINTLN(F("Resetting the module..."));
-    pinMode(_rstpin, OUTPUT);
-    digitalWrite(_rstpin, HIGH);
-    delay(10);
-    digitalWrite(_rstpin, LOW);
-    delay(100);
-    digitalWrite(_rstpin, HIGH);
-  }
+//  if (_rstpin != 99) { // Pulse the reset pin only if it's not an LTE module
+//    DEBUG_PRINTLN(F("Resetting the module..."));
+//    pinMode(_rstpin, OUTPUT);
+//    digitalWrite(_rstpin, HIGH);
+//    delay(10);
+//    digitalWrite(_rstpin, LOW);
+//    delay(100);
+//    digitalWrite(_rstpin, HIGH);
+//  }
 
   DEBUG_PRINTLN(F("Attempting to open comm with ATs"));
   // give 7 seconds to reboot
@@ -79,12 +79,14 @@ boolean Adafruit_FONA::begin(Stream &port) {
   if (timeout <= 0) {
 #ifdef ADAFRUIT_FONA_DEBUG
     DEBUG_PRINTLN(F("Timeout: No response to AT... last ditch attempt."));
+  //pinMode(10, OUTPUT);
+  digitalWrite(10, LOW);
+  delay(3000); // For SIM7000 
+  digitalWrite(10, HIGH);
+  delay(1000);    
+    
 #endif
 
-    digitalWrite(10, LOW);
-    delay(4000);
-    digitalWrite(10, HIGH);
-    delay(2000);
     
     sendCheckReply(F("AT"), ok_reply);
     delay(100);

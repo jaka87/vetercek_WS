@@ -1,4 +1,4 @@
-
+#ifdef ULTRASONIC
 void UltrasonicAnemometer() { //measure wind speed
     unsigned long startedWaiting = millis();
     int successcount=0;
@@ -50,10 +50,10 @@ void UltrasonicAnemometer() { //measure wind speed
         windGust[0] = windSpeed;
       }
       windGustAvg = (windGust[0] + windGust[1] + windGust[2]) / 3;
-    
-
-
 }
+#endif
+
+
     
 void Anemometer() { //measure wind speed
 

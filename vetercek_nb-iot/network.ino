@@ -29,11 +29,11 @@ void moduleSetup() {
   // When the module is on it should communicate right after pressing reset
   //fonaSS.begin(115200); // Default SIM7000 shield baud rate
 
-fonaSS.begin(9600);
+//fonaSS.begin(9600);
   
   //Serial.println(F("Configuring to 9600 baud"));
-  fonaSS.println("AT+IPR=9600"); // Set baud rate
-  delay(100); // Short pause to let the command run
+  //fonaSS.println("AT+IPR=9600"); // Set baud rate
+  //delay(100); // Short pause to let the command run
   fonaSS.begin(9600);
   if (! fona.begin(fonaSS)) {
       #ifdef DEBUG
@@ -43,7 +43,7 @@ fonaSS.begin(9600);
   }
 
 
-  fonaSS.println("AT+CIPMUX=0"); // Set baud rate
+  fonaSS.println("AT+CIPMUX=0"); // single ip
   fona.setFunctionality(0); // AT+CFUN=0
   delay(3000);
   fona.setFunctionality(1); // AT+CFUN=1
