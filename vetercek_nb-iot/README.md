@@ -67,7 +67,7 @@ All the libraries are uploaded in src folder. Most of them are stock libraries b
 
 ## Power consumption
 In sleep 1-1.5mA  
-Idle 4-5 mA (Davis anemometer) and 20-25mA (ultrasonic anemometer)
+Idle 4-5 mA (Davis anemometer) and 20-25mA (ultrasonic anemometer)   
 Sending data 100-200mA  
 
 
