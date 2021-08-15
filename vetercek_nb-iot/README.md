@@ -32,11 +32,12 @@ list=[11,11,11,11,11,11,11,1,   1,77, 12,2, 14,5, 1,20,3, 0,1,0, 77,18,40,0]
 + byte 11 and 12 are wind speed (sample 12.2 KT)
 + byte 13 and 14 are for gusts (sample 14.5 KT)
 + byte 15-17 are for air temperature (sample +20.3 C)
-+ byte 18-20 are the same as above exept for water temperature (sample -1.0 C)
++ byte 18-20 are the same as above exept for water temperature (sample -1.0 C) or rain data
 + byte 21 is battery percentage (sample 77%)
 + byte 22 is signal 
 + byte 23 is count of measurements
 + byte 24 is reset reason  
++ byte 25 is solar current  
 
 list=[40, 1,2,30, 23, 1, 5, 1, 0]  
 **sample response:**

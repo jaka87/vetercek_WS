@@ -16,13 +16,28 @@
 #define PWRKEY 10
 #define RESET 7
 
-byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0 }; // data
+byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0 }; // data
 
 OneWire oneWire_in(ONE_WIRE_BUS_1);
-OneWire oneWire_out(ONE_WIRE_BUS_2);
 DallasTemperature sensor_air(&oneWire_in);
-DallasTemperature sensor_water(&oneWire_out);
 
+//////////////////////////////////    EDIT THIS
+#define APN "iot.1nce.net"
+int GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
+int cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
+int vaneOffset=0; // vane offset for wind dirrection
+int whenSend = 40; // interval after how many measurements data is send
+const char* broker = "vetercek.com";
+//#define DEBUG // comment out if you want to turn off debugging
+#define ULTRASONIC // comment out if you want to disable ultrasonic anemometer detection
+#define RAIN // comment out to disable rain sensor and enable water temperature
+#define SOLAR // comment out to disable solar cell current measurement
+///////////////////////////////////////////////////////////////////////////////////
+
+  #ifndef RAIN
+    OneWire oneWire_out(ONE_WIRE_BUS_2);
+    DallasTemperature sensor_water(&oneWire_out);
+  #endif
 
 //#include <SoftwareSerial.h>
 //SoftwareSerial fonaSS = SoftwareSerial(8, 9); // RX, TX
@@ -35,15 +50,6 @@ NeoSWSerial ultrasonic( 5, 6 );
 //SoftwareSerial *fonaSerial = &fonaSS;
 Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
 
-//////////////////////////////////    EDIT THIS
-#define APN "iot.1nce.net"
-int GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
-int cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
-int vaneOffset=0; // vane offset for wind dirrection
-int whenSend = 40; // interval after how many measurements data is send
-const char* broker = "vetercek.com";
-#define DEBUG // comment out if you want to turn off debugging
-#define ULTRASONIC // comment out if you want to disable ultrasonic anemometer detection
 //////////////////////////////////    RATHER DON'T CHANGE
 unsigned int pwrAir = 11; // power for air sensor
 unsigned int pwrWater = 12; // power for water sensor
@@ -56,6 +62,13 @@ volatile unsigned long contactBounceTime; // Timer to avoid contact bounce in in
 volatile unsigned long lastPulseMillis; // last anemometer measured time
 volatile unsigned long firstPulseMillis; // fisrt anemometer measured time
 volatile unsigned long currentMillis;
+volatile unsigned long currentMillis2;
+volatile unsigned long contactBounceTime2; // Timer to avoid contact bounce in rain interrupt routine
+volatile unsigned long updateBattery = 0;
+
+int rainCount=-1; // count rain bucket tilts
+byte SolarCurrent; // calculate solar cell current 
+
 String serialResponse = "";
 byte firstWindPulse; // ignore 1st anemometer rotation since it didn't make full circle
 int windSpeed; // speed
@@ -121,7 +134,12 @@ digitalWrite(PWRKEY, LOW);
   digitalWrite(pwrWater, HIGH);   // turn on power  
   delay(100);
   sensor_air.begin();
-  sensor_water.begin();
+
+  #ifndef RAIN
+    sensor_water.begin();
+  #else
+    attachInterrupt(digitalPinToInterrupt(3), rain_count, FALLING);
+  #endif
   
   if (EEPROM.read(9)==13) { GSMstate=13; }
   else if (EEPROM.read(9)==2) { GSMstate=2; }
@@ -129,10 +147,11 @@ digitalWrite(PWRKEY, LOW);
   
   //power
   //powerOn(); // Power on the module
-  
+
 moduleSetup(); // Establishes first-time serial comm and prints IMEI
 checkIMEI();
 connectGPRS();
+
 
 
 #ifdef ULTRASONIC
@@ -283,7 +302,7 @@ void reset() {
 
 // Power on the module
 void powerOn() {
-    pinMode(PWRKEY, OUTPUT);
+    //pinMode(PWRKEY, OUTPUT);
   digitalWrite(PWRKEY, LOW);
   delay(3000); // For SIM7000 
   digitalWrite(PWRKEY, HIGH);

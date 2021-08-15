@@ -112,6 +112,16 @@ void ISRrotation () {  // This is the function that the interrupt calls to incre
   }
 }
 
+void rain_count() {
+  currentMillis2 = millis(); //we have to read millis at the same position in ISR each time to get the most accurate readings
+if ((currentMillis2 - contactBounceTime2) > 500 ) { // debounce the switch contact.
+    contactBounceTime2 = currentMillis2;
+    rainCount++;
+  }
+}
+
+
+
 
 
 void DominantDirection() { // get dominant wind direction
@@ -130,12 +140,14 @@ void GetAir() {
 
 
 void GetWater() {
+  #ifndef RAIN
   digitalWrite(pwrWater, HIGH);   // turn on power
   delay(500);
   sensor_water.requestTemperatures(); // Send the command to get temperatures
   delay (750) ;
   water = sensor_water.getTempCByIndex(0);
   digitalWrite(pwrWater, LOW);   // turn off power
+  #endif
 }
 
 void GetAvgWInd() {
@@ -172,14 +184,18 @@ void BeforePostCalculations() {
     data[18]=99;
     delay(100);
   }
-  else if (onOffTmp == 2) {                 
-    GetWater();                             // water
+  else if (onOffTmp == 2) {    
+    #ifndef RAIN
+      GetWater();                             // water
+    #endif             
     data[19]=99;
     delay(100);
   }
   else if (onOffTmp > 2) {
     GetAir();                               // air
-    GetWater();                             // water
+    #ifndef RAIN
+      GetWater();                             // water
+    #endif   
     delay(100);
   }
 

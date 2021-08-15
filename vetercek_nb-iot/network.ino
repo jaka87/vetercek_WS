@@ -128,11 +128,29 @@ if (fona.checkAT()) {  // wait untill modem is active
 
 //  delay(500);
 
-  if (sendBatTemp >= 10) {  // send data about battery and signal every 10 measurements
+  if (millis() - updateBattery >= 130000 or updateBattery == 0) {  // send data about battery and signal every 8+ minutes
+    updateBattery=millis();
     sig=fona.getRSSI(); 
     delay(300);
     battLevel = readVcc(); // Get voltage %
     sendBatTemp=0;
+
+
+  #ifndef SOLAR
+    int curr = 0;  // measure solar cell current
+    volatile unsigned currCount = 0;
+    while (currCount < 10) {
+          curr += analogRead(A0)*3.8;
+          currCount++;
+          delay(50);
+      }
+    SolarCurrent=(curr/currCount)/5;  // calculate average solar current
+
+      #ifdef DEBUG
+        Serial.print("solar current: ");
+        Serial.println(SolarCurrent);
+     #endif
+  #endif     
 }
   else {
     sendBatTemp=sendBatTemp+1;
@@ -152,18 +170,30 @@ if (fona.checkAT()) {  // wait untill modem is active
   data[21]=sig;
   data[22]=measureCount;
   data[23]=resetReason;
+  data[24]=SolarCurrent;
   
-  if (temp > 0) {
+  if (temp > 0) { // if positive or negative air temperature
     data[14]=1;
   } 
   else {
     data[14]=0;
   } 
-  if (water > 0) {
+
+  if (rainCount > -1) { // if rain instead of water
+    data[17]=10;
+    data[18]=rainCount;
+    data[19]=0;    
+  } 
+  
+  else if (water > 0) { //if positive or negative water temperature
     data[17]=1;
+    data[18]=abs(water*100)/100;
+    data[19]=abs(int(water*100))%100;
   } 
   else {
     data[17]=0;
+    data[18]=abs(water*100)/100;
+    data[19]=abs(int(water*100))%100;
   } 
 
 
@@ -247,6 +277,7 @@ void AfterPost() {
     PDPcount=0;
     failedSend=0;
     sonicError=0;
+    rainCount=0;
     memset(windGust, 0, sizeof(windGust)); // empty direction array
 }
 
