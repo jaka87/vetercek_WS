@@ -136,7 +136,7 @@ if (fona.checkAT()) {  // wait untill modem is active
     sendBatTemp=0;
 
 
-  #ifndef SOLAR
+  #ifdef SOLAR
     int curr = 0;  // measure solar cell current
     volatile unsigned currCount = 0;
     while (currCount < 10) {
@@ -144,7 +144,7 @@ if (fona.checkAT()) {  // wait untill modem is active
           currCount++;
           delay(50);
       }
-    SolarCurrent=(curr/currCount)/5;  // calculate average solar current
+    SolarCurrent=(curr/currCount)/5;  // calculate average solar current // divide with 5 so it can be send as byte
 
       #ifdef DEBUG
         Serial.print("solar current: ");
