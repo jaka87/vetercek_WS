@@ -61,7 +61,7 @@ boolean Adafruit_FONA::begin(Stream &port) {
 //    digitalWrite(_rstpin, HIGH);
 //  }
 
-  DEBUG_PRINTLN(F("Attempting to open comm with ATs"));
+  DEBUG_PRINTLN(F("try SIM700"));
   // give 7 seconds to reboot
   int16_t timeout = 7000;
 
@@ -78,7 +78,7 @@ boolean Adafruit_FONA::begin(Stream &port) {
 
   if (timeout <= 0) {
 #ifdef ADAFRUIT_FONA_DEBUG
-    DEBUG_PRINTLN(F("Timeout: No response to AT... last ditch attempt."));
+    DEBUG_PRINTLN(F("No response, last attempt"));
   //pinMode(10, OUTPUT);
   digitalWrite(10, LOW);
   delay(3000); // For SIM7000 
@@ -120,17 +120,8 @@ boolean Adafruit_FONA::begin(Stream &port) {
 
 
 
-  if (prog_char_strstr(replybuffer, (prog_char *)F("SIM808 R14")) != 0) {
-    _type = SIM808_V2;
-  } else if (prog_char_strstr(replybuffer, (prog_char *)F("SIM808 R13")) != 0) {
-    _type = SIM808_V1;
-  } else if (prog_char_strstr(replybuffer, (prog_char *)F("SIM800 R13")) != 0) {
-    _type = SIM800L;
-  } else if (prog_char_strstr(replybuffer, (prog_char *)F("SIMCOM_SIM5320A")) != 0) {
-    _type = SIM5320A;
-  } else if (prog_char_strstr(replybuffer, (prog_char *)F("SIMCOM_SIM5320E")) != 0) {
-    _type = SIM5320E;
-  } else if (prog_char_strstr(replybuffer, (prog_char *)F("SIM7000A")) != 0) {
+
+  if (prog_char_strstr(replybuffer, (prog_char *)F("SIM7000A")) != 0) {
     _type = SIM7000A;
   } else if (prog_char_strstr(replybuffer, (prog_char *)F("SIM7000C")) != 0) {
     _type = SIM7000C;
@@ -138,34 +129,8 @@ boolean Adafruit_FONA::begin(Stream &port) {
     _type = SIM7000E;
   } else if (prog_char_strstr(replybuffer, (prog_char *)F("SIM7000G")) != 0) {
     _type = SIM7000G;
-  } else if (prog_char_strstr(replybuffer, (prog_char *)F("SIM7500A")) != 0) {
-    _type = SIM7500A;
-  } else if (prog_char_strstr(replybuffer, (prog_char *)F("SIM7500E")) != 0) {
-    _type = SIM7500E;
-  } else if (prog_char_strstr(replybuffer, (prog_char *)F("SIM7600A")) != 0) {
-    _type = SIM7600A;
-  } else if (prog_char_strstr(replybuffer, (prog_char *)F("SIM7600C")) != 0) {
-    _type = SIM7600C;
-  } else if (prog_char_strstr(replybuffer, (prog_char *)F("SIM7600E")) != 0) {
-    _type = SIM7600E;
-  }
+  } 
 
-
-  if (_type == SIM800L) {
-    // determine if L or H
-
-  DEBUG_PRINT(F("\t---> ")); DEBUG_PRINTLN("AT+GMM");
-
-    mySerial->println("AT+GMM");
-    readline(500, true);
-
-  DEBUG_PRINT (F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
-
-
-    if (prog_char_strstr(replybuffer, (prog_char *)F("SIM800H")) != 0) {
-      _type = SIM800H;
-    }
-  }
 
 
   return true;
@@ -173,9 +138,6 @@ boolean Adafruit_FONA::begin(Stream &port) {
 
 
 /********* Serial port ********************************************/
-boolean Adafruit_FONA::setBaudrate(uint16_t baud) {
-  return sendCheckReply(F("AT+IPREX="), baud, ok_reply);
-}
 
 boolean Adafruit_FONA_LTE::setBaudrate(uint16_t baud) {
   return sendCheckReply(F("AT+IPR="), baud, ok_reply);
@@ -189,34 +151,6 @@ boolean Adafruit_FONA::getBattVoltage(uint16_t *v) {
     return sendParseReply(F("AT+CBC"), F("+CBC: "), v, ',', 2);
 }
 
-
-
-/* powers down the SIM module */
-boolean Adafruit_FONA::powerDown(void) {
-  if (_type == SIM7500A || _type == SIM7500E) {
-    if (! sendCheckReply(F("AT+CPOF"), ok_reply))
-      return false;
-  }
-  else {
-    if (! sendCheckReply(F("AT+CPOWD=1"), F("NORMAL POWER DOWN"))) // Normal power off
-        return false;
-  }
-  
-
-  return true;
-}
-
-
-
-
-/* returns the percentage charge of battery as reported by sim800 */
-boolean Adafruit_FONA::getBattPercent(uint16_t *p) {
-  return sendParseReply(F("AT+CBC"), F("+CBC: "), p, ',', 1);
-}
-
-boolean Adafruit_FONA::getADCVoltage(uint16_t *v) {
-  return sendParseReply(F("AT+CADC?"), F("+CADC: 1,"), v);
-}
 
 
 /********* NETWORK AND WIRELESS CONNECTION SETTINGS ***********************/
@@ -369,36 +303,7 @@ boolean Adafruit_FONA_LTE::wirelessConnStatus(void) {
   return true;
 }
 
-/********* SIM ***********************************************************/
 
-uint8_t Adafruit_FONA::unlockSIM(char *pin)
-{
-  char sendbuff[14] = "AT+CPIN=";
-  sendbuff[8] = pin[0];
-  sendbuff[9] = pin[1];
-  sendbuff[10] = pin[2];
-  sendbuff[11] = pin[3];
-  sendbuff[12] = '\0';
-
-  return sendCheckReply(sendbuff, ok_reply);
-}
-
-uint8_t Adafruit_FONA::getSIMCCID(char *ccid) {
-  getReply(F("AT+CCID"));
-  // up to 28 chars for reply, 20 char total ccid
-  if (replybuffer[0] == '+') {
-    // fona 3g?
-    strncpy(ccid, replybuffer+8, 20);
-  } else {
-    // fona 800 or 800
-    strncpy(ccid, replybuffer, 20);
-  }
-  ccid[20] = 0;
-
-  readline(); // eat 'OK'
-
-  return strlen(ccid);
-}
 
 /********* IMEI **********************************************************/
 
@@ -444,175 +349,15 @@ uint8_t Adafruit_FONA::getRSSI(void) {
 
 /********* TIME **********************************************************/
 
-boolean Adafruit_FONA::enableNTPTimeSync(boolean onoff, FONAFlashStringPtr ntpserver) {
-  if (onoff) {
-    if (! sendCheckReply(F("AT+CNTPCID=1"), ok_reply))
-      return false;
 
-    mySerial->print(F("AT+CNTP=\""));
-    if (ntpserver != 0) {
-      mySerial->print(ntpserver);
-    } else {
-      mySerial->print(F("pool.ntp.org"));
-    }
-    mySerial->println(F("\",0"));
-    readline(FONA_DEFAULT_TIMEOUT_MS);
-    if (strcmp(replybuffer, "OK") != 0)
-      return false;
 
-    if (! sendCheckReply(F("AT+CNTP"), ok_reply, 10000))
-      return false;
 
-    uint16_t status;
-    readline(10000);
-    if (! parseReply(F("+CNTP:"), &status))
-      return false;
-  } else {
-    if (! sendCheckReply(F("AT+CNTPCID=0"), ok_reply))
-      return false;
-  }
-
-  return true;
-}
-
-boolean Adafruit_FONA::getTime(char *buff, uint16_t maxlen) {
-  getReply(F("AT+CCLK?"), (uint16_t) 10000);
-  if (strncmp(replybuffer, "+CCLK: ", 7) != 0)
-    return false;
-
-  char *p = replybuffer+7;
-  uint16_t lentocopy = min(maxlen-1, (int)strlen(p));
-  strncpy(buff, p, lentocopy+1);
-  buff[lentocopy] = 0;
-
-  readline(); // eat OK
-
-  return true;
-}
-
-/********* Real Time Clock ********************************************/
-
-boolean Adafruit_FONA::readRTC(uint8_t *year, uint8_t *month, uint8_t *date, uint8_t *hr, uint8_t *min, uint8_t *sec, int8_t *tz) {
-  getReply(F("AT+CCLK?"), (uint16_t) 10000); //Get RTC timeout 10 sec
-  if (strncmp(replybuffer, "+CCLK: ", 7) != 0)
-    return false;
-
-  char *p = replybuffer+8;   // skip +CCLK: "
-  // Parse date
-  int reply = atoi(p);     // get year
-  *year = (uint8_t) reply;   // save as year
-  p+=3;              // skip 3 char
-  reply = atoi(p);
-  *month = (uint8_t) reply;
-  p+=3;
-  reply = atoi(p);
-  *date = (uint8_t) reply;
-  p+=3;
-  reply = atoi(p);
-  *hr = (uint8_t) reply;
-  p+=3;
-  reply = atoi(p);
-  *min = (uint8_t) reply;
-  p+=3;
-  reply = atoi(p);
-  *sec = (uint8_t) reply;
-  p+=3;
-  reply = atoi(p);
-  *tz = reply;
-
-  readline(); // eat OK
-
-  return true;
-}
-
-boolean Adafruit_FONA::enableRTC(uint8_t i) {
-  if (! sendCheckReply(F("AT+CLTS="), i, ok_reply))
-    return false;
-  return sendCheckReply(F("AT&W"), ok_reply);
-}
 
 
 /********* GPRS **********************************************************/
 
 
 boolean Adafruit_FONA::enableGPRS(boolean onoff) {
-  if (_type == SIM5320A || _type == SIM5320E || _type == SIM7500A || _type == SIM7500E || _type == SIM7600A || _type == SIM7600C || _type == SIM7600E) {
-    if (onoff) {
-      // disconnect all sockets
-      sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 5000);
-
-      if (! sendCheckReply(F("AT+CGATT=1"), ok_reply, 10000))
-        return false;
-
-
-      // set bearer profile access point name
-      if (apn) {
-        // Send command AT+CGSOCKCONT=1,"IP","<apn value>" where <apn value> is the configured APN name.
-        if (! sendCheckReplyQuoted(F("AT+CGSOCKCONT=1,\"IP\","), apn, ok_reply, 10000))
-          return false;
-
-        // set username/password
-        if (apnusername) {
-          char authstring[100] = "AT+CGAUTH=1,1,\"";
-          // char authstring[100] = "AT+CSOCKAUTH=1,1,\""; // For 3G
-          char *strp = authstring + strlen(authstring);
-          prog_char_strcpy(strp, (prog_char *)apnusername);
-          strp+=prog_char_strlen((prog_char *)apnusername);
-          strp[0] = '\"';
-          strp++;
-          strp[0] = 0;
-
-          if (apnpassword) {
-            strp[0] = ','; strp++;
-            strp[0] = '\"'; strp++;
-            prog_char_strcpy(strp, (prog_char *)apnpassword);
-            strp+=prog_char_strlen((prog_char *)apnpassword);
-            strp[0] = '\"';
-            strp++;
-            strp[0] = 0;
-          }
-
-          if (! sendCheckReply(authstring, ok_reply, 10000))
-            return false;
-        }
-      }
-
-      // connect in transparent mode
-      if (! sendCheckReply(F("AT+CIPMODE=0"), ok_reply, 10000))  
-        return false;
-      // open network
-      if (_type == SIM5320A || _type == SIM5320E) {
-        if (! sendCheckReply(F("AT+NETOPEN=,,1"), F("Network opened"), 10000))
-          return false;
-      }
-      else if (_type == SIM7500A || _type == SIM7500E || _type == SIM7600A || _type == SIM7600C || _type == SIM7600E) {
-        if (! sendCheckReply(F("AT+NETOPEN"), ok_reply, 10000))
-          return false;
-      }
-      readline(); // eat 'OK'
-    } else {
-      // close GPRS context
-      if (_type == SIM5320A || _type == SIM5320E) {
-        if (! sendCheckReply(F("AT+NETCLOSE"), F("Network closed"), 10000))
-          return false;
-      }
-      else if (_type == SIM7500A || _type == SIM7500E || _type == SIM7600A || _type == SIM7600C || _type == SIM7600E) {
-        getReply(F("AT+NETCLOSE"));
-        getReply(F("AT+CHTTPSSTOP"));
-        // getReply(F("AT+CHTTPSCLSE"));
-
-        // if (! sendCheckReply(F("AT+NETCLOSE"), ok_reply, 10000))
-       //   return false;
-      //    if (! sendCheckReply(F("AT+CHTTPSSTOP"), F("+CHTTPSSTOP: 0"), 10000))
-        //  return false;
-        // if (! sendCheckReply(F("AT+CHTTPSCLSE"), ok_reply, 10000))
-        //  return false;
-      }
-
-      readline(); // eat 'OK'
-    }
-  }
-  else {
     if (onoff) {
       // if (_type < SIM7000A) { // UNCOMMENT FOR LTE ONLY!
         // disconnect all sockets
@@ -710,7 +455,7 @@ boolean Adafruit_FONA::enableGPRS(boolean onoff) {
     // } // UNCOMMENT FOR LTE ONLY!
 
     }
-  }
+ 
   return true;
 }
 
@@ -781,8 +526,8 @@ boolean Adafruit_FONA::postData(const char *URL, char *response) {
   if (! parseReply(F("+HTTPACTION:"), &datalen, ',', 2))
     return false;
 
-  DEBUG_PRINT("HTTP status: "); DEBUG_PRINTLN(status);
-  DEBUG_PRINT("Data length: "); DEBUG_PRINTLN(datalen);
+  DEBUG_PRINT("HTTP s: "); DEBUG_PRINTLN(status);
+  DEBUG_PRINT("Dlength: "); DEBUG_PRINTLN(datalen);
 
   if (status != 200) return false;
 
@@ -801,76 +546,7 @@ boolean Adafruit_FONA::postData(const char *URL, char *response) {
 
 
 
-/********* SIM7000 MQTT FUNCTIONS  ************************************/
-// Set MQTT parameters
-// Parameter tags can be "CLIENTID", "URL", "KEEPTIME", "CLEANSS", "USERNAME",
-// "PASSWORD", "QOS", "TOPIC", "MESSAGE", or "RETAIN"
-boolean Adafruit_FONA_LTE::MQTT_setParameter(const char* paramTag, const char* paramValue, uint16_t port) {
-  char cmdStr[50];
 
-  if (strcmp(paramTag, "CLIENTID") == 0 || strcmp(paramTag, "URL") == 0 || strcmp(paramTag, "TOPIC") == 0 || strcmp(paramTag, "MESSAGE") == 0) {
-    if (port == 0) sprintf(cmdStr, "AT+SMCONF=\"%s\",\"%s\"", paramTag, paramValue); // Quoted paramValue
-    else sprintf(cmdStr, "AT+SMCONF=\"%s\",\"%s\",\"%i\"", paramTag, paramValue, port);
-    if (! sendCheckReply(cmdStr, ok_reply)) return false;
-  }
-  else {
-    sprintf(cmdStr, "AT+SMCONF=\"%s\",%s", paramTag, paramValue); // Unquoted paramValue
-    if (! sendCheckReply(cmdStr, ok_reply)) return false;
-  }
-  
-  return true;
-}
-
-// Connect or disconnect MQTT
-boolean Adafruit_FONA_LTE::MQTT_connect(bool yesno) {
-  if (yesno) return sendCheckReply(F("AT+SMCONN"), ok_reply, 5000);
-  else return sendCheckReply(F("AT+SMDISC"), ok_reply);
-}
-
-// Query MQTT connection status
-boolean Adafruit_FONA_LTE::MQTT_connectionStatus(void) {
-  if (! sendCheckReply(F("AT+SMSTATE?"), F("+SMSTATE: 1"))) return false;
-  return true;
-}
-
-// Subscribe to specified MQTT topic
-// QoS can be from 0-2
-boolean Adafruit_FONA_LTE::MQTT_subscribe(const char* topic, byte QoS) {
-  char cmdStr[32];
-  sprintf(cmdStr, "AT+SMSUB=\"%s\",%i", topic, QoS);
-
-  if (! sendCheckReply(cmdStr, ok_reply)) return false;
-  return true;
-}
-
-// Unsubscribe from specified MQTT topic
-boolean Adafruit_FONA_LTE::MQTT_unsubscribe(const char* topic) {
-  char cmdStr[32];
-  sprintf(cmdStr, "AT+SMUNSUB=\"%s\"", topic);
-  if (! sendCheckReply(cmdStr, ok_reply)) return false;
-  return true;
-}
-
-// Publish to specified topic
-// Message length can be from 0-512 bytes
-// QoS can be from 0-2
-// Server hold message flag can be 0 or 1
-boolean Adafruit_FONA_LTE::MQTT_publish(const char* topic, const char* message, uint16_t contentLength, byte QoS, byte retain) {
-  char cmdStr[40];
-  sprintf(cmdStr, "AT+SMPUB=\"%s\",%i,%i,%i", topic, contentLength, QoS, retain);
-
-  getReply(cmdStr, 300);
-  if (strstr(replybuffer, ">") == NULL) return false; // Wait for "> " to send message
-  if (! sendCheckReply(message, ok_reply, 5000)) return false; // Now send the message
-
-  return true;
-}
-
-// Change MQTT data format to hex
-// Enter "true" if you want hex, "false" if you don't
-boolean Adafruit_FONA_LTE::MQTT_dataFormatHex(bool yesno) {
-  if (yesno) sendCheckReply(F("AT+SMPUBHEX="), yesno, ok_reply);
-}
 
 
 /********* UDP FUNCTIONS  ************************************/
@@ -929,9 +605,9 @@ uint8_t Adafruit_FONA::UDPconnected(void) {
 
   //return (strcmp(replybuffer, "STATE: CONNECT OK") == 0);
   
-  if (strcmp(replybuffer, "STATE: CONNECT OK") == 0) { return 1;}
-  else if (strcmp(replybuffer, "STATE:  UDP CLOSED") == 0) { return 5;}
-  else if (strcmp(replybuffer, "STATE: PDP DEACT:") == 0) { return 10;}
+  if (strcmp(replybuffer, "CONNECT OK") == 0) { return 1;}
+  else if (strcmp(replybuffer, "UDP CLOSED") == 0) { return 5;}
+  else if (strcmp(replybuffer, "PDP DEACT:") == 0) { return 10;}
   else { return 0;}
 }
 

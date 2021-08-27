@@ -4,7 +4,7 @@
 #include "src/OneWire/OneWire.h" //tmp sensor
 #include "src/DS18B20/DallasTemperature.h"
 #include "src/TimerOne/TimerOne.h"
-#define TINY_GSM_MODEM_SIM7000
+#include "src/bmp/ErriezBMX280.h"
 #include "src/Fona/Adafruit_FONA.h"
 #include <EEPROM.h>
 
@@ -16,28 +16,30 @@
 #define PWRKEY 10
 #define RESET 7
 
-byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0 }; // data
+byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 0,0 }; // data
 
-OneWire oneWire_in(ONE_WIRE_BUS_1);
+OneWire oneWire_in(ONE_WIRE_BUS_1);   //tmp
 DallasTemperature sensor_air(&oneWire_in);
+OneWire oneWire_out(ONE_WIRE_BUS_2);
+DallasTemperature sensor_water(&oneWire_out);
+
+//////////////////////////////////    EEPROM DATA
+// 1-8 IMEI
+// 9   2G/nb-iot
+// 10  water temperature or rain
+// 11  solar on/off - since 0.4.4
+// 12  ultraasonic on/off
+// 13  pressure on/off
 
 //////////////////////////////////    EDIT THIS
 #define APN "iot.1nce.net"
-int GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
-int cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
+byte GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
+byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 40; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 //#define DEBUG // comment out if you want to turn off debugging
-#define ULTRASONIC // comment out if you want to disable ultrasonic anemometer detection
-#define RAIN // comment out to disable rain sensor and enable water temperature
-#define SOLAR // comment out to disable solar cell current measurement
 ///////////////////////////////////////////////////////////////////////////////////
-
-  #ifndef RAIN
-    OneWire oneWire_out(ONE_WIRE_BUS_2);
-    DallasTemperature sensor_water(&oneWire_out);
-  #endif
 
 //#include <SoftwareSerial.h>
 //SoftwareSerial fonaSS = SoftwareSerial(8, 9); // RX, TX
@@ -50,10 +52,12 @@ NeoSWSerial ultrasonic( 5, 6 );
 //SoftwareSerial *fonaSerial = &fonaSS;
 Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
 
+ErriezBMX280 bmx280 = ErriezBMX280(0x76); //pressure
+
 //////////////////////////////////    RATHER DON'T CHANGE
 unsigned int pwrAir = 11; // power for air sensor
 unsigned int pwrWater = 12; // power for water sensor
-int resetReason = MCUSR;
+byte resetReason = MCUSR;
 int windDelay = 2300; // time for each anemometer measurement in miliseconds
 byte onOffTmp = 1;   //on/off temperature measure
 volatile unsigned long timergprs = 0; // timer to check if GPRS is taking to long to complete
@@ -65,10 +69,8 @@ volatile unsigned long currentMillis;
 volatile unsigned long currentMillis2;
 volatile unsigned long contactBounceTime2; // Timer to avoid contact bounce in rain interrupt routine
 volatile unsigned long updateBattery = 0;
-
 int rainCount=-1; // count rain bucket tilts
 byte SolarCurrent; // calculate solar cell current 
-
 String serialResponse = "";
 byte firstWindPulse; // ignore 1st anemometer rotation since it didn't make full circle
 int windSpeed; // speed
@@ -92,19 +94,20 @@ unsigned int sig = 0;
 float actualWindDelay; //time between first and last measured anemometer rotation
 char IMEI[15]; // Use this for device ID
 int idd[15];
-int sleepBetween=8;
+byte sleepBetween=8;
 byte sendBatTemp=10;
 int PDPcount=0; // first reset after 100s
-int failedSend=0; // if send fail
+byte failedSend=0; // if send fail
 byte sonicError=0;
 byte UltrasonicAnemo=0;
+byte enableSolar=0;
+byte enableRain=0;
+byte enableBmp=0;
+int pressure=0;
 
 void setup() {
-
-
   MCUSR = 0; // clear reset flags
   wdt_disable();
-
   Timer1.initialize(1000000);         // initialize timer1, and set a 1 second period
   Timer1.attachInterrupt(CheckTimerGPRS);  // attaches checkTimer() as a timer overflow interrupt
 
@@ -114,13 +117,11 @@ pinMode(PWRKEY, OUTPUT);
 digitalWrite(DTR, LOW); 
 digitalWrite(RESET, HIGH); 
 digitalWrite(PWRKEY, LOW);
-
-
   
 #ifdef DEBUG
   Serial.begin(9600);
   while (!Serial);
-  Serial.println("Starting!");
+  Serial.println("Start");
 #endif
 
   pinMode(13, OUTPUT);     // this part is used when you bypass bootloader to signal when board is starting...
@@ -135,15 +136,22 @@ digitalWrite(PWRKEY, LOW);
   delay(100);
   sensor_air.begin();
 
-  #ifndef RAIN
-    sensor_water.begin();
-  #else
-    attachInterrupt(digitalPinToInterrupt(3), rain_count, FALLING);
-  #endif
-  
+  if (EEPROM.read(11)==255 or EEPROM.read(11)==1) {  enableSolar=1; }   
+  if (EEPROM.read(10)==0) { attachInterrupt(digitalPinToInterrupt(3), rain_count, FALLING); enableRain=1;} // rain counts
+  else { sensor_water.begin(); } // water temperature
   if (EEPROM.read(9)==13) { GSMstate=13; }
   else if (EEPROM.read(9)==2) { GSMstate=2; }
   else if (EEPROM.read(9)==38) {GSMstate=38; } //#define NBIOT
+
+  if ((EEPROM.read(13)==255 or EEPROM.read(13)==1) and bmx280.begin()) {  
+      enableBmp=1; 
+      bmx280.setSampling(BMX280_MODE_FORCED,    // SLEEP, FORCED, NORMAL
+                       BMX280_SAMPLING_NONE,   // Temp:  NONE, X1, X2, X4, X8, X16
+                       BMX280_SAMPLING_X8,   // Press: NONE, X1, X2, X4, X8, X16
+                       BMX280_SAMPLING_NONE,   // Hum:   NONE, X1, X2, X4, X8, X16 (BME280)
+                       BMX280_FILTER_X8,     // OFF, X2, X4, X8, X16
+                       BMX280_STANDBY_MS_500);// 0_5, 10, 20, 62_5, 125, 250, 500, 1000
+  }   
   
   //power
   //powerOn(); // Power on the module
@@ -154,24 +162,22 @@ connectGPRS();
 
 
 
-#ifdef ULTRASONIC
+if (EEPROM.read(12)==1 or EEPROM.read(12)==255) {   // if ultrasonic enabled
     ultrasonic.begin(9600);
     delay(4000);
      if ( ultrasonic.available()) { // check if ultrasonic anemometer is pluged in
       UltrasonicAnemo=1;
       windDelay=1000; // only make one measurement with sonic anemometer
      }
-#endif
+ }
 
 }
 
 void loop() {
 
  if ( UltrasonicAnemo==1 ) {    // if ultrasonic anemometer pluged in at boot
-
-#ifdef ULTRASONIC
           #ifdef DEBUG
-    Serial.println("Ultrasonic anemometer enabled");
+    Serial.println("US OK");
         #endif   
   unsigned long startedWaiting = millis();
   while (!ultrasonic.available() && millis() - startedWaiting <= 5000) {
@@ -189,14 +195,10 @@ void loop() {
    UltrasonicAnemometer();       
      }   
 
-
-
   if ( sleepBetween > 0)  { // to sleap or not to sleap between wind measurement
       ultrasonic.flush();
       ultrasonic.end();
-     }
-#endif
-     
+     }     
         #ifdef DEBUG
           Serial.flush();
         #endif                       
@@ -223,19 +225,11 @@ void loop() {
 
   
   #ifdef DEBUG                                 // debug data
-    Serial.print(" rot:");
-    Serial.print(rotations);
-    Serial.print(" delay:");
-    Serial.print(actualWindDelay);
-    Serial.print(" dir:");
+    Serial.print(" d:");
     Serial.print(calDirection);
-    Serial.print(" speed:");
+    Serial.print(" s:");
     Serial.print(windSpeed);
-    Serial.print(" gust:");
-    Serial.print(windGustAvg);
-    Serial.print(" next:");
-    Serial.print(whenSend - measureCount);
-    Serial.print(" count:");
+    Serial.print(" c:");
     Serial.println(measureCount);
   #endif
 
@@ -256,17 +250,13 @@ if ( (resetReason==2 and measureCount > 2) or (wind_speed >= (cutoffWind*10) and
       delay(500);
         SendData();
       digitalWrite(DTR, HIGH);  //sleep  
-      #ifdef ULTRASONIC        
-      ultrasonic.listen();
-      #endif
-      delay(500);
+      if (UltrasonicAnemo==1){
+        ultrasonic.listen();
+      }
+  delay(500);
 
   }
   else { // restart timer
-  #ifdef DEBUG
-      Serial.print("tim: ");
-      Serial.println(timergprs);
-  #endif
     noInterrupts();
     timergprs = 0;                                // reset timer 
     interrupts();
@@ -278,7 +268,7 @@ void CheckTimerGPRS() { // if unable to send data in 200s
   timergprs++;
   if (timergprs > 200 ) {
     #ifdef DEBUG
-      Serial.println("hard reset");
+      Serial.println("hardR");
     #endif    
     timergprs = 0;
     //powerOn();
@@ -289,7 +279,6 @@ void CheckTimerGPRS() { // if unable to send data in 200s
 
 void reset() {
 #ifdef DEBUG
-  //Serial.println("timer reset");
   Serial.flush();
   Serial.end();
 #endif
@@ -307,7 +296,7 @@ void powerOn() {
   delay(3000); // For SIM7000 
   digitalWrite(PWRKEY, HIGH);
    #ifdef DEBUG
-    Serial.println("Power on");
+    Serial.println("Pwr on");
    #endif   
   delay(1000);
 }

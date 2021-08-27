@@ -21,12 +21,16 @@ New PCB
 + Waterproof housing
 + GSM antena
 + DS18B20 temperature sensor
-+ cable gland for anemometer cable, solar and temperature sensor
++ Cable gland for anemometer cable, solar and temperature sensor
+
+## Optional parts
++ Rain gauge (whichever uses reed switch in tipping bucket)
++ BMP280 pressure sensor
 
 ## Payload
 UDP payload using this station is 24 byte for upload and 9 bytes for server response  
 **sample upload:**  
-list=[11,11,11,11,11,11,11,1,   1,77, 12,2, 14,5, 1,20,3, 0,1,0, 77,18,40,0]  
+list=[11,11,11,11,11,11,11,1,   1,77, 12,2, 14,5, 1,20,3, 0,1,0, 77,18,40,0.88,12,34]  
 + first 8 bytes are id of the station
 + byte 9 and 10 are for wind wane -  (sample 177)
 + byte 11 and 12 are wind speed (sample 12.2 KT)
@@ -38,6 +42,7 @@ list=[11,11,11,11,11,11,11,1,   1,77, 12,2, 14,5, 1,20,3, 0,1,0, 77,18,40,0]
 + byte 23 is count of measurements
 + byte 24 is reset reason  
 + byte 25 is solar current  
++ byte 26,27 is pressure measurement  
 
 list=[40, 1,2,30, 23, 1, 5, 1, 0]  
 **sample response:**
@@ -47,7 +52,7 @@ list=[40, 1,2,30, 23, 1, 5, 1, 0]
 + byte 6 controls tmp sensor - 0 off; 1 only air, 2 only watter; 3 both
 + byte 7 controsl cuttof wind  - when avg wind is under that value data is send 2x of setted interval
 + byte 8 - 0 no sleep between wind measurements, 1 - 8s delay
-+ byte 9 - 1 resets the station
++ byte 9 - 1 resets the station, other numbers change settings of rain/water sensor, solar measurement, pressure measurement...
 
 
 

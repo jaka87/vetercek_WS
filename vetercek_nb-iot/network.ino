@@ -1,13 +1,11 @@
 bool netStatus() {
   int n = fona.getNetworkStatus();
   #ifdef DEBUG
-  Serial.print(F("Network status ")); Serial.print(n); Serial.print(F(": "));
-  if (n == 0) Serial.println(F("Not registered"));
-  if (n == 1) Serial.println(F("Registered (home)"));
-  if (n == 2) Serial.println(F("Not registered (searching)"));
-  if (n == 3) Serial.println(F("Denied"));
-  if (n == 4) Serial.println(F("Unknown"));
-  if (n == 5) Serial.println(F("Registered roaming"));
+  if (n == 0) Serial.println(F("NR"));
+  if (n == 1) Serial.println(F("Reg"));
+  if (n == 2) Serial.println(F("Src"));
+  if (n == 3) Serial.println(F("NO"));
+  if (n == 5) Serial.println(F("ROK"));
   #endif
 
 if (n == 0){
@@ -37,7 +35,7 @@ void moduleSetup() {
   fonaSS.begin(9600);
   if (! fona.begin(fonaSS)) {
       #ifdef DEBUG
-        Serial.println(F("Couldn't find FONA"));
+        Serial.println(F("No F"));
       #endif
     while(1); // Don't proceed if it couldn't find the device
   }
@@ -81,7 +79,7 @@ unsigned long startTime=millis();
       if (millis() - startTime >= 40000)
       {
        #ifdef DEBUG
-        Serial.println(F("Restart connection..."));
+        Serial.println(F("RstC"));
        #endif         
         powerOn(); // Power on the module
         delay(4000);
@@ -89,17 +87,17 @@ unsigned long startTime=millis();
        startTime=millis(); 
       }
       #ifdef DEBUG
-        Serial.println(F("Failed to connect to cell network, retrying..."));
+        Serial.println(F("RetCON"));
       #endif 
       delay(2000); // Retry every 2s
     }
   #ifdef DEBUG  
-    Serial.println(F("Connected to cell network!"));
+    Serial.println(F("CON"));
   #endif 
 
   if (fona.enableGPRS(true)) {
   #ifdef DEBUG  
-    Serial.println(F("Enabled data"));
+    Serial.println(F("GPRS"));
   #endif 
   }
 
@@ -111,7 +109,7 @@ unsigned long startTime=millis();
 void PostData() {    
 if (fona.checkAT()) {  // wait untill modem is active
      #ifdef DEBUG
-      Serial.println("Modem active");
+      Serial.println("Modem");
      #endif  
 }
       
@@ -136,7 +134,7 @@ if (fona.checkAT()) {  // wait untill modem is active
     sendBatTemp=0;
 
 
-  #ifdef SOLAR
+  if (enableSolar==1){
     int curr = 0;  // measure solar cell current
     volatile unsigned currCount = 0;
     while (currCount < 10) {
@@ -146,11 +144,7 @@ if (fona.checkAT()) {  // wait untill modem is active
       }
     SolarCurrent=(curr/currCount)/5;  // calculate average solar current // divide with 5 so it can be send as byte
 
-      #ifdef DEBUG
-        Serial.print("solar current: ");
-        Serial.println(SolarCurrent);
-     #endif
-  #endif     
+  }    
 }
   else {
     sendBatTemp=sendBatTemp+1;
@@ -179,7 +173,7 @@ if (fona.checkAT()) {  // wait untill modem is active
     data[14]=0;
   } 
 
-  if (rainCount > -1) { // if rain instead of water
+  if (rainCount > -1 and enableRain==1) { // if rain instead of water
     data[17]=10;
     data[18]=rainCount;
     data[19]=0;    
@@ -196,10 +190,14 @@ if (fona.checkAT()) {  // wait untill modem is active
     data[19]=abs(int(water*100))%100;
   } 
 
+  if (enableBmp==1) { // if send pressure value
+    data[25]=pressure/100;
+    data[26]=pressure%100;
+  } 
 
 bool isConnected = fona.UDPconnected();
      #ifdef DEBUG
-      Serial.print("UDP STATUS ");
+      Serial.print("UDP");
       Serial.println(isConnected);
      #endif
     if (isConnected ==0) {
@@ -229,18 +227,27 @@ bool isConnected = fona.UDPconnected();
   }
 
   if (response[4] >0) { windDelay=response[4]*100;}
-  if (response[8] ==1) { reset(); }
+  
+  if (response[8] ==1) { reset(); } // reset
+  else if (response[8]==100) { EEPROM.write(10, 0); reset(); } // water
+  else if (response[8]==101) { EEPROM.write(10, 1); reset(); } 
+  else if (response[8]==110) { EEPROM.write(11, 2); reset(); } // solar
+  else if (response[8]==111) { EEPROM.write(11, 1); reset(); } 
+  else if (response[8]==120) { EEPROM.write(12, 0); reset(); } //ultrasonic
+  else if (response[8]==121) { EEPROM.write(12, 1); reset(); }   
+  else if (response[8]==130) { EEPROM.write(13, 0); reset(); }   //pressure
+  else if (response[8]==131) { EEPROM.write(13, 1); reset(); }   
   else if (response[8] == 2 or response[8]==13 or response[8]==38) { // if new settings for network prefference
     EEPROM.write(9, response[8]);   // write new data to EEPROM
     reset(); 
     }
-
+   
   onOffTmp=response[5];
   cutoffWind=response[6];
   sleepBetween=response[7];
 
      #ifdef DEBUG
-      Serial.println("SEND DONE");
+      Serial.println("SEND");
      #endif
   AfterPost(); 
    } 
@@ -251,7 +258,7 @@ bool isConnected = fona.UDPconnected();
 
       if (failedSend > 3) {
       #ifdef DEBUG
-        Serial.println("soft reset");
+        Serial.println("softR");
       #endif
       powerOn(); // Power on the module
       delay(4000);
@@ -278,6 +285,7 @@ void AfterPost() {
     failedSend=0;
     sonicError=0;
     rainCount=0;
+    pressure=0;
     memset(windGust, 0, sizeof(windGust)); // empty direction array
 }
 
@@ -285,43 +293,24 @@ void AfterPost() {
 
 // send data to server
 void SendData() {
-#ifdef DEBUG
-  Serial.print("TIMER ");
-  Serial.println(timergprs);
-#endif
     noInterrupts();
     timergprs = 0;
     interrupts();
-
   BeforePostCalculations();
   PostData();
-#ifdef DEBUG
-  Serial.println(timergprs);
-#endif
   noInterrupts();
   timergprs = 0;
   interrupts();
 }
 
 void checkIMEI() {
-   if (EEPROM.read(0)==1) {  // read from EEPROM if data in it
-
-    #ifdef DEBUG
-      Serial.println("IMEI from EEPROM");
-         for (int i = 1; i < 9; i++){
-             Serial.print(EEPROM.read(i));
-         }
-             Serial.println();
-    #endif    
+   if (EEPROM.read(0)==1) {  // read from EEPROM if data in it 
       for (int i = 0; i < 8; i++){
        data[i]=EEPROM.read(i+1);
        }
    }
    
    else {  // read from SIM module
-    #ifdef DEBUG
-      Serial.println("IMEI read!");
-    #endif
       uint8_t imeiLen = fona.getIMEI(IMEI);  // imei to byte array
         delay(200);
         

@@ -25,20 +25,8 @@
 #include "includes/platform/FONAPlatform.h"
 
 
-
-#define SIM800L 1
-#define SIM800H 2
-
-#define SIM808_V1 3
-#define SIM808_V2 4
-
-#define SIM5320A 5
-#define SIM5320E 6
-
 #define SIM7000  7
-#define SIM7070  12
-#define SIM7500  13
-#define SIM7600  16
+
 
 // Keep these variants here for legacy code
 #define SIM7000A 8
@@ -46,33 +34,12 @@
 #define SIM7000E 10
 #define SIM7000G 11
 
-#define SIM7500A 14
-#define SIM7500E 15
-
-#define SIM7600A 17
-#define SIM7600C 18
-#define SIM7600E 19
 
 // Set the preferred SMS storage.
 //   Use "SM" for storage on the SIM.
 //   Use "ME" for internal storage on the FONA chip
 
-#define FONA_HEADSETAUDIO 0
-#define FONA_EXTAUDIO 1
 
-#define FONA_STTONE_DIALTONE 1
-#define FONA_STTONE_BUSY 2
-#define FONA_STTONE_CONGESTION 3
-#define FONA_STTONE_PATHACK 4
-#define FONA_STTONE_DROPPED 5
-#define FONA_STTONE_ERROR 6
-#define FONA_STTONE_CALLWAIT 7
-#define FONA_STTONE_RINGING 8
-#define FONA_STTONE_BEEP 16
-#define FONA_STTONE_POSTONE 17
-#define FONA_STTONE_ERRTONE 18
-#define FONA_STTONE_INDIANDIALTONE 19
-#define FONA_STTONE_USADIALTONE 20
 
 #define FONA_DEFAULT_TIMEOUT_MS 500
 #define FONA_NO_RST_PIN 99
@@ -81,11 +48,6 @@
 #define FONA_HTTP_POST  1
 #define FONA_HTTP_HEAD  2
 
-#define FONA_CALL_READY 0
-#define FONA_CALL_FAILED 1
-#define FONA_CALL_UNKNOWN 2
-#define FONA_CALL_RINGING 3
-#define FONA_CALL_INPROGRESS 4
 
 class Adafruit_FONA : public FONAStreamType {
  public:
@@ -101,13 +63,7 @@ class Adafruit_FONA : public FONAStreamType {
   int peek(void);
   void flush();
 
-  // FONA 3G requirements
-  boolean setBaudrate(uint16_t baud);
-
   // Power, battery, and ADC
-  boolean powerDown(void);
-  boolean getADCVoltage(uint16_t *v);
-  boolean getBattPercent(uint16_t *p);
   boolean getBattVoltage(uint16_t *v);
 
   // Functionality and operation mode settings
@@ -119,8 +75,6 @@ class Adafruit_FONA : public FONAStreamType {
   boolean setNetLED(bool onoff, uint8_t mode = 0, uint16_t timer_on = 64, uint16_t timer_off = 3000); // AT+CNETLIGHT and AT+SLEDS commands
 
   // SIM query
-  uint8_t unlockSIM(char *pin);
-  uint8_t getSIMCCID(char *ccid);
   uint8_t getNetworkStatus(void);
   uint8_t getRSSI(void);
 
@@ -138,16 +92,6 @@ class Adafruit_FONA : public FONAStreamType {
   boolean enableGPRS(boolean onoff);
   int8_t GPRSstate(void);
 
-  // Time
-  // boolean enableNetworkTimeSync(boolean onoff);
-  boolean enableNTPTimeSync(boolean onoff, FONAFlashStringPtr ntpserver=0);
-  boolean getTime(char *buff, uint16_t maxlen);
-  
-  // RTC
-  boolean enableRTC(uint8_t i);
-  boolean readRTC(uint8_t *year, uint8_t *month, uint8_t *date, uint8_t *hr, uint8_t *min, uint8_t *sec, int8_t *tz);
-
-
 
   // TCP raw connections
   boolean UDPconnect(char *server, uint16_t port);
@@ -156,13 +100,7 @@ class Adafruit_FONA : public FONAStreamType {
   boolean UDPsend(unsigned char *packet, uint8_t len, byte response[10],uint8_t charr);
   uint16_t UDPavailable(void);
 
-  // MQTT
-  boolean MQTTconnect(const char *protocol, const char *clientID, const char *username = "", const char *password = "");
-  boolean MQTTdisconnect(void);
-  boolean MQTTpublish(const char* topic, const char* message);
-  boolean MQTTsubscribe(const char* topic, byte QoS);
-  boolean MQTTunsubscribe(const char* topic);
-  boolean MQTTreceive(const char* topic, const char* buf, int maxlen);
+
 
 
   // HTTP low level interface (maps directly to SIM800 commands).
@@ -258,7 +196,7 @@ class Adafruit_FONA : public FONAStreamType {
 class Adafruit_FONA_LTE : public Adafruit_FONA {
 
  public:
-  Adafruit_FONA_LTE () : Adafruit_FONA(FONA_NO_RST_PIN) { _type = SIM7000A; _type = SIM7500A;}
+  Adafruit_FONA_LTE () : Adafruit_FONA(FONA_NO_RST_PIN) { _type = SIM7000A; }
 
   boolean openWirelessConnection(bool onoff);
   boolean wirelessConnStatus(void);
@@ -266,16 +204,7 @@ class Adafruit_FONA_LTE : public Adafruit_FONA {
   boolean setPreferredLTEMode(uint8_t mode);
   boolean setOperatingBand(const char * mode, uint8_t band);
   boolean setBaudrate(uint16_t baud);
-  boolean hangUp(void);
 
-  // MQTT
-  boolean MQTT_setParameter(const char* paramTag, const char* paramValue, uint16_t port = 0);
-  boolean MQTT_connect(bool yesno);
-  boolean MQTT_connectionStatus(void);
-  boolean MQTT_subscribe(const char* topic, byte QoS);
-  boolean MQTT_unsubscribe(const char* topic);
-  boolean MQTT_publish(const char* topic, const char* message, uint16_t contentLength, byte QoS, byte retain);
-  boolean MQTT_dataFormatHex(bool yesno);
 
   // SSL
   

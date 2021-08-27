@@ -1,4 +1,3 @@
-#ifdef ULTRASONIC
 void UltrasonicAnemometer() { //measure wind speed
     unsigned long startedWaiting = millis();
     int successcount=0;
@@ -51,7 +50,7 @@ void UltrasonicAnemometer() { //measure wind speed
       }
       windGustAvg = (windGust[0] + windGust[1] + windGust[2]) / 3;
 }
-#endif
+
 
 
     
@@ -140,14 +139,12 @@ void GetAir() {
 
 
 void GetWater() {
-  #ifndef RAIN
   digitalWrite(pwrWater, HIGH);   // turn on power
   delay(500);
   sensor_water.requestTemperatures(); // Send the command to get temperatures
   delay (750) ;
   water = sensor_water.getTempCByIndex(0);
   digitalWrite(pwrWater, LOW);   // turn off power
-  #endif
 }
 
 void GetAvgWInd() {
@@ -176,6 +173,10 @@ void GetWindDirection() {
 }
 
 
+void GetPressure() {
+  pressure=bmx280.readPressure() / 100.0F;
+}
+
 void BeforePostCalculations() {
   DominantDirection();                          // wind direction
   GetAvgWInd();                                 // avg wind
@@ -185,17 +186,22 @@ void BeforePostCalculations() {
     delay(100);
   }
   else if (onOffTmp == 2) {    
-    #ifndef RAIN
+    if (enableRain==0){  
       GetWater();                             // water
-    #endif             
+    }          
     data[19]=99;
     delay(100);
   }
   else if (onOffTmp > 2) {
     GetAir();                               // air
-    #ifndef RAIN
+    if (enableRain==0){  
       GetWater();                             // water
-    #endif   
+    }          
+    delay(100);
+  }
+
+  if (enableBmp == 1) {
+    GetPressure();
     delay(100);
   }
 
