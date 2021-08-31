@@ -39,6 +39,7 @@ int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 40; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 //#define DEBUG // comment out if you want to turn off debugging
+#define BMP // comment out if you want to turn off pressure sensor and save space
 ///////////////////////////////////////////////////////////////////////////////////
 
 //#include <SoftwareSerial.h>
@@ -52,7 +53,10 @@ NeoSWSerial ultrasonic( 5, 6 );
 //SoftwareSerial *fonaSerial = &fonaSS;
 Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
 
-ErriezBMX280 bmx280 = ErriezBMX280(0x76); //pressure
+
+#ifdef BMP
+  ErriezBMX280 bmx280 = ErriezBMX280(0x76); //pressure
+#endif
 
 //////////////////////////////////    RATHER DON'T CHANGE
 unsigned int pwrAir = 11; // power for air sensor
@@ -143,6 +147,8 @@ digitalWrite(PWRKEY, LOW);
   else if (EEPROM.read(9)==2) { GSMstate=2; }
   else if (EEPROM.read(9)==38) {GSMstate=38; } //#define NBIOT
 
+
+#ifdef BMP
   if ((EEPROM.read(13)==255 or EEPROM.read(13)==1) and bmx280.begin()) {  
       enableBmp=1; 
       bmx280.setSampling(BMX280_MODE_FORCED,    // SLEEP, FORCED, NORMAL
@@ -152,7 +158,7 @@ digitalWrite(PWRKEY, LOW);
                        BMX280_FILTER_X8,     // OFF, X2, X4, X8, X16
                        BMX280_STANDBY_MS_500);// 0_5, 10, 20, 62_5, 125, 250, 500, 1000
   }   
-  
+#endif  
   //power
   //powerOn(); // Power on the module
 
@@ -180,15 +186,15 @@ void loop() {
     Serial.println("US OK");
         #endif   
   unsigned long startedWaiting = millis();
-  while (!ultrasonic.available() && millis() - startedWaiting <= 5000) {
+  while (!ultrasonic.available() && millis() - startedWaiting <= 5000) {  // if US not aveliable start it
     ultrasonic.begin(9600);
     delay(100);
    }
 
-  if ( millis() - startedWaiting >= 5000 && sonicError < 5)  { 
+  if ( millis() - startedWaiting >= 5000 && sonicError < 5)  { // if US error 
     sonicError++;
      }
-  else if ( millis() - startedWaiting >= 5000 && sonicError >= 5)  { 
+  else if ( millis() - startedWaiting >= 5000 && sonicError >= 5)  { // if more than 5 US errors
         reset();
      }
   else  { 
@@ -243,8 +249,14 @@ void loop() {
   digitalWrite(13, HIGH);   // turn the LED on
   delay(50);                       // wait
   digitalWrite(13, LOW);    // turn the LED
-  
-if ( (resetReason==2 and measureCount > 2) or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend) or (measureCount >= (whenSend*2) or whenSend>150) ) {   // check if is time to send data online
+
+
+// check if is time to send data online  
+if ( (resetReason==2 and measureCount > 2)  // if reset buttion is pressed and 3 measurements are made
+  or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend) // if wind avg exeeds cut off value and enough measurements are  made
+  or (measureCount >= (whenSend*2) or measureCount>250) ) // if 2x measurements is made no matter the speed avg (max is 250 measurements)
+  {  
+    
       digitalWrite(DTR, LOW);  //wake up  
       fonaSS.listen();
       delay(500);

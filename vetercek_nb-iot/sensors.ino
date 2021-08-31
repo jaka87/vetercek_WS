@@ -172,10 +172,12 @@ void GetWindDirection() {
 
 }
 
-
+#ifdef BMP
 void GetPressure() {
   pressure=bmx280.readPressure() / 100.0F;
 }
+#endif
+
 
 void BeforePostCalculations() {
   DominantDirection();                          // wind direction
@@ -200,10 +202,12 @@ void BeforePostCalculations() {
     delay(100);
   }
 
-  if (enableBmp == 1) {
-    GetPressure();
-    delay(100);
-  }
+  #ifdef BMP
+    if (enableBmp == 1) {
+      GetPressure();
+      delay(100);
+    }
+  #endif 
 
 }
 

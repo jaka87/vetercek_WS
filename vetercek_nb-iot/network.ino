@@ -190,11 +190,13 @@ if (fona.checkAT()) {  // wait untill modem is active
     data[19]=abs(int(water*100))%100;
   } 
 
-  if (enableBmp==1) { // if send pressure value
-    data[25]=pressure/100;
-    data[26]=pressure%100;
-  } 
-
+  #ifdef BMP
+    if (enableBmp==1) { // if send pressure value
+      data[25]=pressure/100;
+      data[26]=pressure%100;
+    } 
+  #endif 
+  
 bool isConnected = fona.UDPconnected();
      #ifdef DEBUG
       Serial.print("UDP");
@@ -293,14 +295,14 @@ void AfterPost() {
 
 // send data to server
 void SendData() {
-    noInterrupts();
-    timergprs = 0;
-    interrupts();
+//    noInterrupts();
+//    timergprs = 0;
+//    interrupts();
   BeforePostCalculations();
   PostData();
-  noInterrupts();
-  timergprs = 0;
-  interrupts();
+//  noInterrupts();
+//  timergprs = 0;
+//  interrupts();
 }
 
 void checkIMEI() {
