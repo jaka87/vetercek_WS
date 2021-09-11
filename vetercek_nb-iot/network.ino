@@ -150,6 +150,10 @@ if (fona.checkAT()) {  // wait untill modem is active
     sendBatTemp=sendBatTemp+1;
 }
 
+   if ( UltrasonicAnemo==1 ) { 
+    measureCount=measureCount/10;
+   }
+
   data[8]=windDir/100;
   data[9]=windDir%100;
   data[10]=wind_speed/10;
@@ -165,7 +169,8 @@ if (fona.checkAT()) {  // wait untill modem is active
   data[22]=measureCount;
   data[23]=resetReason;
   data[24]=SolarCurrent;
-  
+
+
   if (temp > 0) { // if positive or negative air temperature
     data[14]=1;
   } 
@@ -219,7 +224,7 @@ bool isConnected = fona.UDPconnected();
 
   byte response[10];  
   if ( fona.UDPsend(data,sizeof(data),response,9)) {
-  
+
   if (response[0] >0) { whenSend=response[0];}
   if (response[1] ==1 ) {  
     vaneOffset=(response[2]*100)+response[3];    // if byte is positive value

@@ -36,10 +36,10 @@ DallasTemperature sensor_water(&oneWire_out);
 byte GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
-int whenSend = 40; // interval after how many measurements data is send
+int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 //#define DEBUG // comment out if you want to turn off debugging
-#define BMP // comment out if you want to turn off pressure sensor and save space
+//#define BMP // comment out if you want to turn off pressure sensor and save space
 ///////////////////////////////////////////////////////////////////////////////////
 
 //#include <SoftwareSerial.h>
@@ -182,9 +182,6 @@ if (EEPROM.read(12)==1 or EEPROM.read(12)==255) {   // if ultrasonic enabled
 void loop() {
 
  if ( UltrasonicAnemo==1 ) {    // if ultrasonic anemometer pluged in at boot
-          #ifdef DEBUG
-    Serial.println("US OK");
-        #endif   
   unsigned long startedWaiting = millis();
   while (!ultrasonic.available() && millis() - startedWaiting <= 5000) {  // if US not aveliable start it
     ultrasonic.begin(9600);
@@ -201,10 +198,10 @@ void loop() {
    UltrasonicAnemometer();       
      }   
 
-  if ( sleepBetween > 0)  { // to sleap or not to sleap between wind measurement
-      ultrasonic.flush();
-      ultrasonic.end();
-     }     
+//  if ( sleepBetween > 0)  { // to sleap or not to sleap between wind measurement
+//      ultrasonic.flush();
+//      ultrasonic.end();
+//     }     
         #ifdef DEBUG
           Serial.flush();
         #endif                       
@@ -216,6 +213,11 @@ void loop() {
     GetWindDirection();
  }
 
+
+ if ( UltrasonicAnemo==1 ) { 
+  LowPower.idle(SLEEP_8S, ADC_OFF, TIMER2_ON, TIMER1_OFF, TIMER0_OFF, SPI_OFF, USART0_ON, TWI_OFF); 
+ }
+ else {
   if ( sleepBetween == 1)  { // to sleap or not to sleap between wind measurement
     LowPower.powerDown(SLEEP_1S, ADC_ON, BOD_ON);  // sleep
   }
@@ -228,13 +230,15 @@ void loop() {
   else if ( sleepBetween == 8)  { // to sleap or not to sleap between wind measurement
     LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);  // sleep
   }
-
+}
   
   #ifdef DEBUG                                 // debug data
     Serial.print(" d:");
     Serial.print(calDirection);
     Serial.print(" s:");
     Serial.print(windSpeed);
+    Serial.print(" g:");
+    Serial.print(windGustAvg);
     Serial.print(" c:");
     Serial.println(measureCount);
   #endif
@@ -253,10 +257,10 @@ void loop() {
 
 // check if is time to send data online  
 if ( (resetReason==2 and measureCount > 2)  // if reset buttion is pressed and 3 measurements are made
-  or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend) // if wind avg exeeds cut off value and enough measurements are  made
-  or (measureCount >= (whenSend*2) or measureCount>250) ) // if 2x measurements is made no matter the speed avg (max is 250 measurements)
+  or (wind_speed >= (cutoffWind*10) and ((measureCount >= whenSend and UltrasonicAnemo==0) or (measureCount >= whenSend*10 and UltrasonicAnemo==1 ))) // if wind avg exeeds cut off value and enough measurements are  made
+  or ((measureCount >= (whenSend*2) and UltrasonicAnemo==0) or (measureCount >= (whenSend*20) and UltrasonicAnemo==1))
+  or ((measureCount>250 and UltrasonicAnemo==0) or (measureCount>2500 and UltrasonicAnemo==1)) ) // if 2x measurements is made no matter the speed avg (max is 250 measurements)
   {  
-    
       digitalWrite(DTR, LOW);  //wake up  
       fonaSS.listen();
       delay(500);

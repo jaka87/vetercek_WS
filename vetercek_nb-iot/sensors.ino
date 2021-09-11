@@ -13,49 +13,22 @@ void UltrasonicAnemometer() { //measure wind speed
         int wind = serialResponse.substring(thrdCommaIndex + 1, fourthCommaIndex).toFloat()*19.4384449 ;
         String check = serialResponse.substring(fiftCommaIndex + 1, fiftCommaIndex+2) ;
         
-        if (check=="A") {
-              //Serial.println(dir);
-              //Serial.println(wind);
+        if (check=="A") {  // calculate wind direction and speed
               successcount++;
               windav=windav+wind;
-
               calDirection = dir + vaneOffset;
-            
-              // convert reading to radians
-              float theta = calDirection / 180.0 * PI;
-              // running average
-              windAvgX = windAvgX * .75 + cos(theta) * .25;
-              windAvgY = windAvgY * .75 + sin(theta) * .25;
-              
+              CalculateWindDirection();  // calculate wind direction from data
+              CalculateWindGust(wind);
              }
         }
       windSpeed=windav/successcount;
-
-      ++measureCount; // add +1 to counter
-      windAvr += windSpeed; // add to sum of average wind values
-    
-      if (windSpeed >= windGust[2]) { // check if > than old gust3 of wind
-        windGust[0] = windGust[1];
-        windGust[1] = windGust[2];
-        windGust[2] = windSpeed;
-      }
-    
-      else if (windSpeed >= windGust[1]) { // check if > than old gust2 of wind
-        windGust[0] = windGust[1];
-        windGust[1] = windSpeed;
-      }
-    
-      else if (windSpeed > windGust[0]) { // check if > than old gust1 of wind
-        windGust[0] = windSpeed;
-      }
-      windGustAvg = (windGust[0] + windGust[1] + windGust[2]) / 3;
+      CalculateWind();
 }
 
 
 
     
 void Anemometer() { //measure wind speed
-
   firstWindPulse = 1; // dont count first rotation
   contactBounceTime = millis();
   rotations = 0; // Set rotations count to 0 ready for calculations
@@ -73,29 +46,42 @@ void Anemometer() { //measure wind speed
     // 2250 instead of 2.25 because formula is in seconds not millis   & * 0.868976242 to convert in knots   & *10 so we can calculate decimals later
   }
 
-  
-  if (windSpeed < 600) { // delete data larger than 60KT
-    ++measureCount; // add +1 to counter
-    windAvr += windSpeed; // add to sum of average wind values
-  
-    if (windSpeed >= windGust[2]) { // check if > than old gust3 of wind
-      windGust[0] = windGust[1];
-      windGust[1] = windGust[2];
-      windGust[2] = windSpeed;
-    }
-  
-    else if (windSpeed >= windGust[1]) { // check if > than old gust2 of wind
-      windGust[0] = windGust[1];
-      windGust[1] = windSpeed;
-    }
-  
-    else if (windSpeed > windGust[0]) { // check if > than old gust1 of wind
-      windGust[0] = windSpeed;
-    }
-    windGustAvg = (windGust[0] + windGust[1] + windGust[2]) / 3;
-  }
+  //if (windSpeed < 600) { // delete data larger than 60KT
+      CalculateWind();
+      CalculateWindGust(windSpeed);
+  //}
 
 }
+
+
+void CalculateWind() {  
+    ++measureCount; // add +1 to counter
+    windAvr += windSpeed; // add to sum of average wind values
+}
+
+
+void CalculateWindGust( int w ) {
+      if (w >= windGust[2]) { // check if > than old gust3 of wind
+        windGust[0] = windGust[1];
+        windGust[1] = windGust[2];
+        windGust[2] = w;
+      }
+    
+      else if (w >= windGust[1]) { // check if > than old gust2 of wind
+        windGust[0] = windGust[1];
+        windGust[1] = w;
+      }
+    
+      else if (w > windGust[0]) { // check if > than old gust1 of wind
+        windGust[0] = w;
+      }
+      windGustAvg = (windGust[0] + windGust[1] + windGust[2]) / 3;
+}
+
+void GetAvgWInd() {
+  wind_speed = windAvr / measureCount; // calculate average wind
+}
+
 
 void ISRrotation () {  // This is the function that the interrupt calls to increment the rotation count
   currentMillis = millis(); //we have to read millis at the same position in ISR each time to get the most accurate readings
@@ -111,21 +97,33 @@ void ISRrotation () {  // This is the function that the interrupt calls to incre
   }
 }
 
+void DominantDirection() { // get dominant wind direction
+  windDir =  atan2(windAvgY, windAvgX) / PI * 180;
+  if (windDir < 0) windDir += 360;
+}
+
+// Get Wind direction, and split it in 16 parts and save it to array
+void GetWindDirection() {
+  vaneValue = analogRead(windVanePin);
+  direction = map(vaneValue, 0, 1023, 0, 360);
+  calDirection = direction + vaneOffset;
+  CalculateWindDirection();
+}
+
+void CalculateWindDirection() {
+   // convert reading to radians
+  float theta = calDirection / 180.0 * PI;
+  // running average
+  windAvgX = windAvgX * .75 + cos(theta) * .25;
+  windAvgY = windAvgY * .75 + sin(theta) * .25;
+}
+
 void rain_count() {
   currentMillis2 = millis(); //we have to read millis at the same position in ISR each time to get the most accurate readings
 if ((currentMillis2 - contactBounceTime2) > 500 ) { // debounce the switch contact.
     contactBounceTime2 = currentMillis2;
     rainCount++;
   }
-}
-
-
-
-
-
-void DominantDirection() { // get dominant wind direction
-  windDir =  atan2(windAvgY, windAvgX) / PI * 180;
-  if (windDir < 0) windDir += 360;
 }
 
 void GetAir() {
@@ -147,30 +145,6 @@ void GetWater() {
   digitalWrite(pwrWater, LOW);   // turn off power
 }
 
-void GetAvgWInd() {
-  wind_speed = windAvr / measureCount; // calculate average wind
-}
-
-
-// Get Wind direction, and split it in 16 parts and save it to array
-void GetWindDirection() {
-  vaneValue = analogRead(windVanePin);
-  direction = map(vaneValue, 0, 1023, 0, 360);
-  calDirection = direction + vaneOffset;
-
-  if (calDirection > 360)
-    calDirection = calDirection - 360;
-
-  if (calDirection < 0)
-    calDirection = calDirection + 360;
-
-  // convert reading to radians
-  float theta = calDirection / 180.0 * PI;
-  // running average
-  windAvgX = windAvgX * .75 + cos(theta) * .25;
-  windAvgY = windAvgY * .75 + sin(theta) * .25;
-
-}
 
 #ifdef BMP
 void GetPressure() {
@@ -215,10 +189,7 @@ void BeforePostCalculations() {
 float readVcc() {
   // Read battery voltage
 if (fona.getBattVoltage(&battVoltage)) {
-
-  //battLevel=(battVoltage-3600)/5; //percentage
-  battLevel=battVoltage/20; // voltage
-  
+  battLevel=battVoltage/20; // voltage  
 }
 else {
   battLevel=0;
