@@ -46,10 +46,10 @@ void Anemometer() { //measure wind speed
     // 2250 instead of 2.25 because formula is in seconds not millis   & * 0.868976242 to convert in knots   & *10 so we can calculate decimals later
   }
 
-  //if (windSpeed < 600) { // delete data larger than 60KT
+  if (windSpeed < 600) { // delete data larger than 60KT
       CalculateWind();
       CalculateWindGust(windSpeed);
-  //}
+  }
 
 }
 
