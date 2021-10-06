@@ -30,7 +30,12 @@ DallasTemperature sensor_water(&oneWire_out);
 // 11  solar on/off - since 0.4.4
 // 12  ultraasonic on/off
 // 13  pressure on/off
-
+// 15 additional debug data
+      //1 ultrasonic not connected
+      //2 timer 200s
+      //3 manual reset
+      //4 ultrasonic check fail
+      
 //////////////////////////////////    EDIT THIS
 #define APN "iot.1nce.net"
 byte GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
@@ -73,6 +78,7 @@ volatile unsigned long currentMillis;
 volatile unsigned long currentMillis2;
 volatile unsigned long contactBounceTime2; // Timer to avoid contact bounce in rain interrupt routine
 volatile unsigned long updateBattery = 0;
+
 int rainCount=-1; // count rain bucket tilts
 byte SolarCurrent; // calculate solar cell current 
 String serialResponse = "";
@@ -176,7 +182,25 @@ if (EEPROM.read(12)==1 or EEPROM.read(12)==255) {   // if ultrasonic enabled
       windDelay=1000; // only make one measurement with sonic anemometer
      }
  }
-
+   
+  if (resetReason==8 ) { //////////////////// reset reason detailed        
+    if (EEPROM.read(15)==1 ) { 
+      resetReason=81; 
+    }
+    else if (EEPROM.read(15)==2 ) { 
+      resetReason=82; 
+    }  
+    else if (EEPROM.read(15)==3 ) { 
+      resetReason=83; 
+    }  
+    else if (EEPROM.read(15)==4 ) { 
+      resetReason=84; 
+    }      
+    else { 
+      resetReason=88; 
+    }   
+  EEPROM.write(15, 0); 
+  }  
 }
 
 void loop() {
@@ -192,7 +216,7 @@ void loop() {
     sonicError++;
      }
   else if ( millis() - startedWaiting >= 5000 && sonicError >= 5)  { // if more than 5 US errors
-        reset();
+        reset(1);
      }
   else  { 
    UltrasonicAnemometer();       
@@ -256,12 +280,15 @@ void loop() {
 
 
 // check if is time to send data online  
-if ( (resetReason==2 and measureCount > 2)  // if reset buttion is pressed and 3 measurements are made
+if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset buttion is pressed and 3 measurements are made
   or (wind_speed >= (cutoffWind*10) and ((measureCount >= whenSend and UltrasonicAnemo==0) or (measureCount >= whenSend*10 and UltrasonicAnemo==1 ))) // if wind avg exeeds cut off value and enough measurements are  made
   or ((measureCount >= (whenSend*2) and UltrasonicAnemo==0) or (measureCount >= (whenSend*20) and UltrasonicAnemo==1))
-  or ((measureCount>250 and UltrasonicAnemo==0) or (measureCount>2500 and UltrasonicAnemo==1)) ) // if 2x measurements is made no matter the speed avg (max is 250 measurements)
+  or ((measureCount>250 and UltrasonicAnemo==0) or (measureCount>2500 and UltrasonicAnemo==1)) // if 2x measurements is made no matter the speed avg (max is 250 measurements)
+  )
+  
   {  
       digitalWrite(DTR, LOW);  //wake up  
+      delay(100);
       fonaSS.listen();
       delay(500);
         SendData();
@@ -289,14 +316,16 @@ void CheckTimerGPRS() { // if unable to send data in 200s
     timergprs = 0;
     //powerOn();
     //delay(1000);
-    reset();
+    reset(2);
   }
 }
 
-void reset() {
+void reset(byte rr) {
 #ifdef DEBUG
   Serial.flush();
   Serial.end();
+  EEPROM.write(15, rr);
+  delay(200);
 #endif
   powerOn(); // turn off power
   delay(1000);

@@ -26,9 +26,6 @@ void moduleSetup() {
   // Press reset button if the module is still turning on and the board doesn't find it.
   // When the module is on it should communicate right after pressing reset
   //fonaSS.begin(115200); // Default SIM7000 shield baud rate
-
-//fonaSS.begin(9600);
-  
   //Serial.println(F("Configuring to 9600 baud"));
   //fonaSS.println("AT+IPR=9600"); // Set baud rate
   //delay(100); // Short pause to let the command run
@@ -235,18 +232,18 @@ bool isConnected = fona.UDPconnected();
 
   if (response[4] >0) { windDelay=response[4]*100;}
   
-  if (response[8] ==1) { reset(); } // reset
-  else if (response[8]==100) { EEPROM.write(10, 0); reset(); } // water
-  else if (response[8]==101) { EEPROM.write(10, 1); reset(); } 
-  else if (response[8]==110) { EEPROM.write(11, 2); reset(); } // solar
-  else if (response[8]==111) { EEPROM.write(11, 1); reset(); } 
-  else if (response[8]==120) { EEPROM.write(12, 0); reset(); } //ultrasonic
-  else if (response[8]==121) { EEPROM.write(12, 1); reset(); }   
-  else if (response[8]==130) { EEPROM.write(13, 0); reset(); }   //pressure
-  else if (response[8]==131) { EEPROM.write(13, 1); reset(); }   
+  if (response[8] ==1) { reset(3); } // reset
+  else if (response[8]==100) { EEPROM.write(10, 0); reset(3); } // water
+  else if (response[8]==101) { EEPROM.write(10, 1); reset(3); } 
+  else if (response[8]==110) { EEPROM.write(11, 2); reset(3); } // solar
+  else if (response[8]==111) { EEPROM.write(11, 1); reset(3); } 
+  else if (response[8]==120) { EEPROM.write(12, 0); reset(3); } //ultrasonic
+  else if (response[8]==121) { EEPROM.write(12, 1); reset(3); }   
+  else if (response[8]==130) { EEPROM.write(13, 0); reset(3); }   //pressure
+  else if (response[8]==131) { EEPROM.write(13, 1); reset(3); }   
   else if (response[8] == 2 or response[8]==13 or response[8]==38) { // if new settings for network prefference
     EEPROM.write(9, response[8]);   // write new data to EEPROM
-    reset(); 
+    reset(3); 
     }
    
   onOffTmp=response[5];
