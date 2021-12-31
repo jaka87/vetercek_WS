@@ -2,37 +2,61 @@ void UltrasonicAnemometer() { //measure wind speed
     unsigned long startedWaiting = millis();
     int successcount=0;
     int windav=0;
-      while (successcount <= windDelay/1000 && millis() - startedWaiting <= 10000) {
+      while (successcount < 1 && millis() - startedWaiting <= 10000) {
             serialResponse = ultrasonic.readStringUntil('\r\n');
             int commaIndex = serialResponse.indexOf(',');
             int secondCommaIndex = serialResponse.indexOf(',', commaIndex + 1);
             int thrdCommaIndex = serialResponse.indexOf(',', secondCommaIndex + 1);
             int fourthCommaIndex = serialResponse.indexOf(',', thrdCommaIndex + 1);
             int fiftCommaIndex = serialResponse.indexOf(',', fourthCommaIndex + 2);
+
+#ifdef UZ_NMEA
         int dir = serialResponse.substring(commaIndex + 1, secondCommaIndex).toInt();;
         int wind = serialResponse.substring(thrdCommaIndex + 1, fourthCommaIndex).toFloat()*19.4384449 ;
         String check = serialResponse.substring(fiftCommaIndex + 1, fiftCommaIndex+2) ;
-        
         if (check=="A") {  // calculate wind direction and speed
+#else
+        int dir = serialResponse.substring(commaIndex + 1, secondCommaIndex).toInt();
+        int wind = serialResponse.substring(secondCommaIndex + 1, thrdCommaIndex).toFloat()*19.4384449 ;
+        String check = serialResponse.substring(0, commaIndex) ;
+        if (check==":1") {  // calculate wind direction and speed
+#endif            
+
               successcount++;
               windav=windav+wind;
               calDirection = dir + vaneOffset;
               CalculateWindDirection();  // calculate wind direction from data
               CalculateWindGust(wind);
              }
-        else if ( sonicError >= 5)  { // if more than 5 US errors
+        else if ( sonicError >= 500)  { // if more than 500 US errors
                 reset(4);
         }  
-        else { // if more than 5 US errors
-                sonicError++;
+        else { // if more than 500 US errors
+                sonicError++;               
         } 
                            
         }
       windSpeed=windav/successcount;
       CalculateWind();
+
+
 }
 
 
+void UZsleep(byte sleepTime) { //ultrasonic anemometer sleep mode
+  unsigned long startedWaiting = millis();
+  while ( millis() - startedWaiting <= 12000) {
+    while ( ultrasonic.readStringUntil('\r\n')!="ok" ) {    
+    delay(500);
+    if (sleepTime==1) { ultrasonic.write(">PwrIdleCfg:1,1\r\n"); }
+    else if (sleepTime==2) { ultrasonic.write(">PwrIdleCfg:1,2\r\n"); }
+    else if (sleepTime==4) { ultrasonic.write(">PwrIdleCfg:1,4\r\n"); }
+    else if (sleepTime==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }
+    else if (sleepTime==0) { ultrasonic.write(">PwrIdleCfg:0,1\r\n"); }
+    }
+    ultrasonic.write(">SaveConfig\r\n");
+  }
+}
 
     
 void Anemometer() { //measure wind speed

@@ -8,13 +8,25 @@
 #include "src/Fona/Adafruit_FONA.h"
 #include <EEPROM.h>
 
+//#define OLDPCB // if v.0.4.4 or older
 #define ONE_WIRE_BUS_1 4 //air
 #define ONE_WIRE_BUS_2 3 // water
-#define windSensorPin 2 // The pin location of the anemometer sensor
+
+#ifdef OLDPCB // old pcb
+  #define windSensorPin 2 // The pin location of the anemometer sensor
+  #define USRX 5
+  #define USTX (A2)
+  #define RESET 7
+#else         // new
+  #define windSensorPin 5 // The pin location of the anemometer sensor
+  #define USRX 2
+  #define USTX 7
+  #define RESET (A2)
+#endif
+
 #define windVanePin (A3)       // The pin the wind vane sensor is connected to
 #define DTR 6
 #define PWRKEY 10
-#define RESET 7
 
 byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 0,0 }; // data
 
@@ -43,7 +55,8 @@ byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
-//#define DEBUG // comment out if you want to turn off debugging
+#define DEBUG // comment out if you want to turn off debugging
+//#define UZ_NMEA // old UZ with NMEA
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 ///////////////////////////////////////////////////////////////////////////////////
 
@@ -53,7 +66,7 @@ const char* broker = "vetercek.com";
 
 #include <NeoSWSerial.h>
 NeoSWSerial fonaSS( 8, 9 );
-NeoSWSerial ultrasonic( 5, 6 );
+NeoSWSerial ultrasonic( USRX, USTX );
 
 //SoftwareSerial *fonaSerial = &fonaSS;
 Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
@@ -207,41 +220,32 @@ void loop() {
 
  if ( UltrasonicAnemo==1 ) {    // if ultrasonic anemometer pluged in at boot
   unsigned long startedWaiting = millis();
-  while (!ultrasonic.available() && millis() - startedWaiting <= 5000) {  // if US not aveliable start it
+  while (!ultrasonic.available() && millis() - startedWaiting <= 9000) {  // if US not aveliable start it
     ultrasonic.begin(9600);
     delay(100);
    }
 
-  if ( millis() - startedWaiting >= 5000 && sonicError < 5)  { // if US error 
+  if ( millis() - startedWaiting >= 9000 && sonicError < 50)  { // if US error 
     sonicError++;
      }
-  else if ( millis() - startedWaiting >= 5000 && sonicError >= 5)  { // if more than 5 US errors
+  else if ( millis() - startedWaiting >= 9000 && sonicError >= 50)  { // if more than 500 US errors
         reset(1);
      }
   else  { 
-   UltrasonicAnemometer();       
-     }   
+   UltrasonicAnemometer();  
+       //ultrasonic.flush();
+       //LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);  // sleep
+       LowPower.idle(SLEEP_8S, ADC_OFF, TIMER2_ON, TIMER1_OFF, TIMER0_OFF, SPI_OFF, USART0_ON, TWI_OFF); 
 
-//  if ( sleepBetween > 0)  { // to sleap or not to sleap between wind measurement
-//      ultrasonic.flush();
-//      ultrasonic.end();
-//     }     
-        #ifdef DEBUG
-          Serial.flush();
-        #endif                       
+     }   
+                    
  }           
 
  else { 
  
     Anemometer();                           // anemometer
     GetWindDirection();
- }
 
-
- if ( UltrasonicAnemo==1 ) { 
-  LowPower.idle(SLEEP_8S, ADC_OFF, TIMER2_ON, TIMER1_OFF, TIMER0_OFF, SPI_OFF, USART0_ON, TWI_OFF); 
- }
- else {
   if ( sleepBetween == 1)  { // to sleap or not to sleap between wind measurement
     LowPower.powerDown(SLEEP_1S, ADC_ON, BOD_ON);  // sleep
   }
@@ -253,8 +257,10 @@ void loop() {
   }
   else if ( sleepBetween == 8)  { // to sleap or not to sleap between wind measurement
     LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);  // sleep
-  }
-}
+  }    
+ }
+
+
   
   #ifdef DEBUG                                 // debug data
     Serial.print(" d:");
@@ -264,7 +270,10 @@ void loop() {
     Serial.print(" g:");
     Serial.print(windGustAvg);
     Serial.print(" c:");
-    Serial.println(measureCount);
+    Serial.print(measureCount);
+    Serial.print(" s:");
+    Serial.println(sonicError);
+
   #endif
 
   GetAvgWInd();                                 // avg wind
@@ -281,12 +290,20 @@ void loop() {
 
 // check if is time to send data online  
 if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset buttion is pressed and 3 measurements are made
+#ifdef UZ_NMEA
   or (wind_speed >= (cutoffWind*10) and ((measureCount >= whenSend and UltrasonicAnemo==0) or (measureCount >= whenSend*10 and UltrasonicAnemo==1 ))) // if wind avg exeeds cut off value and enough measurements are  made
+#else
+  or (wind_speed >= (cutoffWind*10) and ((measureCount >= whenSend and UltrasonicAnemo==0) or (measureCount >= whenSend and UltrasonicAnemo==1 ))) // if wind avg exeeds cut off value and enough measurements are  made
+#endif  
   or ((measureCount >= (whenSend*2) and UltrasonicAnemo==0) or (measureCount >= (whenSend*20) and UltrasonicAnemo==1))
   or ((measureCount>250 and UltrasonicAnemo==0) or (measureCount>2500 and UltrasonicAnemo==1)) // if 2x measurements is made no matter the speed avg (max is 250 measurements)
   )
   
   {  
+      /////////////////////////// send data to server ///////////////////////////////////////////////
+      if ( UltrasonicAnemo==1 ) { 
+         ultrasonic.flush();   
+      }
       digitalWrite(DTR, LOW);  //wake up  
       delay(100);
       fonaSS.listen();
@@ -296,7 +313,7 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
       if (UltrasonicAnemo==1){
         ultrasonic.listen();
       }
-  delay(500);
+  delay(100);
 
   }
   else { // restart timer

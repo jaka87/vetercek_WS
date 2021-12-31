@@ -127,7 +127,11 @@ if (fona.checkAT()) {  // wait untill modem is active
     updateBattery=millis();
     sig=fona.getRSSI(); 
     delay(300);
-    battLevel = readVcc(); // Get voltage %
+    //#ifdef OLDPCB // old pcb
+      battLevel = readVcc(); // Get voltage %
+    //#else         // new
+     // battLevel = analogRead(A1)*0.1999;      
+    //#endif    
     sendBatTemp=0;
 
 
@@ -135,7 +139,12 @@ if (fona.checkAT()) {  // wait untill modem is active
     int curr = 0;  // measure solar cell current
     volatile unsigned currCount = 0;
     while (currCount < 10) {
+      #ifdef OLDPCB // old pcb
           curr += analogRead(A0)*3.8;
+      #else         // new
+          curr += (analogRead(A0)/5.209);      
+      #endif
+
           currCount++;
           delay(50);
       }
@@ -147,9 +156,11 @@ if (fona.checkAT()) {  // wait untill modem is active
     sendBatTemp=sendBatTemp+1;
 }
 
+#ifdef UZ_NMEA
    if ( UltrasonicAnemo==1 ) { 
     measureCount=measureCount/10;
    }
+#endif 
 
   data[8]=windDir/100;
   data[9]=windDir%100;
@@ -198,6 +209,11 @@ if (fona.checkAT()) {  // wait untill modem is active
       data[26]=pressure%100;
     } 
   #endif 
+
+  /////////////////////////////////////////////////////////// začasno
+  data[25]=sonicError;
+  ///////////////////////////////////////////////////////////
+  
   
 bool isConnected = fona.UDPconnected();
      #ifdef DEBUG
@@ -245,6 +261,12 @@ bool isConnected = fona.UDPconnected();
     EEPROM.write(9, response[8]);   // write new data to EEPROM
     reset(3); 
     }
+
+#ifndef UZ_NMEA
+  if ( response[7]!= sleepBetween and UltrasonicAnemo==1) { 
+     //UZsleep(response[7]);
+  }
+#endif  
    
   onOffTmp=response[5];
   cutoffWind=response[6];
