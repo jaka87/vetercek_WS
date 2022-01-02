@@ -60,10 +60,6 @@ const char* broker = "vetercek.com";
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 ///////////////////////////////////////////////////////////////////////////////////
 
-//#include <SoftwareSerial.h>
-//SoftwareSerial fonaSS = SoftwareSerial(8, 9); // RX, TX
-//SoftwareSerial ultrasonic(5,6);  //RX, STX   
-
 #include <NeoSWSerial.h>
 NeoSWSerial fonaSS( 8, 9 );
 NeoSWSerial ultrasonic( USRX, USTX );
@@ -225,18 +221,15 @@ void loop() {
     delay(100);
    }
 
-  if ( millis() - startedWaiting >= 9000 && sonicError < 50)  { // if US error 
+  if ( millis() - startedWaiting >= 9000 && sonicError < 10)  { // if US error 
     sonicError++;
      }
-  else if ( millis() - startedWaiting >= 9000 && sonicError >= 50)  { // if more than 500 US errors
+  else if ( millis() - startedWaiting >= 9000 && sonicError >= 10)  { // if more than 500 US errors
         reset(1);
      }
   else  { 
    UltrasonicAnemometer();  
-       //ultrasonic.flush();
-       //LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);  // sleep
-       LowPower.idle(SLEEP_8S, ADC_OFF, TIMER2_ON, TIMER1_OFF, TIMER0_OFF, SPI_OFF, USART0_ON, TWI_OFF); 
-
+   LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep
      }   
                     
  }           
@@ -247,16 +240,16 @@ void loop() {
     GetWindDirection();
 
   if ( sleepBetween == 1)  { // to sleap or not to sleap between wind measurement
-    LowPower.powerDown(SLEEP_1S, ADC_ON, BOD_ON);  // sleep
+    LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);  // sleep
   }
   else if ( sleepBetween == 2)  { // to sleap or not to sleap between wind measurement
-    LowPower.powerDown(SLEEP_2S, ADC_ON, BOD_ON);  // sleep
+    LowPower.powerDown(SLEEP_2S, ADC_OFF, BOD_OFF);  // sleep
   }
   else if ( sleepBetween == 4)  { // to sleap or not to sleap between wind measurement
-    LowPower.powerDown(SLEEP_4S, ADC_ON, BOD_ON);  // sleep
+    LowPower.powerDown(SLEEP_4S, ADC_OFF, BOD_OFF);  // sleep
   }
   else if ( sleepBetween == 8)  { // to sleap or not to sleap between wind measurement
-    LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);  // sleep
+    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);  // sleep
   }    
  }
 
@@ -273,7 +266,6 @@ void loop() {
     Serial.print(measureCount);
     Serial.print(" s:");
     Serial.println(sonicError);
-
   #endif
 
   GetAvgWInd();                                 // avg wind

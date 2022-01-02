@@ -261,16 +261,19 @@ bool isConnected = fona.UDPconnected();
     EEPROM.write(9, response[8]);   // write new data to EEPROM
     reset(3); 
     }
-
-#ifndef UZ_NMEA
-  if ( response[7]!= sleepBetween and UltrasonicAnemo==1) { 
-     //UZsleep(response[7]);
-  }
-#endif  
    
   onOffTmp=response[5];
   cutoffWind=response[6];
-  sleepBetween=response[7];
+
+#ifndef UZ_NMEA
+  if ( response[7]!= sleepBetween and UltrasonicAnemo==1 and response[7] > -1 and response[7] < 9) { 
+     UZsleep(byte(response[7]));
+  }
+#endif  
+
+  if ( response[7]!= 0 or response[7]!= 1 or response[7]!= 2 or response[7]!= 4 or response[7]!= 8) { 
+    sleepBetween=response[7];
+  }  
 
      #ifdef DEBUG
       Serial.println("SEND");

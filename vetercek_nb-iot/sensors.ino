@@ -28,10 +28,10 @@ void UltrasonicAnemometer() { //measure wind speed
               CalculateWindDirection();  // calculate wind direction from data
               CalculateWindGust(wind);
              }
-        else if ( sonicError >= 500)  { // if more than 500 US errors
+        else if ( sonicError >= 10)  { // if more than 500 US errors
                 reset(4);
         }  
-        else { // if more than 500 US errors
+        else { // if more than 10 US errors
                 sonicError++;               
         } 
                            
@@ -44,20 +44,26 @@ void UltrasonicAnemometer() { //measure wind speed
 
 
 void UZsleep(byte sleepTime) { //ultrasonic anemometer sleep mode
-  unsigned long startedWaiting = millis();
-  while ( millis() - startedWaiting <= 12000) {
-    while ( ultrasonic.readStringUntil('\r\n')!="ok" ) {    
-    delay(500);
+  unsigned long startedWaiting = millis(); 
+  while ( millis() - startedWaiting <= 10000) {
     if (sleepTime==1) { ultrasonic.write(">PwrIdleCfg:1,1\r\n"); }
     else if (sleepTime==2) { ultrasonic.write(">PwrIdleCfg:1,2\r\n"); }
     else if (sleepTime==4) { ultrasonic.write(">PwrIdleCfg:1,4\r\n"); }
     else if (sleepTime==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }
     else if (sleepTime==0) { ultrasonic.write(">PwrIdleCfg:0,1\r\n"); }
-    }
-    ultrasonic.write(">SaveConfig\r\n");
+    
+    serialResponse = ultrasonic.readStringUntil('\r\n');
+      if(serialResponse.indexOf("IdleSec") > 0){ 
+        break;
+      }
+      else {  
+        delay(500);
+      }
   }
+      #ifdef DEBUG 
+        Serial.println("sleep change done");
+      #endif  
 }
-
     
 void Anemometer() { //measure wind speed
   firstWindPulse = 1; // dont count first rotation
