@@ -55,7 +55,7 @@ byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
-#define DEBUG // comment out if you want to turn off debugging
+//#define DEBUG // comment out if you want to turn off debugging
 //#define UZ_NMEA // old UZ with NMEA
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 ///////////////////////////////////////////////////////////////////////////////////
@@ -220,11 +220,7 @@ void loop() {
     ultrasonic.begin(9600);
     delay(100);
    }
-
-  if ( millis() - startedWaiting >= 9000 && sonicError < 10)  { // if US error 
-    sonicError++;
-     }
-  else if ( millis() - startedWaiting >= 9000 && sonicError >= 10)  { // if more than 500 US errors
+  if ( millis() - startedWaiting >= 9000 )  { // if US error 
         reset(1);
      }
   else  { 

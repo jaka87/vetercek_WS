@@ -28,10 +28,10 @@ void UltrasonicAnemometer() { //measure wind speed
               CalculateWindDirection();  // calculate wind direction from data
               CalculateWindGust(wind);
              }
-        else if ( sonicError >= 10)  { // if more than 500 US errors
+        else if ( sonicError >= 10)  { // if more than x US errors
                 reset(4);
         }  
-        else { // if more than 10 US errors
+        else { // if more than x US errors
                 sonicError++;               
         } 
                            
