@@ -142,7 +142,7 @@ if (fona.checkAT()) {  // wait untill modem is active
       #ifdef OLDPCB // old pcb
           curr += analogRead(A0)*3.8;
       #else         // new
-          curr += (analogRead(A0)/5.209);      
+          curr += ((analogRead(A0)*3.98)/1000/1.15)*940;
       #endif
 
           currCount++;
@@ -178,10 +178,6 @@ if (fona.checkAT()) {  // wait untill modem is active
   data[23]=resetReason;
   data[24]=SolarCurrent;
 
-  /////////////////////////////////////////////////////////// začasno
-  data[23]=sonicError;
-  ///////////////////////////////////////////////////////////
-
 
   if (temp > 0) { // if positive or negative air temperature
     data[14]=1;
@@ -212,6 +208,8 @@ if (fona.checkAT()) {  // wait untill modem is active
       data[25]=pressure/100;
       data[26]=pressure%100;
     } 
+  #else
+  data[25]=sonicError;    
   #endif 
   
   
@@ -267,15 +265,19 @@ bool isConnected = fona.UDPconnected();
 
 #ifndef UZ_NMEA  // if not old anemometer without sleep mode
  if ( UltrasonicAnemo==1 ) { 
-  if ( response[7] < 4 and battLevel < 180) { // if low battery < 3.6V
+  if ( response[7] < 4 and battLevel < 180 and battLevel > 170) { // if low battery < 3.6V
      response[7]=4;
   }
-  else if ( response[7] < 8 and battLevel < 170) { // if low battery < 3.4V
+  else if ( response[7] < 8 and battLevel < 170 and battLevel > 17) { // if low battery < 3.4V
      response[7]=8;
   }
-  if ( response[7]!= sleepBetween and UltrasonicAnemo==1 and response[7] > -1 and response[7] < 9) { //change of sleep time
+  if ( response[7]!= sleepBetween and UltrasonicAnemo==1 and response[7] > -1 and response[7] < 9 ) { //change of sleep time
+      #ifdef DEBUG
+      Serial.println("change sleep");
+     #endif
      UZsleep(byte(response[7]));
   }
+
  }
 #endif  
 

@@ -43,26 +43,57 @@ void UltrasonicAnemometer() { //measure wind speed
 }
 
 
-void UZsleep(byte sleepTime) { //ultrasonic anemometer sleep mode
+void UZsleep2() { //ultrasonic anemometer sleep mode
   unsigned long startedWaiting = millis(); 
-  while ( millis() - startedWaiting <= 10000) {
-    if (sleepTime==1) { ultrasonic.write(">PwrIdleCfg:1,1\r\n"); }
-    else if (sleepTime==2) { ultrasonic.write(">PwrIdleCfg:1,2\r\n"); }
-    else if (sleepTime==4) { ultrasonic.write(">PwrIdleCfg:1,4\r\n"); }
-    else if (sleepTime==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }
-    else if (sleepTime==0) { ultrasonic.write(">PwrIdleCfg:0,1\r\n"); }
-    
-    serialResponse = ultrasonic.readStringUntil('\r\n');
-      if(serialResponse.indexOf("IdleSec") > 0){ 
+  while (ultrasonic.readStringUntil('\r\n').indexOf("CONF")<1) {
+ //ultrasonic.write('>PwrIdleCfg:0,2\r\n');
+ ultrasonic.write(">*\r\n");
+
+       if(millis() - startedWaiting > 8500){       
         break;
       }
-      else {  
-        delay(500);
+        delay(900);
       }
-  }
+ 
+  
       #ifdef DEBUG 
-        Serial.println("sleep change done");
+      if(millis() - startedWaiting < 8500){  
+        Serial.println("conf ok");
+      }
+      else {       
+        Serial.println("conf error");
+      }
       #endif  
+}
+
+
+void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
+  unsigned long startedWaiting = millis(); 
+  while (ultrasonic.readStringUntil('\r\n').indexOf("IdleSec")<1) {
+    if (sleepT==1) { ultrasonic.write(">PwrIdleCfg:1,1\r\n"); }
+    else if (sleepT==2) { ultrasonic.write(">PwrIdleCfg:1,2\r\n"); }
+    else if (sleepT==4) { ultrasonic.write(">PwrIdleCfg:1,4\r\n"); }
+    else if (sleepT==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }
+    else if (sleepT==0) { ultrasonic.write(">PwrIdleCfg:0,1\r\n"); }
+
+    if(millis() - startedWaiting > 8500){       
+      break;
+    }
+      delay(900);
+    }
+
+    if(millis() - startedWaiting < 8500){       
+      //ultrasonic.write(">SaveConfig\r\n");
+  digitalWrite(13, HIGH);   // turn the LED on
+  delay(50);                       // wait
+  digitalWrite(13, LOW);    // turn the LED
+    }
+    
+    #ifdef DEBUG 
+    if(millis() - startedWaiting < 8500){ Serial.println("sleep change ok"); }
+    else { Serial.println("sleep change error"); }
+    #endif 
+      
 }
     
 void Anemometer() { //measure wind speed

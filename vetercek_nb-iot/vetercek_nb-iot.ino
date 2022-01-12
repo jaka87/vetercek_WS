@@ -55,8 +55,8 @@ byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
-//#define DEBUG // comment out if you want to turn off debugging
-//#define UZ_NMEA // old UZ with NMEA
+#define DEBUG // comment out if you want to turn off debugging
+#define UZ_NMEA // old UZ with NMEA
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 ///////////////////////////////////////////////////////////////////////////////////
 
@@ -220,7 +220,10 @@ void loop() {
     ultrasonic.begin(9600);
     delay(100);
    }
-  if ( millis() - startedWaiting >= 9000 )  { // if US error 
+  if ( millis() - startedWaiting >= 9000 && sonicError < 5)  { // if US error 
+    sonicError++;
+     }
+  else if ( millis() - startedWaiting >= 9000 && sonicError >= 5)  { // if more than 500 US errors
         reset(1);
      }
   else  { 
@@ -268,13 +271,9 @@ void loop() {
 
 
   digitalWrite(13, HIGH);   // turn the LED on
-  delay(50);                       // wait
+  delay(100);                       // wait
   digitalWrite(13, LOW);    // turn the LED
-  delay(50);                       // wait
-  digitalWrite(13, HIGH);   // turn the LED on
-  delay(50);                       // wait
-  digitalWrite(13, LOW);    // turn the LED
-
+ 
 
 // check if is time to send data online  
 if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset buttion is pressed and 3 measurements are made
@@ -292,6 +291,9 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
       if ( UltrasonicAnemo==1 ) { 
          ultrasonic.flush();   
       }
+
+      UZsleep2();  //////////////////////brisi
+
       digitalWrite(DTR, LOW);  //wake up  
       delay(100);
       fonaSS.listen();
