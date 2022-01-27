@@ -120,7 +120,6 @@ if (fona.checkAT()) {  // wait untill modem is active
 //    #endif  
 //    while(1); // Don't proceed if it couldn't find the device
 //  }
-
 //  delay(500);
 
   if (millis() - updateBattery >= 130000 or updateBattery == 0) {  // send data about battery and signal every 8+ minutes
@@ -271,23 +270,22 @@ bool isConnected = fona.UDPconnected();
   else if ( response[7] < 8 and battLevel < 170 and battLevel > 17) { // if low battery < 3.4V
      response[7]=8;
   }
-  if ( response[7]!= sleepBetween and UltrasonicAnemo==1 and response[7] > -1 and response[7] < 9 ) { //change of sleep time
-      #ifdef DEBUG
-      Serial.println("change sleep");
-     #endif
-     UZsleep(byte(response[7]));
+  if ( response[7]!= sleepBetween and UltrasonicAnemo==1 and response[7] > -1 and response[7] < 9 and sleepBetween != response[7]) { //change of sleep time
+    changeSleep=1;
+    sleepBetween=response[7];
   }
 
  }
 #endif  
 
-  if ( response[7]!= 0 or response[7]!= 1 or response[7]!= 2 or response[7]!= 4 or response[7]!= 8) { 
+  if ( UltrasonicAnemo!=1 and (response[7] > -1 and response[7] < 9 and sleepBetween != response[7])) { 
     sleepBetween=response[7];
   }  
 
      #ifdef DEBUG
       Serial.println("SEND");
      #endif
+  
   AfterPost(); 
    } 
 

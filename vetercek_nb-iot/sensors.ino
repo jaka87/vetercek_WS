@@ -10,6 +10,10 @@ void UltrasonicAnemometer() { //measure wind speed
             int fourthCommaIndex = serialResponse.indexOf(',', thrdCommaIndex + 1);
             int fiftCommaIndex = serialResponse.indexOf(',', fourthCommaIndex + 2);
 
+      #ifdef DEBUG
+        Serial.println(serialResponse);
+      #endif
+
 #ifdef UZ_NMEA
         int dir = serialResponse.substring(commaIndex + 1, secondCommaIndex).toInt();;
         int wind = serialResponse.substring(thrdCommaIndex + 1, fourthCommaIndex).toFloat()*19.4384449 ;
@@ -21,18 +25,19 @@ void UltrasonicAnemometer() { //measure wind speed
         String check = serialResponse.substring(0, commaIndex) ;
         if (check==":1") {  // calculate wind direction and speed
 #endif            
-
               successcount++;
               windav=windav+wind;
               calDirection = dir + vaneOffset;
               CalculateWindDirection();  // calculate wind direction from data
               CalculateWindGust(wind);
              }
+
         else if ( sonicError >= 10)  { // if more than x US errors
                 reset(4);
         }  
         else { // if more than x US errors
-                sonicError++;               
+                sonicError++;
+                ultrasonicFlush();               
         } 
                            
         }
@@ -43,56 +48,41 @@ void UltrasonicAnemometer() { //measure wind speed
 }
 
 
-void UZsleep2() { //ultrasonic anemometer sleep mode
-  unsigned long startedWaiting = millis(); 
-  while (ultrasonic.readStringUntil('\r\n').indexOf("CONF")<1) {
- //ultrasonic.write('>PwrIdleCfg:0,2\r\n');
- ultrasonic.write(">*\r\n");
-
-       if(millis() - startedWaiting > 8500){       
-        break;
-      }
-        delay(900);
-      }
- 
-  
-      #ifdef DEBUG 
-      if(millis() - startedWaiting < 8500){  
-        Serial.println("conf ok");
-      }
-      else {       
-        Serial.println("conf error");
-      }
-      #endif  
-}
-
-
 void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
   unsigned long startedWaiting = millis(); 
   while (ultrasonic.readStringUntil('\r\n').indexOf("IdleSec")<1) {
     if (sleepT==1) { ultrasonic.write(">PwrIdleCfg:1,1\r\n"); }
     else if (sleepT==2) { ultrasonic.write(">PwrIdleCfg:1,2\r\n"); }
+    else if (sleepT==3) { ultrasonic.write(">PwrIdleCfg:1,3\r\n"); }
     else if (sleepT==4) { ultrasonic.write(">PwrIdleCfg:1,4\r\n"); }
-    else if (sleepT==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }
+    else if (sleepT==5) { ultrasonic.write(">PwrIdleCfg:1,5\r\n"); }
+    else if (sleepT==6) { ultrasonic.write(">PwrIdleCfg:1,6\r\n"); }
+    else if (sleepT==7) { ultrasonic.write(">PwrIdleCfg:1,7\r\n"); }
+    else if (sleepT==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }  
     else if (sleepT==0) { ultrasonic.write(">PwrIdleCfg:0,1\r\n"); }
-
-    if(millis() - startedWaiting > 8500){       
+    
+    if(millis() - startedWaiting > 10000){       
       break;
     }
-      delay(900);
+      delay(100);
     }
 
-    if(millis() - startedWaiting < 8500){       
-      //ultrasonic.write(">SaveConfig\r\n");
-  digitalWrite(13, HIGH);   // turn the LED on
-  delay(50);                       // wait
-  digitalWrite(13, LOW);    // turn the LED
+    if(millis() - startedWaiting < 10000){       
+      ultrasonic.write(">SaveConfig\r\n");
     }
     
-    #ifdef DEBUG 
-    if(millis() - startedWaiting < 8500){ Serial.println("sleep change ok"); }
-    else { Serial.println("sleep change error"); }
-    #endif 
+    if(millis() - startedWaiting < 10000){ 
+      sleepBetween=sleepT;
+      changeSleep=0;
+     #ifdef DEBUG 
+      Serial.println("sleep change ok"); 
+     #endif 
+      }
+    else { 
+     #ifdef DEBUG 
+      Serial.println("sleep change error"); 
+     #endif       
+      }
       
 }
     

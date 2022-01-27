@@ -1,3 +1,4 @@
+//bin/avrdude -C//etc/avrdude.conf -v -V -patmega328p -cusbtiny -Uflash:w:/vetercek_nb-iot.ino.hex:i lfuse:w:0xEF:m efuse:w:0xFF:m hfuse:w:DA:m lock:w:0xFF:m 
 #include <avr/wdt.h> //watchdog
 #include "src/LowPower/LowPower.h" //sleep library
 #include <math.h> // wind speed calculations
@@ -55,16 +56,14 @@ byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
-#define DEBUG // comment out if you want to turn off debugging
-#define UZ_NMEA // old UZ with NMEA
+//#define DEBUG // comment out if you want to turn off debugging
+//#define UZ_NMEA // old UZ with NMEA
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 ///////////////////////////////////////////////////////////////////////////////////
 
 #include <NeoSWSerial.h>
 NeoSWSerial fonaSS( 8, 9 );
 NeoSWSerial ultrasonic( USRX, USTX );
-
-//SoftwareSerial *fonaSerial = &fonaSS;
 Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
 
 
@@ -113,7 +112,7 @@ unsigned int sig = 0;
 float actualWindDelay; //time between first and last measured anemometer rotation
 char IMEI[15]; // Use this for device ID
 int idd[15];
-byte sleepBetween=8;
+byte sleepBetween=2;
 byte sendBatTemp=10;
 int PDPcount=0; // first reset after 100s
 byte failedSend=0; // if send fail
@@ -123,6 +122,7 @@ byte enableSolar=0;
 byte enableRain=0;
 byte enableBmp=0;
 int pressure=0;
+byte changeSleep=0;
 
 void setup() {
   MCUSR = 0; // clear reset flags
@@ -174,21 +174,21 @@ digitalWrite(PWRKEY, LOW);
                        BMX280_STANDBY_MS_500);// 0_5, 10, 20, 62_5, 125, 250, 500, 1000
   }   
 #endif  
-  //power
-  //powerOn(); // Power on the module
 
 moduleSetup(); // Establishes first-time serial comm and prints IMEI
 checkIMEI();
 connectGPRS();
 
-
-
 if (EEPROM.read(12)==1 or EEPROM.read(12)==255) {   // if ultrasonic enabled
+    ultrasonic.listen();
+    delay(100);
     ultrasonic.begin(9600);
-    delay(4000);
+    delay(5000);
      if ( ultrasonic.available()) { // check if ultrasonic anemometer is pluged in
       UltrasonicAnemo=1;
       windDelay=1000; // only make one measurement with sonic anemometer
+      ultrasonicFlush();
+      //UZsleep(4);  
      }
  }
    
@@ -210,27 +210,30 @@ if (EEPROM.read(12)==1 or EEPROM.read(12)==255) {   // if ultrasonic enabled
     }   
   EEPROM.write(15, 0); 
   }  
+  
 }
 
 void loop() {
 
  if ( UltrasonicAnemo==1 ) {    // if ultrasonic anemometer pluged in at boot
   unsigned long startedWaiting = millis();
-  while (!ultrasonic.available() && millis() - startedWaiting <= 9000) {  // if US not aveliable start it
+  while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
     ultrasonic.begin(9600);
     delay(100);
    }
-  if ( millis() - startedWaiting >= 9000 && sonicError < 5)  { // if US error 
+  if ( millis() - startedWaiting >= 10000 && sonicError < 10)  { // if US error 
     sonicError++;
+    ultrasonicFlush();
      }
-  else if ( millis() - startedWaiting >= 9000 && sonicError >= 5)  { // if more than 500 US errors
+  else if ( millis() - startedWaiting >= 10000 && sonicError >= 10)  { // if more than 500 US errors
         reset(1);
      }
   else  { 
-   UltrasonicAnemometer();  
-   LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep
-     }   
-                    
+    UltrasonicAnemometer(); 
+    delay(100);  // to wait for serial transmission - it took me 5 goddam days to figure this out
+    //LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
+    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);  // sleep    
+     }                     
  }           
 
  else { 
@@ -238,18 +241,19 @@ void loop() {
     Anemometer();                           // anemometer
     GetWindDirection();
 
-  if ( sleepBetween == 1)  { // to sleap or not to sleap between wind measurement
+  if ( sleepBetween == 1)  { // to sleep or not to sleep between wind measurement
     LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);  // sleep
   }
-  else if ( sleepBetween == 2)  { // to sleap or not to sleap between wind measurement
+  else if ( sleepBetween == 2)  { // to sleep or not to sleep between wind measurement
     LowPower.powerDown(SLEEP_2S, ADC_OFF, BOD_OFF);  // sleep
   }
-  else if ( sleepBetween == 4)  { // to sleap or not to sleap between wind measurement
+  else if ( sleepBetween > 2 and sleepBetween < 7)  { // to sleep or not to sleep between wind measurement
     LowPower.powerDown(SLEEP_4S, ADC_OFF, BOD_OFF);  // sleep
   }
-  else if ( sleepBetween == 8)  { // to sleap or not to sleap between wind measurement
+  else if ( sleepBetween >= 7 )  { // to sleep or not to sleep between wind measurement
     LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);  // sleep
-  }    
+  }
+   
  }
 
 
@@ -271,7 +275,7 @@ void loop() {
 
 
   digitalWrite(13, HIGH);   // turn the LED on
-  delay(100);                       // wait
+  delay(50);                       // wait
   digitalWrite(13, LOW);    // turn the LED
  
 
@@ -287,21 +291,21 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
   )
   
   {  
-      /////////////////////////// send data to server ///////////////////////////////////////////////
-      if ( UltrasonicAnemo==1 ) { 
-         ultrasonic.flush();   
-      }
-
-      UZsleep2();  //////////////////////brisi
-
+      /////////////////////////// send data to server ///////////////////////////////////////////////     
       digitalWrite(DTR, LOW);  //wake up  
       delay(100);
       fonaSS.listen();
-      delay(500);
+      delay(100);
         SendData();
       digitalWrite(DTR, HIGH);  //sleep  
       if (UltrasonicAnemo==1){
         ultrasonic.listen();
+      delay(100);
+        if ( changeSleep== 1) { //change of sleep time
+          ultrasonicFlush();
+          UZsleep(sleepBetween);
+        }
+      ultrasonicFlush();  
       }
   delay(100);
 
@@ -316,6 +320,11 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
 
 void CheckTimerGPRS() { // if unable to send data in 200s
   timergprs++;
+
+//    #ifdef DEBUG
+//      Serial.println(timergprs);
+//    #endif 
+    
   if (timergprs > 200 ) {
     #ifdef DEBUG
       Serial.println("hardR");
@@ -336,7 +345,8 @@ void reset(byte rr) {
 #endif
   powerOn(); // turn off power
   delay(1000);
-  wdt_enable(WDTO_1S);
+  wdt_enable(WDTO_15MS);
+
 }
 
 
@@ -357,4 +367,29 @@ void wakeUp() {
   digitalWrite(PWRKEY, LOW);
   delay(100); // For SIM7000 
   digitalWrite(PWRKEY, HIGH);
+}
+
+
+void ultrasonicFlush(){
+     #ifdef DEBUG
+    Serial.println("UZ flush");
+   #endif  
+
+  unsigned long startedWaiting = millis();   
+  while(ultrasonic.available() > 0 and millis() - startedWaiting <= 10000) {
+    char t = ultrasonic.read();
+  }
+
+  if (millis() - startedWaiting >  9900 or sonicError >= 5) {
+     #ifdef DEBUG
+    Serial.println("UZ restart");
+   #endif      
+    ultrasonic.end();
+    delay(100);
+    ultrasonic.begin(9600);
+    delay(4000);
+  while(ultrasonic.available() > 0 and millis() - startedWaiting <= 10000) {
+    char t = ultrasonic.read();
+  }    
+  }
 }
