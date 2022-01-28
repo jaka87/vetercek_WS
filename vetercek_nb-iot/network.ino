@@ -30,13 +30,14 @@ void moduleSetup() {
   //fonaSS.println("AT+IPR=9600"); // Set baud rate
   //delay(100); // Short pause to let the command run
   fonaSS.begin(9600);
-  if (! fona.begin(fonaSS)) {
+  fonaSS.listen();
+  while (! fona.begin(fonaSS)) {
       #ifdef DEBUG
         Serial.println(F("No F"));
       #endif
-    while(1); // Don't proceed if it couldn't find the device
+      delay(6000);
+      fonaSS.begin(9600);     
   }
-
 
   fonaSS.println("AT+CIPMUX=0"); // single ip
   fona.setFunctionality(0); // AT+CFUN=0

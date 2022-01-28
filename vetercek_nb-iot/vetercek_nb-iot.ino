@@ -56,7 +56,7 @@ byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
-//#define DEBUG // comment out if you want to turn off debugging
+#define DEBUG // comment out if you want to turn off debugging
 //#define UZ_NMEA // old UZ with NMEA
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 ///////////////////////////////////////////////////////////////////////////////////
@@ -221,18 +221,25 @@ void loop() {
     ultrasonic.begin(9600);
     delay(100);
    }
-  if ( millis() - startedWaiting >= 10000 && sonicError < 10)  { // if US error 
+  if ( millis() - startedWaiting >= 10000 && sonicError < 50)  { // if US error 
     sonicError++;
     ultrasonicFlush();
      }
-  else if ( millis() - startedWaiting >= 10000 && sonicError >= 10)  { // if more than 500 US errors
+  else if ( millis() - startedWaiting >= 10000 && sonicError >= 50)  { // if more than 500 US errors
         reset(1);
      }
   else  { 
     UltrasonicAnemometer(); 
-    delay(100);  // to wait for serial transmission - it took me 5 goddam days to figure this out
-    //LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
-    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);  // sleep    
+
+    if ( sleepBetween >= 4)  { 
+      delay(100);  // to wait for serial transmission - it took me 5 goddam days to figure this out
+      LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
+      //LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);  // sleep    
+     }
+    else   { 
+      LowPower.idle(SLEEP_8S, ADC_OFF, TIMER2_ON, TIMER1_OFF, TIMER0_ON, SPI_OFF, USART0_OFF, TWI_OFF);
+     }
+
      }                     
  }           
 
@@ -376,20 +383,8 @@ void ultrasonicFlush(){
    #endif  
 
   unsigned long startedWaiting = millis();   
-  while(ultrasonic.available() > 0 and millis() - startedWaiting <= 10000) {
+  while(ultrasonic.available() > 0 and millis() - startedWaiting <= 3000) {
     char t = ultrasonic.read();
   }
 
-  if (millis() - startedWaiting >  9900 or sonicError >= 5) {
-     #ifdef DEBUG
-    Serial.println("UZ restart");
-   #endif      
-    ultrasonic.end();
-    delay(100);
-    ultrasonic.begin(9600);
-    delay(4000);
-  while(ultrasonic.available() > 0 and millis() - startedWaiting <= 10000) {
-    char t = ultrasonic.read();
-  }    
-  }
 }
