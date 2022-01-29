@@ -180,18 +180,18 @@ checkIMEI();
 connectGPRS();
 
 if (EEPROM.read(12)==1 or EEPROM.read(12)==255) {   // if ultrasonic enabled
-    ultrasonic.listen();
+ultrasonic.begin(9600);
+unsigned long startedWaiting = millis();
+  while (!ultrasonic.available() && millis() - startedWaiting <= 8000) {  // if US not aveliable start it
     delay(100);
-    ultrasonic.begin(9600);
-    delay(5000);
-     if ( ultrasonic.available()) { // check if ultrasonic anemometer is pluged in
-      UltrasonicAnemo=1;
-      windDelay=1000; // only make one measurement with sonic anemometer
-      ultrasonicFlush();
-      //UZsleep(4);  
-     }
- }
-   
+   }
+ if (millis() - startedWaiting <= 7900 ) {
+  UltrasonicAnemo=1;
+  windDelay=1000;
+  }
+}   
+
+
   if (resetReason==8 ) { //////////////////// reset reason detailed        
     if (EEPROM.read(15)==1 ) { 
       resetReason=81; 
@@ -221,24 +221,16 @@ void loop() {
     ultrasonic.begin(9600);
     delay(100);
    }
-  if ( millis() - startedWaiting >= 10000 && sonicError < 50)  { // if US error 
+  if ( millis() - startedWaiting >= 10000 && sonicError < 20)  { // if US error 
     sonicError++;
-    ultrasonicFlush();
      }
-  else if ( millis() - startedWaiting >= 10000 && sonicError >= 50)  { // if more than 500 US errors
+  else if ( millis() - startedWaiting >= 10000 && sonicError >= 20)  { // if more than 500 US errors
         reset(1);
      }
   else  { 
     UltrasonicAnemometer(); 
-
-    if ( sleepBetween >= 4)  { 
-      delay(100);  // to wait for serial transmission - it took me 5 goddam days to figure this out
-      LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
-      //LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);  // sleep    
-     }
-    else   { 
-      LowPower.idle(SLEEP_8S, ADC_OFF, TIMER2_ON, TIMER1_OFF, TIMER0_ON, SPI_OFF, USART0_OFF, TWI_OFF);
-     }
+      //LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
+      LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);  // sleep
 
      }                     
  }           
@@ -309,10 +301,8 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
         ultrasonic.listen();
       delay(100);
         if ( changeSleep== 1) { //change of sleep time
-          ultrasonicFlush();
           UZsleep(sleepBetween);
         }
-      ultrasonicFlush();  
       }
   delay(100);
 
@@ -376,15 +366,3 @@ void wakeUp() {
   digitalWrite(PWRKEY, HIGH);
 }
 
-
-void ultrasonicFlush(){
-     #ifdef DEBUG
-    Serial.println("UZ flush");
-   #endif  
-
-  unsigned long startedWaiting = millis();   
-  while(ultrasonic.available() > 0 and millis() - startedWaiting <= 3000) {
-    char t = ultrasonic.read();
-  }
-
-}

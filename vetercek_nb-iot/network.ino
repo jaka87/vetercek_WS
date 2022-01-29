@@ -29,13 +29,14 @@ void moduleSetup() {
   //Serial.println(F("Configuring to 9600 baud"));
   //fonaSS.println("AT+IPR=9600"); // Set baud rate
   //delay(100); // Short pause to let the command run
+  delay(3000);
   fonaSS.begin(9600);
-  fonaSS.listen();
+  //fonaSS.listen();
   while (! fona.begin(fonaSS)) {
       #ifdef DEBUG
         Serial.println(F("No F"));
       #endif
-      delay(6000);
+      delay(5000);
       fonaSS.begin(9600);     
   }
 

@@ -10,20 +10,16 @@ void UltrasonicAnemometer() { //measure wind speed
             int fourthCommaIndex = serialResponse.indexOf(',', thrdCommaIndex + 1);
             int fiftCommaIndex = serialResponse.indexOf(',', fourthCommaIndex + 2);
 
-      #ifdef DEBUG
-        Serial.println(serialResponse);
-      #endif
-
 #ifdef UZ_NMEA
         int dir = serialResponse.substring(commaIndex + 1, secondCommaIndex).toInt();;
         int wind = serialResponse.substring(thrdCommaIndex + 1, fourthCommaIndex).toFloat()*19.4384449 ;
         String check = serialResponse.substring(fiftCommaIndex + 1, fiftCommaIndex+2) ;
-        if (check=="A") {  // calculate wind direction and speed
+        if (check.indexOf("A")==1) {  // calculate wind direction and speed
 #else
         int dir = serialResponse.substring(commaIndex + 1, secondCommaIndex).toInt();
         int wind = serialResponse.substring(secondCommaIndex + 1, thrdCommaIndex).toFloat()*19.4384449 ;
         String check = serialResponse.substring(0, commaIndex) ;
-        if (check==":1") {  // calculate wind direction and speed
+        if (check.indexOf("1")==1) {  // calculate wind direction and speed
 #endif            
               successcount++;
               windav=windav+wind;
@@ -32,12 +28,12 @@ void UltrasonicAnemometer() { //measure wind speed
               CalculateWindGust(wind);
              }
 
-        else if ( sonicError >= 50)  { // if more than x US errors
+        else if ( sonicError >= 20)  { // if more than x US errors
                 reset(4);
         }  
         else { // if more than x US errors
                 sonicError++;
-                ultrasonicFlush();               
+                //ultrasonicFlush();               
         } 
                            
         }
