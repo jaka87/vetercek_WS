@@ -229,8 +229,8 @@ void loop() {
      }
   else  { 
     UltrasonicAnemometer(); 
-      //LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
-      LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);  // sleep
+      LowPower.powerExtStandby(SLEEP_FOREVER, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
+      //LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);  // sleep
 
      }                     
  }           
@@ -365,4 +365,3 @@ void wakeUp() {
   delay(100); // For SIM7000 
   digitalWrite(PWRKEY, HIGH);
 }
-
