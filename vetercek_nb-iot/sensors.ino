@@ -1,8 +1,6 @@
 void UltrasonicAnemometer() { //measure wind speed
     unsigned long startedWaiting = millis();
-    int successcount=0;
-    int windav=0;
-      while (successcount < 1 && millis() - startedWaiting <= 10000) {
+      while (millis() - startedWaiting <= 10000) {
             serialResponse = ultrasonic.readStringUntil('\r\n');
             int commaIndex = serialResponse.indexOf(',');
             int secondCommaIndex = serialResponse.indexOf(',', commaIndex + 1);
@@ -10,37 +8,27 @@ void UltrasonicAnemometer() { //measure wind speed
             int fourthCommaIndex = serialResponse.indexOf(',', thrdCommaIndex + 1);
             int fiftCommaIndex = serialResponse.indexOf(',', fourthCommaIndex + 2);
 
-#ifdef UZ_NMEA
+    #ifdef UZ_NMEA
         int dir = serialResponse.substring(commaIndex + 1, secondCommaIndex).toInt();;
         int wind = serialResponse.substring(thrdCommaIndex + 1, fourthCommaIndex).toFloat()*19.4384449 ;
         String check = serialResponse.substring(fiftCommaIndex + 1, fiftCommaIndex+2) ;
         if (check.indexOf("A")==1) {  // calculate wind direction and speed
-#else
+    #else
         int dir = serialResponse.substring(commaIndex + 1, secondCommaIndex).toInt();
         int wind = serialResponse.substring(secondCommaIndex + 1, thrdCommaIndex).toFloat()*19.4384449 ;
         String check = serialResponse.substring(0, commaIndex) ;
         if (check.indexOf("1")==1) {  // calculate wind direction and speed
-#endif            
-              successcount++;
-              windav=windav+wind;
-              calDirection = dir + vaneOffset;
-              CalculateWindDirection();  // calculate wind direction from data
-              CalculateWindGust(wind);
-             }
+    #endif            
+          calDirection = dir + vaneOffset;
+          CalculateWindDirection();  // calculate wind direction from data
+          CalculateWindGust(wind);
+          windSpeed=wind;
+          CalculateWind();
+         }
 
-        else if ( sonicError >= 20)  { // if more than x US errors
-                reset(4);
-        }  
-        else { // if more than x US errors
-                sonicError++;
-                //ultrasonicFlush();               
-        } 
-                           
-        }
-      windSpeed=windav/successcount;
-      CalculateWind();
-
-
+        else if ( sonicError >= 20)  { reset(4);  }   // if more than x US errors
+        else { sonicError++; }  // if more than x US errors                   
+    }
 }
 
 
@@ -56,17 +44,11 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
     else if (sleepT==7) { ultrasonic.write(">PwrIdleCfg:1,7\r\n"); }
     else if (sleepT==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }  
     else if (sleepT==0) { ultrasonic.write(">PwrIdleCfg:0,1\r\n"); }
-    
-    if(millis() - startedWaiting > 10000){       
-      break;
-    }
-      delay(100);
+    if(millis() - startedWaiting > 10000){ break;  }
+      delay(500);
     }
 
-    if(millis() - startedWaiting < 10000){       
-      ultrasonic.write(">SaveConfig\r\n");
-    }
-    
+    if(millis() - startedWaiting < 10000){ ultrasonic.write(">SaveConfig\r\n"); }
     if(millis() - startedWaiting < 10000){ 
       sleepBetween=sleepT;
       changeSleep=0;
