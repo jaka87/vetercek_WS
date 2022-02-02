@@ -48,6 +48,14 @@ DallasTemperature sensor_water(&oneWire_out);
       //2 timer 200s
       //3 manual reset
       //4 ultrasonic check fail
+
+//////////////////////////////////    RESET REASON
+// 81 - UZ 20 errors in loop function
+// 82 - unable to send data in 200s
+// 83 - manual remote reset 
+// 84 - 20 sonic errors in UZ function
+// 88 - other
+
       
 //////////////////////////////////    EDIT THIS
 #define APN "iot.1nce.net"
@@ -56,7 +64,7 @@ byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
-#define DEBUG // comment out if you want to turn off debugging
+//#define DEBUG // comment out if you want to turn off debugging
 //#define UZ_NMEA // old UZ with NMEA
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 ///////////////////////////////////////////////////////////////////////////////////
@@ -145,7 +153,7 @@ digitalWrite(PWRKEY, LOW);
 
   pinMode(13, OUTPUT);     // this part is used when you bypass bootloader to signal when board is starting...
   digitalWrite(13, HIGH);   // turn the LED on
-  delay(1000);                       // wait
+  delay(1000);              // wait
   digitalWrite(13, LOW);    // turn the LED
   delay(100);
   pinMode(pwrAir, OUTPUT);      // sets the digital pin as output
@@ -181,11 +189,14 @@ connectGPRS();
 
 if (EEPROM.read(12)==1 or EEPROM.read(12)==255) {   // if ultrasonic enabled
 ultrasonic.begin(9600);
+     #ifdef DEBUG 
+      Serial.println("start UZ anemometer"); 
+     #endif 
 unsigned long startedWaiting = millis();
-  while (!ultrasonic.available() && millis() - startedWaiting <= 8000) {  // if US not aveliable start it
+  while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
     delay(100);
    }
- if (millis() - startedWaiting <= 7900 ) {
+ if (millis() - startedWaiting <= 9900 ) {
   UltrasonicAnemo=1;
   windDelay=1000;
   }
@@ -224,14 +235,16 @@ void loop() {
   if ( millis() - startedWaiting >= 10000 && sonicError < 20)  { // if US error 
     sonicError++;
      }
-  else if ( millis() - startedWaiting >= 10000 && sonicError >= 20)  { // if more than 500 US errors
+  else if ( millis() - startedWaiting >= 10000 && sonicError >= 20)  { // if more than 20 US errors
         reset(1);
+     }
+  else if ( sleepBetween < 8 )  { 
+    UltrasonicAnemometer(); 
+    LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
      }
   else  { 
     UltrasonicAnemometer(); 
-      LowPower.powerExtStandby(SLEEP_FOREVER, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
-      //LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);  // sleep
-
+    LowPower.powerExtStandby(SLEEP_FOREVER, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
      }                     
  }           
 
@@ -309,9 +322,9 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
   delay(100);
 
   }
-  else { // restart timer
+  else if ( UltrasonicAnemo==0 ){ // restart timer
     noInterrupts();
-    timergprs = 0;                                // reset timer 
+    timergprs = 0;                                
     interrupts();
   }
 }
@@ -343,8 +356,8 @@ void reset(byte rr) {
   delay(200);
 #endif
   powerOn(); // turn off power
-  delay(1000);
-  wdt_enable(WDTO_15MS);
+  delay(2000);
+  wdt_enable(WDTO_250MS);
 
 }
 
