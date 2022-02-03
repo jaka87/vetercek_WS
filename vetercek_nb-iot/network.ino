@@ -8,15 +8,16 @@ bool netStatus() {
   if (n == 5) Serial.println(F("ROK"));
   #endif
 
-if (n == 0){
-  fona.setFunctionality(0); // AT+CFUN=0
-  delay(3000);
-  fona.setFunctionality(1); // AT+CFUN=1
-  delay(200);
-  }
-  
-  if (!(n == 1 || n == 5)) return false;
-  else return true;
+  return n;
+
+//if (n == 0){
+//  fona.setFunctionality(0); // AT+CFUN=0
+//  delay(3000);
+//  fona.setFunctionality(1); // AT+CFUN=1
+//  delay(200);
+//  }
+//  if (!(n == 1 || n == 5)) return false;
+//  else return true;
 }
 
 
@@ -56,7 +57,7 @@ void moduleSetup() {
   }
   
   fona.setNetLED(true,3,64,5000);
-  delay(500);
+  delay(300);
   
   //fona.setOperatingBand("NB-IOT",20); // AT&T uses band 12
   fona.enableSleepMode(true);
@@ -74,17 +75,18 @@ void moduleSetup() {
 
 void connectGPRS() {
 unsigned long startTime=millis();  
-    while (!netStatus()) {
-      if (millis() - startTime >= 40000)
+byte status=0;
+
+    while (netStatus() != 1 and netStatus() != 5) {
+      if (millis() - startTime >= 10000 and netStatus() == 0 and status==0)
       {
        #ifdef DEBUG
-        Serial.println(F("RstC"));
-       #endif         
-        powerOn(); // Power on the module
-        delay(4000);
-        moduleSetup(); // Establishes first-time serial comm and prints IMEI
-       startTime=millis(); 
+        Serial.println(F("RstC1"));
+       #endif
+      status=1;          
+      moduleSetup(); // Establishes first-time serial comm and prints IMEI
       }
+      
       #ifdef DEBUG
         Serial.println(F("RetCON"));
       #endif 
