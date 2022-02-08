@@ -50,11 +50,10 @@ void moduleSetup() {
 
   fona.setPreferredMode(GSMstate); 
   delay(500);
-  if (GSMstate == 38) {
-    fona.setPreferredLTEMode(2);   
-    fona.setOperatingBand("NB-IOT",20); 
-
-  }
+//  if (GSMstate == 38) {
+//    fona.setPreferredLTEMode(2);   
+//    fona.setOperatingBand("NB-IOT",20); 
+//  }
   
   fona.setNetLED(true,3,64,5000);
   delay(300);
@@ -75,22 +74,27 @@ void moduleSetup() {
 
 void connectGPRS() {
 unsigned long startTime=millis();  
-byte status=0;
 
     while (netStatus() != 1 and netStatus() != 5) {
-      if (millis() - startTime >= 10000 and netStatus() == 0 and status==0)
+
+      if (millis() - startTime >= 10000 and netStatus() == 0 )
       {
        #ifdef DEBUG
-        Serial.println(F("RstC1"));
+        Serial.println(F("RstC2"));
        #endif
-      status=1;          
       moduleSetup(); // Establishes first-time serial comm and prints IMEI
+      startTime=millis();
       }
+      
+       
+      fona.setFunctionality(0); // AT+CFUN=0
+      delay(3000);
+      fona.setFunctionality(1); // AT+CFUN=1
+      delay(3000);
       
       #ifdef DEBUG
         Serial.println(F("RetCON"));
       #endif 
-      delay(2000); // Retry every 2s
     }
   #ifdef DEBUG  
     Serial.println(F("CON"));
@@ -159,11 +163,6 @@ if (fona.checkAT()) {  // wait untill modem is active
     sendBatTemp=sendBatTemp+1;
 }
 
-#ifdef UZ_NMEA
-   if ( UltrasonicAnemo==1 ) { 
-    measureCount=measureCount/10;
-   }
-#endif 
 
   data[8]=windDir/100;
   data[9]=windDir%100;
@@ -266,7 +265,6 @@ bool isConnected = fona.UDPconnected();
   onOffTmp=response[5];
   cutoffWind=response[6];
 
-#ifndef UZ_NMEA  // if not old anemometer without sleep mode
  if ( UltrasonicAnemo==1 ) { 
   if ( response[7] < 4 and battLevel < 180 and battLevel > 170) { // if low battery < 3.6V
      response[7]=4;
@@ -278,9 +276,7 @@ bool isConnected = fona.UDPconnected();
     changeSleep=1;
     sleepBetween=response[7];
   }
-
  }
-#endif  
 
   if ( UltrasonicAnemo!=1 and (response[7] > -1 and response[7] < 9 and sleepBetween != response[7])) { 
     sleepBetween=response[7];

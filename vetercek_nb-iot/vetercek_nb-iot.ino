@@ -54,18 +54,18 @@ DallasTemperature sensor_water(&oneWire_out);
 // 82 - unable to send data in 200s
 // 83 - manual remote reset 
 // 84 - 20 sonic errors in UZ function
+// 85 - NR
 // 88 - other
 
       
 //////////////////////////////////    EDIT THIS
 #define APN "iot.1nce.net"
-byte GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
+byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
-//#define DEBUG // comment out if you want to turn off debugging
-//#define UZ_NMEA // old UZ with NMEA
+#define DEBUG // comment out if you want to turn off debugging
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 ///////////////////////////////////////////////////////////////////////////////////
 
@@ -189,9 +189,7 @@ connectGPRS();
 
 if (EEPROM.read(12)==1 or EEPROM.read(12)==255) {   // if ultrasonic enabled
 ultrasonic.begin(9600);
-     #ifdef DEBUG 
-      Serial.println("start UZ anemometer"); 
-     #endif 
+
 unsigned long startedWaiting = millis();
   while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
     delay(100);
@@ -200,6 +198,7 @@ unsigned long startedWaiting = millis();
   UltrasonicAnemo=1;
   windDelay=1000;
   }
+  ultrasonicFlush();  
 }   
 
 
@@ -216,6 +215,9 @@ unsigned long startedWaiting = millis();
     else if (EEPROM.read(15)==4 ) { 
       resetReason=84; 
     }      
+    else if (EEPROM.read(15)==5 ) { 
+      resetReason=85; 
+    }  
     else { 
       resetReason=88; 
     }   
@@ -228,14 +230,16 @@ void loop() {
 
  if ( UltrasonicAnemo==1 ) {    // if ultrasonic anemometer pluged in at boot
   unsigned long startedWaiting = millis();
+  delay(15);
   while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
     ultrasonic.begin(9600);
-    delay(100);
+    delay(900);
+    //delay(20);
    }
-  if ( millis() - startedWaiting >= 10000 && sonicError < 20)  { // if US error 
+  if ( millis() - startedWaiting >= 10000 && sonicError < 5)  { // if US error 
     sonicError++;
      }
-  else if ( millis() - startedWaiting >= 10000 && sonicError >= 20)  { // if more than 20 US errors
+  else if ( millis() - startedWaiting >= 10000 && sonicError >= 5)  { // if more than 20 US errors
         reset(1);
      }
   else if ( sleepBetween < 8 )  { 
@@ -293,15 +297,9 @@ void loop() {
 
 // check if is time to send data online  
 if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset buttion is pressed and 3 measurements are made
-#ifdef UZ_NMEA
-  or (wind_speed >= (cutoffWind*10) and ((measureCount >= whenSend and UltrasonicAnemo==0) or (measureCount >= whenSend*10 and UltrasonicAnemo==1 ))) // if wind avg exeeds cut off value and enough measurements are  made
-  or ((measureCount >= (whenSend*2) and UltrasonicAnemo==0) or (measureCount >= (whenSend*20) and UltrasonicAnemo==1))
-  or ((measureCount>250 and UltrasonicAnemo==0) or (measureCount>2500 and UltrasonicAnemo==1)) // if 2x measurements is made no matter the speed avg (max is 250 measurements)
-#else
   or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend ) // if wind avg exeeds cut off value and enough measurements are  made
   or (measureCount >= (whenSend*2))
   or (measureCount>500 ) // if more than 500 measurements
-#endif  
   )
   
   {  
@@ -313,13 +311,14 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
         SendData();
       digitalWrite(DTR, HIGH);  //sleep  
       if (UltrasonicAnemo==1){
-        ultrasonic.listen();
-      delay(100);
+        //ultrasonic.listen();
+        //delay(100);
         if ( changeSleep== 1) { //change of sleep time
           UZsleep(sleepBetween);
         }
+        ultrasonicFlush();
       }
-  delay(100);
+  //delay(500);
 
   }
   else if ( UltrasonicAnemo==0 ){ // restart timer
@@ -352,12 +351,15 @@ void reset(byte rr) {
 #ifdef DEBUG
   Serial.flush();
   Serial.end();
+#endif
   EEPROM.write(15, rr);
   delay(200);
-#endif
+
+  //if (rr != 3 ) {
   powerOn(); // turn off power
   delay(2000);
-  wdt_enable(WDTO_250MS);
+  //}
+  wdt_enable(WDTO_1S);
 
 }
 

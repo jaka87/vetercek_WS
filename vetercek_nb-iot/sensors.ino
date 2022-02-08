@@ -1,22 +1,14 @@
 void UltrasonicAnemometer() { //measure wind speed
-            serialResponse = ultrasonic.readStringUntil('\r\n');
-            int commaIndex = serialResponse.indexOf(',');
-            int secondCommaIndex = serialResponse.indexOf(',', commaIndex + 1);
-            int thrdCommaIndex = serialResponse.indexOf(',', secondCommaIndex + 1);
-            int fourthCommaIndex = serialResponse.indexOf(',', thrdCommaIndex + 1);
-            int fiftCommaIndex = serialResponse.indexOf(',', fourthCommaIndex + 2);
-
-    #ifdef UZ_NMEA
-        int dir = serialResponse.substring(commaIndex + 1, secondCommaIndex).toInt();;
-        int wind = serialResponse.substring(thrdCommaIndex + 1, fourthCommaIndex).toFloat()*19.4384449 ;
-        String check = serialResponse.substring(fiftCommaIndex + 1, fiftCommaIndex+2) ;
-        if (check=="A") {  // calculate wind direction and speed
-    #else
+        serialResponse = ultrasonic.readStringUntil('\r\n');
+        int commaIndex = serialResponse.indexOf(',');
+        int secondCommaIndex = serialResponse.indexOf(',', commaIndex + 1);
+        int thrdCommaIndex = serialResponse.indexOf(',', secondCommaIndex + 1);
+        int fourthCommaIndex = serialResponse.indexOf(',', thrdCommaIndex + 1);
+        int fiftCommaIndex = serialResponse.indexOf(',', fourthCommaIndex + 2);
         int dir = serialResponse.substring(commaIndex + 1, secondCommaIndex).toInt();
         int wind = serialResponse.substring(secondCommaIndex + 1, thrdCommaIndex).toFloat()*19.4384449 ;
         String check = serialResponse.substring(0, commaIndex) ;
-        if (check.indexOf("1")==1) {  // calculate wind direction and speed
-    #endif            
+        if (check.indexOf("1")==1) {  // calculate wind direction and speed          
           calDirection = dir + vaneOffset;
           CalculateWindDirection();  // calculate wind direction from data
           CalculateWindGust(wind);
@@ -25,7 +17,7 @@ void UltrasonicAnemometer() { //measure wind speed
           timergprs = 0;                                
          }
 
-        else if ( sonicError >= 20)  { reset(4);  }   // if more than x US errors
+        else if ( sonicError >= 5)  { reset(4);  }   // if more than x US errors
         else { 
           sonicError++; 
          #ifdef DEBUG 
@@ -244,4 +236,11 @@ else {
 }
 
 return battLevel;
+}
+
+
+void ultrasonicFlush(){
+  while(ultrasonic.available() > 0 ) {
+    char t = ultrasonic.read();
+  }
 }
