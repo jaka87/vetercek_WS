@@ -9,7 +9,20 @@
 #include "src/Fona/Adafruit_FONA.h"
 #include <EEPROM.h>
 
-//#define OLDPCB // if v.0.4.4 or older
+//////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
+#define APN "iot.1nce.net"
+byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
+byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
+int vaneOffset=0; // vane offset for wind dirrection
+int whenSend = 10; // interval after how many measurements data is send
+const char* broker = "vetercek.com";
+/////////////////////////////////    OPTIONS TO TURN ON AN OFF
+//#define DEBUG // comment out if you want to turn off debugging
+//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+#define OLDPCB // if v.0.4.4 or older
+//#define BMP // comment out if you want to turn off pressure sensor and save space
+///////////////////////////////////////////////////////////////////////////////////
+
 #define ONE_WIRE_BUS_1 4 //air
 #define ONE_WIRE_BUS_2 3 // water
 
@@ -54,24 +67,22 @@ DallasTemperature sensor_water(&oneWire_out);
 // 82 - unable to send data in 200s
 // 83 - manual remote reset 
 // 84 - 20 sonic errors in UZ function
-// 85 - NR
+// 85 - UDPclose
 // 88 - other
 
       
-//////////////////////////////////    EDIT THIS
-#define APN "iot.1nce.net"
-byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
-byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
-int vaneOffset=0; // vane offset for wind dirrection
-int whenSend = 10; // interval after how many measurements data is send
-const char* broker = "vetercek.com";
-#define DEBUG // comment out if you want to turn off debugging
-//#define BMP // comment out if you want to turn off pressure sensor and save space
-///////////////////////////////////////////////////////////////////////////////////
 
-#include <NeoSWSerial.h>
-NeoSWSerial fonaSS( 8, 9 );
-NeoSWSerial ultrasonic( USRX, USTX );
+//NeoSWSerial fonaSS( 8, 9 );
+//NeoSWSerial ultrasonic( USRX, USTX );
+
+#ifdef UZ_Anemometer
+  #include <NeoSWSerial.h>
+  NeoSWSerial fonaSS( 8, 9 );
+  NeoSWSerial ultrasonic( USRX, USTX );
+#else
+  #include <AltSoftSerial.h> //NeoSWSerial dont support pinchange interrupt; different library for mechanical anemometer
+  AltSoftSerial fonaSS;
+#endif
 Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
 
 
@@ -171,6 +182,20 @@ digitalWrite(PWRKEY, LOW);
   else if (EEPROM.read(9)==38) {GSMstate=38; } //#define NBIOT
 
 
+#ifdef UZ_Anemometer
+  unsigned long startedWaiting = millis();
+  UZ_wake(startedWaiting);
+  if (millis() - startedWaiting <= 9900 ) {
+    UltrasonicAnemo=1;
+    windDelay=1000;
+  }
+#endif
+
+#ifndef UZ_Anemometer and ifdef OLDPCB
+  PCICR |= B00000100;      //Bit2 = 1 -> "PCIE2" enabeled (PCINT16 to PCINT23)
+#endif
+
+
 #ifdef BMP
   if ((EEPROM.read(13)==255 or EEPROM.read(13)==1) and bmx280.begin()) {  
       enableBmp=1; 
@@ -187,19 +212,8 @@ moduleSetup(); // Establishes first-time serial comm and prints IMEI
 checkIMEI();
 connectGPRS();
 
-if (EEPROM.read(12)==1 or EEPROM.read(12)==255) {   // if ultrasonic enabled
-ultrasonic.begin(9600);
-
-unsigned long startedWaiting = millis();
-  while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
-    delay(100);
-   }
- if (millis() - startedWaiting <= 9900 ) {
-  UltrasonicAnemo=1;
-  windDelay=1000;
-  }
-  ultrasonicFlush();  
-}   
+//if (EEPROM.read(12)==1 or EEPROM.read(12)==255) {   // if ultrasonic enabled 
+//}   
 
 
   if (resetReason==8 ) { //////////////////// reset reason detailed        
@@ -227,32 +241,34 @@ unsigned long startedWaiting = millis();
 }
 
 void loop() {
-
- if ( UltrasonicAnemo==1 ) {    // if ultrasonic anemometer pluged in at boot
+#ifdef UZ_Anemometer
+ //if ( UltrasonicAnemo==1 ) {    // if ultrasonic anemometer pluged in at boot
   unsigned long startedWaiting = millis();
   delay(15);
-  while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
-    ultrasonic.begin(9600);
-    delay(900);
-    //delay(20);
-   }
+  UZ_wake(startedWaiting);
+//  while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
+//    ultrasonic.begin(9600);
+//    delay(900);
+//    //delay(20);
+//   }
   if ( millis() - startedWaiting >= 10000 && sonicError < 5)  { // if US error 
     sonicError++;
      }
   else if ( millis() - startedWaiting >= 10000 && sonicError >= 5)  { // if more than 20 US errors
         reset(1);
      }
-  else if ( sleepBetween < 8 )  { 
-    UltrasonicAnemometer(); 
-    LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
-     }
-  else  { 
-    UltrasonicAnemometer(); 
-    LowPower.powerExtStandby(SLEEP_FOREVER, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
-     }                     
- }           
-
- else { 
+//  else if ( sleepBetween < 8 )  { 
+    else { 
+      UltrasonicAnemometer(); 
+      LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
+    }
+//  else  { 
+//    UltrasonicAnemometer(); 
+//    LowPower.powerExtStandby(SLEEP_FOREVER, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
+//     }                     
+ //}           
+#else
+ //else { 
  
     Anemometer();                           // anemometer
     GetWindDirection();
@@ -270,8 +286,8 @@ void loop() {
     LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);  // sleep
   }
    
- }
-
+ //}
+#endif  
 
   
   #ifdef DEBUG                                 // debug data
@@ -297,9 +313,15 @@ void loop() {
 
 // check if is time to send data online  
 if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset buttion is pressed and 3 measurements are made
+#ifdef UZ_NMEA
+  or (wind_speed >= (cutoffWind*10) and ((measureCount >= whenSend and UltrasonicAnemo==0) or (measureCount >= whenSend*10 and UltrasonicAnemo==1 ))) // if wind avg exeeds cut off value and enough measurements are  made
+  or ((measureCount >= (whenSend*2) and UltrasonicAnemo==0) or (measureCount >= (whenSend*20) and UltrasonicAnemo==1))
+  or ((measureCount>250 and UltrasonicAnemo==0) or (measureCount>2500 and UltrasonicAnemo==1)) // if 2x measurements is made no matter the speed avg (max is 250 measurements)
+#else
   or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend ) // if wind avg exeeds cut off value and enough measurements are  made
   or (measureCount >= (whenSend*2))
   or (measureCount>500 ) // if more than 500 measurements
+#endif  
   )
   
   {  
@@ -310,14 +332,32 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
       delay(100);
         SendData();
       digitalWrite(DTR, HIGH);  //sleep  
-      if (UltrasonicAnemo==1){
-        //ultrasonic.listen();
-        //delay(100);
-        if ( changeSleep== 1) { //change of sleep time
-          UZsleep(sleepBetween);
+      #ifdef UZ_Anemometer
+        if (UltrasonicAnemo==1){
+          delay(500);
+          unsigned long startedWaiting = millis();
+          UZ_wake(startedWaiting);
+          //ultrasonic.listen();
+          //delay(100);
+  //        unsigned long startedWaiting = millis(); 
+  //        while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
+  //          ultrasonic.begin(9600);
+  //          delay(500);
+  //         }
+          if ( changeSleep== 1 ) { //change of sleep time
+            UZsleep(sleepBetween);
+          }
+          //ultrasonicFlush();
+          //delay(100);
+          //ultrasonicFlush();
+  //        if ( sleepBetween < 8 )  { 
+  //          LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
+  //           }
+  //        else  { 
+  //          LowPower.powerExtStandby(SLEEP_FOREVER, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
+  //           }         
         }
-        ultrasonicFlush();
-      }
+      #endif  
   //delay(500);
 
   }
@@ -341,8 +381,6 @@ void CheckTimerGPRS() { // if unable to send data in 200s
       Serial.println("hardR");
     #endif    
     timergprs = 0;
-    //powerOn();
-    //delay(1000);
     reset(2);
   }
 }
@@ -382,3 +420,15 @@ void wakeUp() {
   delay(100); // For SIM7000 
   digitalWrite(PWRKEY, HIGH);
 }
+
+#ifdef UZ_Anemometer
+void UZ_wake(unsigned long startedWaiting) {
+  while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
+    ultrasonic.begin(9600);
+    delay(900);
+    }
+//   #ifdef DEBUG
+//    Serial.println("UZ wake up");
+//   #endif       
+}
+#endif 

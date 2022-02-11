@@ -1,3 +1,4 @@
+#ifdef UZ_Anemometer
 void UltrasonicAnemometer() { //measure wind speed
         serialResponse = ultrasonic.readStringUntil('\r\n');
         int commaIndex = serialResponse.indexOf(',');
@@ -8,7 +9,7 @@ void UltrasonicAnemometer() { //measure wind speed
         int dir = serialResponse.substring(commaIndex + 1, secondCommaIndex).toInt();
         int wind = serialResponse.substring(secondCommaIndex + 1, thrdCommaIndex).toFloat()*19.4384449 ;
         String check = serialResponse.substring(0, commaIndex) ;
-        if (check.indexOf("1")==1) {  // calculate wind direction and speed          
+        if (check.indexOf("1")==1) {  // calculate wind direction and speed
           calDirection = dir + vaneOffset;
           CalculateWindDirection();  // calculate wind direction from data
           CalculateWindGust(wind);
@@ -31,12 +32,12 @@ void UltrasonicAnemometer() { //measure wind speed
 
 void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
   unsigned long startedWaiting = millis(); 
-  while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
-    ultrasonic.begin(9600);
-    delay(100);
-   }
-
-  startedWaiting = millis();    
+  //UZ_wake(sleepBetween);
+//  while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
+//    ultrasonic.begin(9600);
+//    delay(100);
+//   }
+//  startedWaiting = millis();    
   while (ultrasonic.readStringUntil('\r\n').indexOf("IdleSec")<1 && millis() - startedWaiting <= 20000) {
     if (sleepT==1) { ultrasonic.write(">PwrIdleCfg:1,1\r\n"); }
     else if (sleepT==2) { ultrasonic.write(">PwrIdleCfg:1,2\r\n"); }
@@ -48,7 +49,7 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
     else if (sleepT==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }  
     else if (sleepT==0) { ultrasonic.write(">PwrIdleCfg:0,1\r\n"); }
     //if(millis() - startedWaiting > 12000){ break;  }
-      delay(400);
+      delay(200);
     }
 
     if(millis() - startedWaiting < 19900){ ultrasonic.write(">SaveConfig\r\n"); }
@@ -58,25 +59,35 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
      #ifdef DEBUG 
       Serial.println("sleep change ok"); 
      #endif 
+      //ultrasonicFlush();     
       }
     else { 
      #ifdef DEBUG 
       Serial.println("sleep change error"); 
      #endif       
       }
-      
 }
+#endif 
 
-
+#ifndef UZ_Anemometer
 void Anemometer() { //measure wind speed
   firstWindPulse = 1; // dont count first rotation
   contactBounceTime = millis();
   rotations = 0; // Set rotations count to 0 ready for calculations
   EIFR = (1 << INTF0); // clear interrupt flag
+#ifdef OLDPCB // old pcb
   attachInterrupt(digitalPinToInterrupt(windSensorPin), ISRrotation, FALLING); //setup interrupt on anemometer input pin, interrupt will occur whenever falling edge is detected
-  delay (windDelay); // Wait x second to average
-  detachInterrupt(digitalPinToInterrupt(windSensorPin));
+#else
+  PCMSK2 |= B00100000;      //Bit5 = 1 -> "PCINT21" enabeled -> D5 will trigger interrupt  
+#endif
 
+  delay (windDelay); // Wait x second to average
+  
+#ifdef OLDPCB // old pcb
+  detachInterrupt(digitalPinToInterrupt(windSensorPin));
+#else
+  PCMSK2 = 0x00;      //detach interrupt 
+#endif
   if (rotations == 0)  {
     windSpeed = 0;
   }
@@ -92,7 +103,7 @@ void Anemometer() { //measure wind speed
   }
 
 }
-
+#endif
 
 void CalculateWind() {  
     ++measureCount; // add +1 to counter
@@ -122,8 +133,12 @@ void GetAvgWInd() {
   wind_speed = windAvr / measureCount; // calculate average wind
 }
 
-
-void ISRrotation () {  // This is the function that the interrupt calls to increment the rotation count
+#ifndef UZ_Anemometer and ifdef OLDPCB
+  void ISRrotation () {  // This is the function that the interrupt calls to increment the rotation count
+#else
+  ISR (PCINT2_vect)  {
+  //NeoSWSerial::rxISR( *portInputRegister( digitalPinToPort( 5 ) ) );
+#endif
   currentMillis = millis(); //we have to read millis at the same position in ISR each time to get the most accurate readings
   if (firstWindPulse == 1) { //discard first pulse as we don't know exactly when it happened
     contactBounceTime = currentMillis;
@@ -159,6 +174,9 @@ void CalculateWindDirection() {
 }
 
 void rain_count() {
+  #ifdef UZ_Anemometer
+    NeoSWSerial::rxISR( *portInputRegister( digitalPinToPort( 3 ) ) );
+  #endif
   currentMillis2 = millis(); //we have to read millis at the same position in ISR each time to get the most accurate readings
 if ((currentMillis2 - contactBounceTime2) > 500 ) { // debounce the switch contact.
     contactBounceTime2 = currentMillis2;
@@ -238,9 +256,10 @@ else {
 return battLevel;
 }
 
-
+#ifdef UZ_Anemometer
 void ultrasonicFlush(){
   while(ultrasonic.available() > 0 ) {
     char t = ultrasonic.read();
   }
 }
+#endif 

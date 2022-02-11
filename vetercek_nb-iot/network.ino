@@ -42,6 +42,10 @@ void moduleSetup() {
   }
 
   fonaSS.println("AT+CIPMUX=0"); // single ip
+
+  fona.setNetLED(true,3,64,5000);
+  delay(300);
+  
   fona.setFunctionality(0); // AT+CFUN=0
   delay(3000);
   fona.setFunctionality(1); // AT+CFUN=1
@@ -55,8 +59,6 @@ void moduleSetup() {
 //    fona.setOperatingBand("NB-IOT",20); 
 //  }
   
-  fona.setNetLED(true,3,64,5000);
-  delay(300);
   
   //fona.setOperatingBand("NB-IOT",20); // AT&T uses band 12
   fona.enableSleepMode(true);
@@ -85,7 +87,6 @@ unsigned long startTime=millis();
       moduleSetup(); // Establishes first-time serial comm and prints IMEI
       startTime=millis();
       }
-      
        
       fona.setFunctionality(0); // AT+CFUN=0
       delay(3000);
@@ -265,7 +266,7 @@ bool isConnected = fona.UDPconnected();
   onOffTmp=response[5];
   cutoffWind=response[6];
 
- if ( UltrasonicAnemo==1 ) { 
+#ifdef UZ_Anemometer
   if ( response[7] < 4 and battLevel < 180 and battLevel > 170) { // if low battery < 3.6V
      response[7]=4;
   }
@@ -276,12 +277,11 @@ bool isConnected = fona.UDPconnected();
     changeSleep=1;
     sleepBetween=response[7];
   }
- }
-
-  if ( UltrasonicAnemo!=1 and (response[7] > -1 and response[7] < 9 and sleepBetween != response[7])) { 
+#else
+  if ( (response[7] > -1 and response[7] < 9 and sleepBetween != response[7])) { 
     sleepBetween=response[7];
   }  
-
+#endif
      #ifdef DEBUG
       Serial.println("SEND");
      #endif
@@ -297,11 +297,12 @@ bool isConnected = fona.UDPconnected();
       #ifdef DEBUG
         Serial.println("softR");
       #endif
-      powerOn(); // Power on the module
-      delay(4000);
-      wakeUp();
-      delay(3000);
-      moduleSetup(); // Establishes first-time serial comm and prints IMEI
+        reset(5);
+//      powerOn(); // Power on the module
+//      delay(4000);
+//      wakeUp();
+//      delay(3000);
+//      moduleSetup(); // Establishes first-time serial comm and prints IMEI
       }
    } 
   
