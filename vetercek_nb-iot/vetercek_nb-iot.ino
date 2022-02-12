@@ -19,7 +19,7 @@ const char* broker = "vetercek.com";
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
 //#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
-#define OLDPCB // if v.0.4.4 or older
+//#define OLDPCB // if v.0.4.4 or older
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 ///////////////////////////////////////////////////////////////////////////////////
 
@@ -70,10 +70,6 @@ DallasTemperature sensor_water(&oneWire_out);
 // 85 - UDPclose
 // 88 - other
 
-      
-
-//NeoSWSerial fonaSS( 8, 9 );
-//NeoSWSerial ultrasonic( USRX, USTX );
 
 #ifdef UZ_Anemometer
   #include <NeoSWSerial.h>
@@ -142,6 +138,7 @@ byte enableRain=0;
 byte enableBmp=0;
 int pressure=0;
 byte changeSleep=0;
+byte batteryState=0; // 0 normal; 1 low battery; 2 very low battery
 
 void setup() {
   MCUSR = 0; // clear reset flags
@@ -191,7 +188,7 @@ digitalWrite(PWRKEY, LOW);
   }
 #endif
 
-#ifndef UZ_Anemometer and ifdef OLDPCB
+#ifndef UZ_Anemometer and ifndef OLDPCB
   PCICR |= B00000100;      //Bit2 = 1 -> "PCIE2" enabeled (PCINT16 to PCINT23)
 #endif
 
@@ -246,27 +243,18 @@ void loop() {
   unsigned long startedWaiting = millis();
   delay(15);
   UZ_wake(startedWaiting);
-//  while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
-//    ultrasonic.begin(9600);
-//    delay(900);
-//    //delay(20);
-//   }
+
   if ( millis() - startedWaiting >= 10000 && sonicError < 5)  { // if US error 
     sonicError++;
      }
   else if ( millis() - startedWaiting >= 10000 && sonicError >= 5)  { // if more than 20 US errors
         reset(1);
      }
-//  else if ( sleepBetween < 8 )  { 
     else { 
       UltrasonicAnemometer(); 
       LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
     }
-//  else  { 
-//    UltrasonicAnemometer(); 
-//    LowPower.powerExtStandby(SLEEP_FOREVER, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
-//     }                     
- //}           
+          
 #else
  //else { 
  
@@ -313,15 +301,9 @@ void loop() {
 
 // check if is time to send data online  
 if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset buttion is pressed and 3 measurements are made
-#ifdef UZ_NMEA
-  or (wind_speed >= (cutoffWind*10) and ((measureCount >= whenSend and UltrasonicAnemo==0) or (measureCount >= whenSend*10 and UltrasonicAnemo==1 ))) // if wind avg exeeds cut off value and enough measurements are  made
-  or ((measureCount >= (whenSend*2) and UltrasonicAnemo==0) or (measureCount >= (whenSend*20) and UltrasonicAnemo==1))
-  or ((measureCount>250 and UltrasonicAnemo==0) or (measureCount>2500 and UltrasonicAnemo==1)) // if 2x measurements is made no matter the speed avg (max is 250 measurements)
-#else
   or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend ) // if wind avg exeeds cut off value and enough measurements are  made
   or (measureCount >= (whenSend*2))
   or (measureCount>500 ) // if more than 500 measurements
-#endif  
   )
   
   {  
@@ -337,25 +319,10 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
           delay(500);
           unsigned long startedWaiting = millis();
           UZ_wake(startedWaiting);
-          //ultrasonic.listen();
-          //delay(100);
-  //        unsigned long startedWaiting = millis(); 
-  //        while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
-  //          ultrasonic.begin(9600);
-  //          delay(500);
-  //         }
+
           if ( changeSleep== 1 ) { //change of sleep time
             UZsleep(sleepBetween);
-          }
-          //ultrasonicFlush();
-          //delay(100);
-          //ultrasonicFlush();
-  //        if ( sleepBetween < 8 )  { 
-  //          LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
-  //           }
-  //        else  { 
-  //          LowPower.powerExtStandby(SLEEP_FOREVER, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
-  //           }         
+          }     
         }
       #endif  
   //delay(500);
@@ -371,10 +338,6 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
 
 void CheckTimerGPRS() { // if unable to send data in 200s
   timergprs++;
-
-//    #ifdef DEBUG
-//      Serial.println(timergprs);
-//    #endif 
     
   if (timergprs > 200 ) {
     #ifdef DEBUG

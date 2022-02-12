@@ -59,7 +59,6 @@ void moduleSetup() {
 //    fona.setOperatingBand("NB-IOT",20); 
 //  }
   
-  
   //fona.setOperatingBand("NB-IOT",20); // AT&T uses band 12
   fona.enableSleepMode(true);
   delay(200);
@@ -68,8 +67,6 @@ void moduleSetup() {
   fona.enablePSM(false);
   //fona.enablePSM(true, "00100001", "00100011");
   delay(200);
-
-
 }  
 
 
@@ -78,9 +75,7 @@ void connectGPRS() {
 unsigned long startTime=millis();  
 
     while (netStatus() != 1 and netStatus() != 5) {
-
-      if (millis() - startTime >= 10000 and netStatus() == 0 )
-      {
+      if (millis() - startTime >= 10000 and netStatus() == 0 )  {
        #ifdef DEBUG
         Serial.println(F("RstC2"));
        #endif
@@ -106,9 +101,6 @@ unsigned long startTime=millis();
     Serial.println(F("GPRS"));
   #endif 
   }
-
-
-
 }
 
 
@@ -118,19 +110,7 @@ if (fona.checkAT()) {  // wait untill modem is active
       Serial.println("Modem");
      #endif  
 }
-      
-//  #ifdef NBIOT
-//    wakeUp();
-//    delay(300);
-//  fonaSS.begin(9600);
-//  if (! fona.begin(fonaSS)) {
-//    #ifdef DEBUG
-//      Serial.println(F("Couldn't find FONA"));
-//    #endif  
-//    while(1); // Don't proceed if it couldn't find the device
-//  }
-//  delay(500);
-
+     
   if (millis() - updateBattery >= 130000 or updateBattery == 0) {  // send data about battery and signal every 8+ minutes
     updateBattery=millis();
     sig=fona.getRSSI(); 
@@ -266,13 +246,23 @@ bool isConnected = fona.UDPconnected();
   onOffTmp=response[5];
   cutoffWind=response[6];
 
-#ifdef UZ_Anemometer
-  if ( response[7] < 4 and battLevel < 180 and battLevel > 170) { // if low battery < 3.6V
+// if low battery increase sleep time
+  if ( (response[7] < 4 and battLevel < 180 and battLevel > 170) or batteryState==1) { // if low battery < 3.6V
      response[7]=4;
+     batteryState=1;
   }
-  else if ( response[7] < 8 and battLevel < 170 and battLevel > 17) { // if low battery < 3.4V
+  else if (( response[7] < 8 and battLevel < 170 and battLevel > 17) or batteryState==2) { // if low battery < 3.4V
      response[7]=8;
+     batteryState=2;
   }
+
+// once battery gets charged change the battery state  
+  if (  battLevel > 190 and batteryState==1) { batteryState=0; }// if battery > 3.8V
+  else if (  battLevel >= 180 and battLevel >= 190 and batteryState==2) { batteryState=1; }// if battery > 3.6V
+  
+
+
+#ifdef UZ_Anemometer
   if ( response[7]!= sleepBetween and UltrasonicAnemo==1 and response[7] > -1 and response[7] < 9 and sleepBetween != response[7]) { //change of sleep time
     changeSleep=1;
     sleepBetween=response[7];

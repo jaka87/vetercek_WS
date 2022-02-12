@@ -31,13 +31,7 @@ void UltrasonicAnemometer() { //measure wind speed
 
 
 void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
-  unsigned long startedWaiting = millis(); 
-  //UZ_wake(sleepBetween);
-//  while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
-//    ultrasonic.begin(9600);
-//    delay(100);
-//   }
-//  startedWaiting = millis();    
+  unsigned long startedWaiting = millis();   
   while (ultrasonic.readStringUntil('\r\n').indexOf("IdleSec")<1 && millis() - startedWaiting <= 20000) {
     if (sleepT==1) { ultrasonic.write(">PwrIdleCfg:1,1\r\n"); }
     else if (sleepT==2) { ultrasonic.write(">PwrIdleCfg:1,2\r\n"); }
@@ -48,7 +42,6 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
     else if (sleepT==7) { ultrasonic.write(">PwrIdleCfg:1,7\r\n"); }
     else if (sleepT==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }  
     else if (sleepT==0) { ultrasonic.write(">PwrIdleCfg:0,1\r\n"); }
-    //if(millis() - startedWaiting > 12000){ break;  }
       delay(200);
     }
 
@@ -59,7 +52,6 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
      #ifdef DEBUG 
       Serial.println("sleep change ok"); 
      #endif 
-      //ultrasonicFlush();     
       }
     else { 
      #ifdef DEBUG 
@@ -70,16 +62,17 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
 #endif 
 
 #ifndef UZ_Anemometer
-void Anemometer() { //measure wind speed
-  firstWindPulse = 1; // dont count first rotation
-  contactBounceTime = millis();
-  rotations = 0; // Set rotations count to 0 ready for calculations
-  EIFR = (1 << INTF0); // clear interrupt flag
-#ifdef OLDPCB // old pcb
-  attachInterrupt(digitalPinToInterrupt(windSensorPin), ISRrotation, FALLING); //setup interrupt on anemometer input pin, interrupt will occur whenever falling edge is detected
-#else
-  PCMSK2 |= B00100000;      //Bit5 = 1 -> "PCINT21" enabeled -> D5 will trigger interrupt  
-#endif
+  void Anemometer() { //measure wind speed
+    firstWindPulse = 1; // dont count first rotation
+    contactBounceTime = millis();
+    rotations = 0; // Set rotations count to 0 ready for calculations
+    EIFR = (1 << INTF0); // clear interrupt flag
+  #ifdef OLDPCB // old pcb
+    attachInterrupt(digitalPinToInterrupt(windSensorPin), ISRrotation, FALLING); //setup interrupt on anemometer input pin, interrupt will occur whenever falling edge is detected
+  #else
+    //PCICR |= B00000100;      //Bit2 = 1 -> "PCIE2" enabeled (PCINT16 to PCINT23)
+    PCMSK2 |= B00100000;      //Bit5 = 1 -> "PCINT21" enabeled -> D5 will trigger interrupt  
+  #endif
 
   delay (windDelay); // Wait x second to average
   
@@ -133,12 +126,13 @@ void GetAvgWInd() {
   wind_speed = windAvr / measureCount; // calculate average wind
 }
 
-#ifndef UZ_Anemometer and ifdef OLDPCB
-  void ISRrotation () {  // This is the function that the interrupt calls to increment the rotation count
-#else
-  ISR (PCINT2_vect)  {
-  //NeoSWSerial::rxISR( *portInputRegister( digitalPinToPort( 5 ) ) );
-#endif
+#ifndef UZ_Anemometer
+  #ifdef OLDPCB
+    void ISRrotation () {  // This is the function that the interrupt calls to increment the rotation count
+  #else
+    ISR (PCINT2_vect)  {
+    //NeoSWSerial::rxISR( *portInputRegister( digitalPinToPort( 5 ) ) );
+  #endif
   currentMillis = millis(); //we have to read millis at the same position in ISR each time to get the most accurate readings
   if (firstWindPulse == 1) { //discard first pulse as we don't know exactly when it happened
     contactBounceTime = currentMillis;
@@ -151,6 +145,7 @@ void GetAvgWInd() {
     lastPulseMillis = currentMillis;
   }
 }
+#endif
 
 void DominantDirection() { // get dominant wind direction
   windDir =  atan2(windAvgY, windAvgX) / PI * 180;
