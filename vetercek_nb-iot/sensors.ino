@@ -186,16 +186,26 @@ void GetAir() {
   delay (750) ;
   temp = sensor_air.getTempCByIndex(0);
   digitalWrite(pwrAir, LOW);   // turn off power
+
+#ifdef DEBUG
+  Serial.print("tmp: ");
+  Serial.println(temp);
+#endif
 }
 
 
 void GetWater() {
   digitalWrite(pwrWater, HIGH);   // turn on power
-  delay(500);
+  delay(200);
   sensor_water.requestTemperatures(); // Send the command to get temperatures
   delay (750) ;
   water = sensor_water.getTempCByIndex(0);
   digitalWrite(pwrWater, LOW);   // turn off power
+
+#ifdef DEBUG
+    Serial.print("water: ");
+    Serial.println(water);
+#endif
 }
 
 

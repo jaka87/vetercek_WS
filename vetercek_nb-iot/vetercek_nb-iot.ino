@@ -11,7 +11,7 @@
 
 //////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
 #define APN "iot.1nce.net"
-byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
+byte GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
@@ -21,6 +21,7 @@ const char* broker = "vetercek.com";
 //#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define OLDPCB // if v.0.4.4 or older
 //#define BMP // comment out if you want to turn off pressure sensor and save space
+//#define UZsleepChange // change sleep settings
 ///////////////////////////////////////////////////////////////////////////////////
 
 #define ONE_WIRE_BUS_1 4 //air
@@ -319,10 +320,11 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
           delay(500);
           unsigned long startedWaiting = millis();
           UZ_wake(startedWaiting);
-
-          if ( changeSleep== 1 ) { //change of sleep time
-            UZsleep(sleepBetween);
-          }     
+          #ifdef UZsleepChange
+            if ( changeSleep== 1 ) { //change of sleep time
+              UZsleep(sleepBetween);
+            }
+          #endif  
         }
       #endif  
   //delay(500);

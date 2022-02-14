@@ -62,7 +62,9 @@ void moduleSetup() {
   //fona.setOperatingBand("NB-IOT",20); // AT&T uses band 12
   fona.enableSleepMode(true);
   delay(200);
-  fona.set_eDRX(1, 5, "1001");
+  if (GSMstate==38 or GSMstate==2) {
+    fona.set_eDRX(1, 5, "1001");    
+  }
   delay(200);
   fona.enablePSM(false);
   //fona.enablePSM(true, "00100001", "00100011");
@@ -238,10 +240,14 @@ bool isConnected = fona.UDPconnected();
   else if (response[8]==121) { EEPROM.write(12, 1); reset(3); }   
   else if (response[8]==130) { EEPROM.write(13, 0); reset(3); }   //pressure
   else if (response[8]==131) { EEPROM.write(13, 1); reset(3); }   
+  else if (response[8] == 102 ) { GSMstate=2; moduleSetup(); } // temporarry change network - auto
+  else if (response[8] == 113 ) { GSMstate=13; moduleSetup(); } // temporarry change network - 2G
+  else if (response[8] == 138 ) { GSMstate=38; moduleSetup(); } // temporarry change network - nb-iot
   else if (response[8] == 2 or response[8]==13 or response[8]==38) { // if new settings for network prefference
     EEPROM.write(9, response[8]);   // write new data to EEPROM
     reset(3); 
     }
+
    
   onOffTmp=response[5];
   cutoffWind=response[6];
