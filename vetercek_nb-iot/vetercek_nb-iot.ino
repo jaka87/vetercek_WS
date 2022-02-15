@@ -325,6 +325,10 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
               UZsleep(sleepBetween);
             }
           #endif  
+            while(ultrasonic.available() > 0 ) {
+              char t = ultrasonic.read();
+            }
+            LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
         }
       #endif  
   //delay(500);
@@ -351,10 +355,10 @@ void CheckTimerGPRS() { // if unable to send data in 200s
 }
 
 void reset(byte rr) {
-#ifdef DEBUG
-  Serial.flush();
-  Serial.end();
-#endif
+//#ifdef DEBUG
+//  Serial.flush();
+//  Serial.end();
+//#endif
   EEPROM.write(15, rr);
   delay(200);
 
