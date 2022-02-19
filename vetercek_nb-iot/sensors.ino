@@ -8,8 +8,14 @@ void UltrasonicAnemometer() { //measure wind speed
         int fiftCommaIndex = serialResponse.indexOf(',', fourthCommaIndex + 2);
         int dir = serialResponse.substring(commaIndex + 1, secondCommaIndex).toInt();
         int wind = serialResponse.substring(secondCommaIndex + 1, thrdCommaIndex).toFloat()*19.4384449 ;
-        String check = serialResponse.substring(0, commaIndex) ;
-        if (check.indexOf("1")==1) {  // calculate wind direction and speed
+
+        int lastcoma= serialResponse.lastIndexOf(',');
+        char check[5];
+        String windStuff=serialResponse.substring(commaIndex + 1, thrdCommaIndex);
+        serialResponse.substring(lastcoma+1,lastcoma+3).toCharArray(check, 5);
+
+  if (UZchecksum(windStuff,check)){ // if check is passed        
+        //if (check.indexOf("1")==1) {  // calculate wind direction and speed
           calDirection = dir + vaneOffset;
           CalculateWindDirection();  // calculate wind direction from data
           CalculateWindGust(wind);
@@ -22,13 +28,46 @@ void UltrasonicAnemometer() { //measure wind speed
         else { 
           sonicError++; 
          #ifdef DEBUG 
-          Serial.print("UZ error :"); 
-          Serial.println(serialResponse); 
+          Serial.println("UZ error :"); 
+          //Serial.println(serialResponse); 
          #endif 
         }  // if more than x US errors                   
     //}
+ //ultrasonicFlush();   
 }
 
+
+byte UZchecksum(String s1, char* check)
+{
+   byte buf[10];
+   int sumbyte=0;
+   char cheksum1;
+   
+   s1.getBytes(buf, s1.length()+1);
+   for (int i = 0; i < s1.length(); i++) {
+      sumbyte=sumbyte+buf[i];
+   }
+
+   if (s1.length()< 6){
+    sumbyte=-((sumbyte+2609) % 256);    
+   }
+   else {
+    sumbyte=-((sumbyte+2561) % 256);    
+   }
+
+char hexbuffer[5];
+char checkk[4];
+sprintf(hexbuffer,"%02X", sumbyte);
+
+if( hexbuffer[2]==check[0] and hexbuffer[3]==check[1] )
+  {  
+    return 1;
+  }
+  else {
+    return 0;
+  }
+ 
+}
 
 void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
   unsigned long startedWaiting = millis();   
@@ -49,8 +88,10 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
     if(millis() - startedWaiting < 19900){ 
       sleepBetween=sleepT;
       changeSleep=0;
+       //ultrasonicFlush();
      #ifdef DEBUG 
       Serial.println("sleep change ok"); 
+      delay(10);
      #endif 
       }
     else { 
@@ -196,9 +237,9 @@ void GetAir() {
 
 void GetWater() {
   digitalWrite(pwrWater, HIGH);   // turn on power
-  delay(200);
+  delay(300);
   sensor_water.requestTemperatures(); // Send the command to get temperatures
-  delay (750) ;
+  delay (850) ;
   water = sensor_water.getTempCByIndex(0);
   digitalWrite(pwrWater, LOW);   // turn off power
 
