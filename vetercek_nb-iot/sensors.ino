@@ -1,25 +1,26 @@
 #ifdef UZ_Anemometer
 void UltrasonicAnemometer() { //measure wind speed
-        serialResponse = ultrasonic.readStringUntil('\r\n');
-        int commaIndex = serialResponse.indexOf(',');
-        int secondCommaIndex = serialResponse.indexOf(',', commaIndex + 1);
-        int thrdCommaIndex = serialResponse.indexOf(',', secondCommaIndex + 1);
-        int fourthCommaIndex = serialResponse.indexOf(',', thrdCommaIndex + 1);
-        int fiftCommaIndex = serialResponse.indexOf(',', fourthCommaIndex + 2);
-        int dir = serialResponse.substring(commaIndex + 1, secondCommaIndex).toInt();
-        int wind = serialResponse.substring(secondCommaIndex + 1, thrdCommaIndex).toFloat()*19.4384449 ;
+    char buffer[80];
+    char hexbuffer[5];
+    int sum;
+    int size = ultrasonic.readBytesUntil('\n', buffer, 80); 
+    
+    char* first = strtok(buffer, ",/");
+    char *dir = strtok(NULL, ",/");
+    char *wind = strtok(NULL, ",/");
+    char* check = strtok(NULL, ",/");
 
-        int lastcoma= serialResponse.lastIndexOf(',');
-        char check[5];
-        String windStuff=serialResponse.substring(commaIndex + 1, thrdCommaIndex);
-        serialResponse.substring(lastcoma+1,lastcoma+3).toCharArray(check, 5);
+      sum+=countBytes(dir);
+      sum+=countBytes(wind);
+      sum+=2605;
+      sum=-(sum % 256);    
+      sprintf(hexbuffer,"%02X", sum);
 
-  if (UZchecksum(windStuff,check)){ // if check is passed        
-        //if (check.indexOf("1")==1) {  // calculate wind direction and speed
-          calDirection = dir + vaneOffset;
+    if( check[0] ==hexbuffer[2] and check[1] ==hexbuffer[3] )  {  
+          calDirection = atoi(dir) + vaneOffset;
           CalculateWindDirection();  // calculate wind direction from data
-          CalculateWindGust(wind);
-          windSpeed=wind;
+          windSpeed=atof(wind)*19.4384449;
+          CalculateWindGust(windSpeed);
           CalculateWind();
           timergprs = 0;                                
          }
@@ -28,46 +29,33 @@ void UltrasonicAnemometer() { //measure wind speed
         else { 
           sonicError++; 
          #ifdef DEBUG 
+         delay(70);
           Serial.println("UZ error :"); 
-          //Serial.println(serialResponse); 
+          Serial.println(buffer); 
+          Serial.println(dir); 
+          Serial.println(wind); 
+          Serial.println(hexbuffer); 
+          Serial.println(check); 
+         delay(70);
          #endif 
         }  // if more than x US errors                   
     //}
- //ultrasonicFlush();   
+ ultrasonicFlush();   
 }
 
 
-byte UZchecksum(String s1, char* check)
+int countBytes( const char * data )
 {
-   byte buf[10];
-   int sumbyte=0;
-   char cheksum1;
-   
-   s1.getBytes(buf, s1.length()+1);
-   for (int i = 0; i < s1.length(); i++) {
-      sumbyte=sumbyte+buf[i];
-   }
-
-   if (s1.length()< 6){
-    sumbyte=-((sumbyte+2609) % 256);    
-   }
-   else {
-    sumbyte=-((sumbyte+2561) % 256);    
-   }
-
-char hexbuffer[5];
-char checkk[4];
-sprintf(hexbuffer,"%02X", sumbyte);
-
-if( hexbuffer[2]==check[0] and hexbuffer[3]==check[1] )
-  {  
-    return 1;
+  int total = 0;
+  const char * p = data;
+  while ( *p != '\0' )
+  {
+    total += *p++;
   }
-  else {
-    return 0;
-  }
- 
+  return total;
 }
+
+
 
 void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
   unsigned long startedWaiting = millis();   
