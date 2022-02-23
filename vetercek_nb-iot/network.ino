@@ -221,7 +221,6 @@ bool isConnected = fona.UDPconnected();
   byte response[10];  
   if ( fona.UDPsend(data,sizeof(data),response,9)) {
 
-  if (response[0] >0) { whenSend=response[0];}
   if (response[1] ==1 ) {  
     vaneOffset=(response[2]*100)+response[3];    // if byte is positive value
   } 
@@ -239,7 +238,9 @@ bool isConnected = fona.UDPconnected();
   else if (response[8]==120) { EEPROM.write(12, 0); reset(3); } //ultrasonic
   else if (response[8]==121) { EEPROM.write(12, 1); reset(3); }   
   else if (response[8]==130) { EEPROM.write(13, 0); reset(3); }   //pressure
-  else if (response[8]==131) { EEPROM.write(13, 1); reset(3); }   
+  else if (response[8]==131) { EEPROM.write(13, 1); reset(3); } 
+  else if (response[8]==40) { EEPROM.write(14, 10); changeSleepState=0; }  // UZ sleep on / off
+  else if (response[8]==41) { EEPROM.write(14, 11); changeSleepState=1; } 
   else if (response[8] == 102 ) { GSMstate=2; moduleSetup(); } // temporarry change network - auto
   else if (response[8] == 113 ) { GSMstate=13; moduleSetup(); } // temporarry change network - 2G
   else if (response[8] == 138 ) { GSMstate=38; moduleSetup(); } // temporarry change network - nb-iot
@@ -278,6 +279,11 @@ bool isConnected = fona.UDPconnected();
     sleepBetween=response[7];
   }  
 #endif
+
+  if (response[0] >0 and sleepBetween==0) { whenSend=response[0]*2;} // when sleep is 0 updates =2x
+  else if (response[0] >0 ) { whenSend=response[0];}
+
+
      #ifdef DEBUG
       Serial.println("SEND");
      #endif

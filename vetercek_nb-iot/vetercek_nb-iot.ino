@@ -1,4 +1,5 @@
 //bin/avrdude -C//etc/avrdude.conf -v -V -patmega328p -cusbtiny -Uflash:w:/vetercek_nb-iot.ino.hex:i lfuse:w:0xEF:m efuse:w:0xFF:m hfuse:w:DA:m lock:w:0xFF:m 
+//NeoSWSerial RX buffer set to 128b
 #include <avr/wdt.h> //watchdog
 #include "src/LowPower/LowPower.h" //sleep library
 #include <math.h> // wind speed calculations
@@ -18,10 +19,10 @@ int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
-//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+#define UZsleepChange // change sleep settings
 //#define OLDPCB // if v.0.4.4 or older
 //#define BMP // comment out if you want to turn off pressure sensor and save space
-//#define UZsleepChange // change sleep settings
 ///////////////////////////////////////////////////////////////////////////////////
 
 #define ONE_WIRE_BUS_1 4 //air
@@ -140,6 +141,7 @@ byte enableBmp=0;
 int pressure=0;
 byte changeSleep=0;
 byte batteryState=0; // 0 normal; 1 low battery; 2 very low battery
+byte changeSleepState=1; //on
 
 void setup() {
   MCUSR = 0; // clear reset flags
@@ -178,6 +180,7 @@ digitalWrite(PWRKEY, LOW);
   if (EEPROM.read(9)==13) { GSMstate=13; }
   else if (EEPROM.read(9)==2) { GSMstate=2; }
   else if (EEPROM.read(9)==38) {GSMstate=38; } //#define NBIOT
+  if (EEPROM.read(14)==10) { changeSleepState=0; } // UZ sleep on/off
 
 
 #ifdef UZ_Anemometer
@@ -186,6 +189,7 @@ digitalWrite(PWRKEY, LOW);
   if (millis() - startedWaiting <= 9900 ) {
     UltrasonicAnemo=1;
     windDelay=1000;
+    ultrasonicFlush();
   }
 #endif
 
@@ -242,17 +246,20 @@ void loop() {
 #ifdef UZ_Anemometer
  //if ( UltrasonicAnemo==1 ) {    // if ultrasonic anemometer pluged in at boot
   unsigned long startedWaiting = millis();
-  delay(15);
+  //delay(15);
+  delay(25);
   UZ_wake(startedWaiting);
 
-  if ( millis() - startedWaiting >= 10000 && sonicError < 5)  { // if US error 
+  if ( millis() - startedWaiting >= 10000 && sonicError < 10)  { // if US error 
     sonicError++;
      }
-  else if ( millis() - startedWaiting >= 10000 && sonicError >= 5)  { // if more than 20 US errors
+  else if ( millis() - startedWaiting >= 10000 && sonicError >= 10)  { // if more than 20 US errors
         reset(1);
      }
     else { 
-      UltrasonicAnemometer(); 
+      while(ultrasonic.available() > 60 ) {
+      UltrasonicAnemometer();         
+      }
       LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
     }
           
@@ -321,7 +328,7 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
           unsigned long startedWaiting = millis();
           UZ_wake(startedWaiting);
           #ifdef UZsleepChange
-            if ( changeSleep== 1 ) { //change of sleep time
+            if ( changeSleep== 1 and changeSleepState==1) { //change of sleep time
               UZsleep(sleepBetween);
             }
           #endif  
