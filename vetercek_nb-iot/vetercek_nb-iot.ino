@@ -257,7 +257,7 @@ void loop() {
         reset(1);
      }
     else { 
-      while(ultrasonic.available() > 60 ) {
+      while(ultrasonic.available() > 0 ) {
       UltrasonicAnemometer();         
       }
       LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
@@ -319,7 +319,7 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
       digitalWrite(DTR, LOW);  //wake up  
       delay(100);
       fonaSS.listen();
-      delay(100);
+      delay(900);
         SendData();
       digitalWrite(DTR, HIGH);  //sleep  
       #ifdef UZ_Anemometer

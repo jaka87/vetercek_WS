@@ -3,7 +3,13 @@ void UltrasonicAnemometer() { //measure wind speed
     char buffer[80];
     char hexbuffer[5];
     int sum;
-    int size = ultrasonic.readBytesUntil('\n', buffer, 80); 
+    int size = ultrasonic.readBytesUntil('\n', buffer, 70); 
+    //delay(20);
+
+             #ifdef DEBUG 
+          Serial.println(buffer);  
+         delay(150);
+         #endif 
     
     char* first = strtok(buffer, ",/");
     char *dir = strtok(NULL, ",/");
@@ -15,6 +21,7 @@ void UltrasonicAnemometer() { //measure wind speed
       sum+=2605;
       sum=-(sum % 256);    
       sprintf(hexbuffer,"%02X", sum);
+      //delay(10);
 
     if( check[0] ==hexbuffer[2] and check[1] ==hexbuffer[3] )  {  
           calDirection = atoi(dir) + vaneOffset;
@@ -22,8 +29,8 @@ void UltrasonicAnemometer() { //measure wind speed
           windSpeed=atof(wind)*19.4384449;
           CalculateWindGust(windSpeed);
           CalculateWind();
-          timergprs = 0;                                
-         }
+          timergprs = 0;                                            
+    }
 
         else if ( sonicError >= 10)  { reset(4);  }   // if more than x US errors
         else { 
@@ -31,7 +38,6 @@ void UltrasonicAnemometer() { //measure wind speed
          #ifdef DEBUG 
          delay(70);
           Serial.println("UZ error :"); 
-          Serial.println(buffer); 
           Serial.println(dir); 
           Serial.println(wind); 
           Serial.println(hexbuffer); 
@@ -41,6 +47,7 @@ void UltrasonicAnemometer() { //measure wind speed
         }  // if more than x US errors                   
     //}
  ultrasonicFlush();   
+ //delay(50);
 }
 
 
@@ -83,6 +90,7 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
      #endif 
       }
     else { 
+     changeSleepState=0;
      #ifdef DEBUG 
       Serial.println("sleep change error"); 
      #endif       
