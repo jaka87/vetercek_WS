@@ -132,7 +132,7 @@ if (fona.checkAT()) {  // wait untill modem is active
       #ifdef OLDPCB // old pcb
           curr += analogRead(A0)*3.8;
       #else         // new
-          curr += ((analogRead(A0)*3.98)/1000/1.15)*940;
+          curr += ((analogRead(A0)*3.98)/1000/1.15)*940; //2.2k resistor
       #endif
 
           currCount++;
@@ -239,8 +239,8 @@ bool isConnected = fona.UDPconnected();
   else if (response[8]==121) { EEPROM.write(12, 1); reset(3); }   
   else if (response[8]==130) { EEPROM.write(13, 0); reset(3); }   //pressure
   else if (response[8]==131) { EEPROM.write(13, 1); reset(3); } 
-  else if (response[8]==40) { EEPROM.write(14, 10); changeSleepState=0; }  // UZ sleep on / off
-  else if (response[8]==41) { EEPROM.write(14, 11); changeSleepState=1; } 
+  else if (response[8]==40) { EEPROM.write(14, 10); stopSleepChange=3; }  // UZ sleep on / off
+  else if (response[8]==41) { EEPROM.write(14, 11); stopSleepChange=0; } 
   else if (response[8] == 102 ) { GSMstate=2; moduleSetup(); } // temporarry change network - auto
   else if (response[8] == 113 ) { GSMstate=13; moduleSetup(); } // temporarry change network - 2G
   else if (response[8] == 138 ) { GSMstate=38; moduleSetup(); } // temporarry change network - nb-iot

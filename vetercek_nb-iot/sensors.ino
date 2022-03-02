@@ -3,13 +3,13 @@ void UltrasonicAnemometer() { //measure wind speed
     char buffer[80];
     char hexbuffer[5];
     int sum;
-    int size = ultrasonic.readBytesUntil('\n', buffer, 70); 
+    int size = ultrasonic.readBytesUntil('\r\n', buffer, 80); 
     //delay(20);
-
-             #ifdef DEBUG 
-          Serial.println(buffer);  
-         delay(150);
-         #endif 
+//
+//         #ifdef DEBUG 
+//          Serial.println(buffer);  
+//         delay(150);
+//         #endif 
     
     char* first = strtok(buffer, ",/");
     char *dir = strtok(NULL, ",/");
@@ -35,17 +35,24 @@ void UltrasonicAnemometer() { //measure wind speed
         else if ( sonicError >= 10)  { reset(4);  }   // if more than x US errors
         else { 
           sonicError++; 
-         #ifdef DEBUG 
-         delay(70);
-          Serial.println("UZ error :"); 
-          Serial.println(dir); 
-          Serial.println(wind); 
-          Serial.println(hexbuffer); 
-          Serial.println(check); 
-         delay(70);
-         #endif 
+//         #ifdef DEBUG 
+//         delay(70);
+//          Serial.println("UZ error :"); 
+//          Serial.println(dir); 
+//          Serial.println(wind); 
+//          Serial.println(hexbuffer); 
+//          Serial.println(check); 
+//         delay(70);
+//         #endif 
         }  // if more than x US errors                   
     //}
+
+// #ifdef DEBUG
+//delay(50);
+//  Serial.print("buffer: ");
+//  Serial.println(ultrasonic.available());
+//delay(50);
+//#endif    
  ultrasonicFlush();   
  //delay(50);
 }
@@ -76,21 +83,21 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
     else if (sleepT==7) { ultrasonic.write(">PwrIdleCfg:1,7\r\n"); }
     else if (sleepT==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }  
     else if (sleepT==0) { ultrasonic.write(">PwrIdleCfg:0,1\r\n"); }
-      delay(200);
+      delay(300);
     }
 
     if(millis() - startedWaiting < 19900){ ultrasonic.write(">SaveConfig\r\n"); }
     if(millis() - startedWaiting < 19900){ 
       sleepBetween=sleepT;
       changeSleep=0;
-       //ultrasonicFlush();
+      stopSleepChange=0;
      #ifdef DEBUG 
       Serial.println("sleep change ok"); 
       delay(10);
      #endif 
       }
     else { 
-     changeSleepState=0;
+     stopSleepChange++;
      #ifdef DEBUG 
       Serial.println("sleep change error"); 
      #endif       

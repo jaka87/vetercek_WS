@@ -2,7 +2,7 @@
 
 printf "
 What to do
-1. compile\n2. upload\n3. upload\n"
+1. compile\n2. upload\n3. compile and upload\n"
 
 read -n1 input
 if [[ $input == "1" ]]; then

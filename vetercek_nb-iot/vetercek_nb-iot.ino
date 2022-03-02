@@ -12,7 +12,7 @@
 
 //////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
 #define APN "iot.1nce.net"
-byte GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
+byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
@@ -65,7 +65,7 @@ DallasTemperature sensor_water(&oneWire_out);
       //4 ultrasonic check fail
 
 //////////////////////////////////    RESET REASON
-// 81 - UZ 20 errors in loop function
+// 81 - UZ 10 errors in loop function
 // 82 - unable to send data in 200s
 // 83 - manual remote reset 
 // 84 - 20 sonic errors in UZ function
@@ -141,7 +141,7 @@ byte enableBmp=0;
 int pressure=0;
 byte changeSleep=0;
 byte batteryState=0; // 0 normal; 1 low battery; 2 very low battery
-byte changeSleepState=1; //on
+byte stopSleepChange=0; //on
 
 void setup() {
   MCUSR = 0; // clear reset flags
@@ -180,7 +180,7 @@ digitalWrite(PWRKEY, LOW);
   if (EEPROM.read(9)==13) { GSMstate=13; }
   else if (EEPROM.read(9)==2) { GSMstate=2; }
   else if (EEPROM.read(9)==38) {GSMstate=38; } //#define NBIOT
-  if (EEPROM.read(14)==10) { changeSleepState=0; } // UZ sleep on/off
+  if (EEPROM.read(14)==10) { stopSleepChange=3; } // UZ sleep on/off
 
 
 #ifdef UZ_Anemometer
@@ -191,6 +191,10 @@ digitalWrite(PWRKEY, LOW);
     windDelay=1000;
     ultrasonicFlush();
   }
+   #ifdef DEBUG
+    Serial.println("UZ start");
+  delay(50);
+  #endif   
 #endif
 
 #ifndef UZ_Anemometer and ifndef OLDPCB
@@ -256,12 +260,31 @@ void loop() {
   else if ( millis() - startedWaiting >= 10000 && sonicError >= 10)  { // if more than 20 US errors
         reset(1);
      }
-    else { 
-      while(ultrasonic.available() > 0 ) {
-      UltrasonicAnemometer();         
+  else { 
+      while(ultrasonic.available() < 66 and millis() - startedWaiting <= 9000) {
+        delay(10);
       }
-      LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
-    }
+
+
+      if ( millis() - startedWaiting <= 8900 and  ultrasonic.available() < 70)  {  
+         #ifdef DEBUG
+          delay(50);
+            Serial.print("in buffer: ");
+            Serial.println(ultrasonic.available());
+          delay(50);
+          #endif 
+        UltrasonicAnemometer();
+      }
+      else  {  
+        ultrasonicFlush();
+         #ifdef DEBUG
+          delay(50);
+            Serial.println("flush buffer");
+          delay(50);
+          #endif 
+      }
+      //LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
+  }
           
 #else
  //else { 
@@ -319,23 +342,26 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
       digitalWrite(DTR, LOW);  //wake up  
       delay(100);
       fonaSS.listen();
-      delay(900);
+      delay(1000);
         SendData();
       digitalWrite(DTR, HIGH);  //sleep  
       #ifdef UZ_Anemometer
         if (UltrasonicAnemo==1){
-          delay(500);
+          #ifdef UZsleepChange
+            if ( changeSleep== 1 and stopSleepChange<3) { //change of sleep time
           unsigned long startedWaiting = millis();
           UZ_wake(startedWaiting);
-          #ifdef UZsleepChange
-            if ( changeSleep== 1 and changeSleepState==1) { //change of sleep time
-              UZsleep(sleepBetween);
+           ultrasonicFlush();   
+           UZsleep(sleepBetween);
             }
-          #endif  
-            while(ultrasonic.available() > 0 ) {
-              char t = ultrasonic.read();
-            }
-            LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
+          #endif
+    
+//            while(ultrasonic.available() > 0 ) {
+//              char t = ultrasonic.read();
+//            }
+            //LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
+      //ultrasonic.end();
+      //delay(3000);          
         }
       #endif  
   //delay(500);
@@ -346,6 +372,12 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
     timergprs = 0;                                
     interrupts();
   }
+
+#ifdef UZ_Anemometer
+  else if ( UltrasonicAnemo==1 ){ // restart timer
+    LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
+  }
+#endif 
 }
 
 
@@ -401,7 +433,7 @@ void wakeUp() {
 void UZ_wake(unsigned long startedWaiting) {
   while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
     ultrasonic.begin(9600);
-    delay(900);
+    delay(1200);
     }
 //   #ifdef DEBUG
 //    Serial.println("UZ wake up");
