@@ -478,6 +478,18 @@ int8_t Adafruit_FONA::GPRSstate(void) {
   return state;
 }
 
+int8_t Adafruit_FONA::GPRSPDP(void) {
+  uint16_t state;
+
+  if (! sendParseReply(F("AT+CGDCONT?"), F("+CGDCONT: "), &state) )
+    return -1;
+    
+   //if (! sendCheckReply(F("AT+CIFSR"), ok_reply, 5000)) //jaka
+   //return -1;     
+
+  return state;
+}
+
 void Adafruit_FONA::setNetworkSettings(FONAFlashStringPtr apn,
               FONAFlashStringPtr username, FONAFlashStringPtr password) {
   this->apn = apn;
@@ -617,7 +629,7 @@ boolean Adafruit_FONA::UDPsend(unsigned char *packet, uint8_t len, byte response
   DEBUG_PRINTLN(len);
 #ifdef ADAFRUIT_FONA_DEBUG
   for (uint16_t i=0; i<len; i++) {
-  //DEBUG_PRINT(F(" 0x"));
+  DEBUG_PRINT(F(" 0x"));
   DEBUG_PRINT(packet[i], HEX);
   }
 #endif
@@ -632,8 +644,9 @@ boolean Adafruit_FONA::UDPsend(unsigned char *packet, uint8_t len, byte response
 
   mySerial->write(packet, len);
 
-  readline(10000); // return SEND OK
-  readline2(7000,charr); // RETURN DATA
+uint8_t sendD = readline(5000); // return SEND OK
+uint8_t receveD = readline2(4000,charr); // RETURN DATA
+
 
 	DEBUG_PRINTLN("response :");   
      for (uint16_t i=0; i<charr;i++) {

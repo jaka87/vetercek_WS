@@ -217,7 +217,6 @@ digitalWrite(PWRKEY, LOW);
 moduleSetup(); // Establishes first-time serial comm and prints IMEI
 checkIMEI();
 connectGPRS();
-
 //if (EEPROM.read(12)==1 or EEPROM.read(12)==255) {   // if ultrasonic enabled 
 //}   
 
@@ -243,6 +242,8 @@ connectGPRS();
     }   
   EEPROM.write(15, 0); 
   }  
+
+SendData();
   
 }
 
@@ -339,10 +340,15 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
   
   {  
       /////////////////////////// send data to server ///////////////////////////////////////////////     
+     #ifdef UZ_Anemometer
+      ultrasonic.end();
+     #endif
+     
       digitalWrite(DTR, LOW);  //wake up  
       delay(100);
       fonaSS.listen();
       delay(1000);
+      //noInterrupts();
         SendData();
       digitalWrite(DTR, HIGH);  //sleep  
       #ifdef UZ_Anemometer
@@ -355,16 +361,10 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
            UZsleep(sleepBetween);
             }
           #endif
-    
-//            while(ultrasonic.available() > 0 ) {
-//              char t = ultrasonic.read();
-//            }
-            //LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
-      //ultrasonic.end();
-      //delay(3000);          
+         
         }
       #endif  
-  //delay(500);
+      //interrupts();
 
   }
   else if ( UltrasonicAnemo==0 ){ // restart timer

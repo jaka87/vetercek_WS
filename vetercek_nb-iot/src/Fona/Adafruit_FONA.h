@@ -91,6 +91,7 @@ class Adafruit_FONA : public FONAStreamType {
 
   boolean enableGPRS(boolean onoff);
   int8_t GPRSstate(void);
+  int8_t GPRSPDP(void);
 
 
   // TCP raw connections
