@@ -12,7 +12,7 @@
 
 //////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
 #define APN "iot.1nce.net"
-byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
+byte GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
@@ -20,7 +20,6 @@ const char* broker = "vetercek.com";
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
-#define UZsleepChange // change sleep settings
 //#define OLDPCB // if v.0.4.4 or older
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 ///////////////////////////////////////////////////////////////////////////////////
@@ -144,8 +143,12 @@ byte batteryState=0; // 0 normal; 1 low battery; 2 very low battery
 byte stopSleepChange=0; //on
 
 void setup() {
-  MCUSR = 0; // clear reset flags
-  wdt_disable();
+  //MCUSR = 0; // clear reset flags
+  //wdt_disable();
+  MCUSR = 0x00; // clear reset flags
+  WDTCSR |= (1<<WDCE) | (1<<WDE);        //To disable or change timeout: 
+  WDTCSR = 0x00;
+  
   Timer1.initialize(1000000);         // initialize timer1, and set a 1 second period
   Timer1.attachInterrupt(CheckTimerGPRS);  // attaches checkTimer() as a timer overflow interrupt
 
@@ -217,8 +220,6 @@ digitalWrite(PWRKEY, LOW);
 moduleSetup(); // Establishes first-time serial comm and prints IMEI
 checkIMEI();
 connectGPRS();
-//if (EEPROM.read(12)==1 or EEPROM.read(12)==255) {   // if ultrasonic enabled 
-//}   
 
 
   if (resetReason==8 ) { //////////////////// reset reason detailed        
@@ -243,8 +244,9 @@ connectGPRS();
   EEPROM.write(15, 0); 
   }  
 
-SendData();
-  
+#ifdef UZ_Anemometer
+  SendData();
+#endif 
 }
 
 void loop() {
@@ -353,14 +355,12 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
       digitalWrite(DTR, HIGH);  //sleep  
       #ifdef UZ_Anemometer
         if (UltrasonicAnemo==1){
-          #ifdef UZsleepChange
             if ( changeSleep== 1 and stopSleepChange<3) { //change of sleep time
           unsigned long startedWaiting = millis();
           UZ_wake(startedWaiting);
            ultrasonicFlush();   
            UZsleep(sleepBetween);
             }
-          #endif
          
         }
       #endif  
@@ -403,9 +403,9 @@ void reset(byte rr) {
 
   //if (rr != 3 ) {
   powerOn(); // turn off power
-  delay(2000);
+  delay(10000);
   //}
-  wdt_enable(WDTO_1S);
+  wdt_enable(WDTO_120MS);
 
 }
 
@@ -420,7 +420,7 @@ void powerOn() {
    #ifdef DEBUG
     Serial.println("Pwr on");
    #endif   
-  delay(1000);
+  delay(8000);
 }
 
 void wakeUp() {

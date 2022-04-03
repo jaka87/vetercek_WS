@@ -78,7 +78,7 @@ unsigned long startTime=millis();
 byte runState=0;
 
     while (netStatus() != 1 and netStatus() != 5) {
-      if (millis() - startTime >= 10000 and netStatus() == 0 and runState==0)  {
+      if (millis() - startTime >= 8000 and netStatus() == 0 and runState==0)  {
        #ifdef DEBUG
         Serial.println(F("RstC1"));
        #endif
@@ -91,6 +91,8 @@ byte runState=0;
         Serial.println(F("RstC2"));
        #endif
       powerOn(); 
+      wakeUp();
+      delay(3000);
       moduleSetup(); // Establishes first-time serial comm and prints IMEI
       runState=0;
       startTime=millis(); 
@@ -118,6 +120,39 @@ if (fona.checkAT()) {  // wait untill modem is active
       Serial.println("Modem");
      #endif  
 }
+
+
+int8_t GPRSPDP=fona.GPRSPDP();  //check PDP
+int8_t GPRSstate=fona.GPRSstate();  //check GPRS
+     #ifdef DEBUG
+      Serial.print("PDP ");
+      Serial.println(GPRSPDP);
+      Serial.print("GPRS ");
+      Serial.println(GPRSstate);
+     #endif
+if (GPRSstate !=1 or GPRSPDP !=1) {
+     fona.enableGPRS(false);
+     connectGPRS();
+     fona.UDPconnect("vetercek.com",6789);
+ } 
+  
+bool isConnected = fona.UDPconnected();  // UDP connection to server
+     #ifdef DEBUG
+      Serial.print("UDP ");
+      Serial.println(isConnected);
+     #endif
+     
+    if (isConnected ==0) {
+     fona.UDPconnect("vetercek.com",6789);
+     }     
+
+    else if (isConnected > 1) {
+     fona.enableGPRS(false);
+     connectGPRS();
+     fona.UDPconnect("vetercek.com",6789);
+     } 
+
+
      
   if (millis() - updateBattery >= 130000 or updateBattery == 0) {  // send data about battery and signal every 8+ minutes
     updateBattery=millis();
@@ -203,35 +238,6 @@ if (fona.checkAT()) {  // wait untill modem is active
   data[25]=sonicError;    
   #endif 
 
-int8_t GPRSPDP=fona.GPRSPDP();  //check PDP
-int8_t GPRSstate=fona.GPRSstate();  //check GPRS
-     #ifdef DEBUG
-      Serial.print("PDP ");
-      Serial.println(GPRSPDP);
-      Serial.print("GPRS ");
-      Serial.println(GPRSstate);
-     #endif
-if (GPRSstate !=1 or GPRSPDP !=1) {
-     fona.enableGPRS(false);
-     connectGPRS();
-     fona.UDPconnect("vetercek.com",6789);
- } 
-  
-bool isConnected = fona.UDPconnected();  // UDP connection to server
-     #ifdef DEBUG
-      Serial.print("UDP ");
-      Serial.println(isConnected);
-     #endif
-     
-    if (isConnected ==0) {
-     fona.UDPconnect("vetercek.com",6789);
-     }     
-
-    else if (isConnected > 1) {
-     fona.enableGPRS(false);
-     connectGPRS();
-     fona.UDPconnect("vetercek.com",6789);
-     } 
 
   byte response[10];  
   if ( fona.UDPsend(data,sizeof(data),response,9)) {
@@ -309,14 +315,12 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
    else {
      fona.UDPclose();
      failedSend=failedSend+1;
-     delay(3000);
 
       if (failedSend > 2 and failedSend < 4) {
       #ifdef DEBUG
         Serial.println(F("RstC3"));
       #endif
       powerOn(); // Power on the module
-      delay(3000);
       wakeUp();
       delay(3000);
       moduleSetup(); // Establishes first-time serial comm and prints IMEI
