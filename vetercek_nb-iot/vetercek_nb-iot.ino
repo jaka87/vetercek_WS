@@ -19,15 +19,16 @@ int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 #define DEBUG // comment out if you want to turn off debugging
-//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
-#define PCBVER 5 // 4,5,6
+#define PCBVER5 // 4,5,6
+#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+//#define OLDPCB // if v.0.4.4 or older
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 ///////////////////////////////////////////////////////////////////////////////////
 
 #define ONE_WIRE_BUS_1 4 //air
 #define ONE_WIRE_BUS_2 3 // water
 
-#ifdef PCBVER==4 // old pcb
+#ifdef PCBVER4 // old pcb
   #define windSensorPin 2 // The pin location of the anemometer sensor
   #define USRX 5
   #define USTX (A2)
@@ -35,8 +36,9 @@ const char* broker = "vetercek.com";
   #define PWRAIR 11
   #define PWRWATER 12
   auto& DEBUGSERIAL = Serial;
+#endif
     
-#elif PCBVER==5 // old pcb
+#ifdef PCBVER5 // old pcb
   #define windSensorPin 5 // The pin location of the anemometer sensor
   #define USRX 2
   #define USTX 7
@@ -44,11 +46,12 @@ const char* broker = "vetercek.com";
   #define PWRAIR 11
   #define PWRWATER 12
   auto& DEBUGSERIAL = Serial;
+#endif
     
-#else  // 6
+#ifdef PCBVER6 // old pcb
   #define windSensorPin 2 // The pin location of the anemometer sensor
-  #define USRX 2
-  #define USTX 7
+  #define USRX 11
+  #define USTX 12
   #define RESET (A2)
   #define PWRAIR 8
   #define PWRWATER 9  
@@ -86,11 +89,11 @@ DallasTemperature sensor_water(&oneWire_out);
 // 85 - UDPclose
 // 88 - other
 
-#ifdef PCBVER < 6 or (ifdef DEBUG and ifdef PCBVER == 6)
+#ifndef PCBVER6 or ifdef DEBUG
   #include <NeoSWSerial.h>
 #endif
 
-#ifdef PCBVER < 6
+#ifndef PCBVER6
   #ifdef UZ_Anemometer
     NeoSWSerial fonaSS( 8, 9 );
     NeoSWSerial ultrasonic( USRX, USTX );
@@ -223,7 +226,7 @@ digitalWrite(PWRKEY, LOW);
   #endif   
 #endif
 
-#ifndef UZ_Anemometer and ifdef PCBVER == 5
+#ifndef UZ_Anemometer and ifdef PCBVER5
   PCICR |= B00000100;      //Bit2 = 1 -> "PCIE2" enabeled (PCINT16 to PCINT23)
 #endif
 

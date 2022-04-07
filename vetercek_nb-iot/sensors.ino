@@ -112,7 +112,7 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
     rotations = 0; // Set rotations count to 0 ready for calculations
     EIFR = (1 << INTF0); // clear interrupt flag
     
-  #ifdef PCBVER==5 
+  #ifdef PCBVER5
     PCMSK2 |= B00100000;      //Bit5 = 1 -> "PCINT21" enabeled -> D5 will trigger interrupt  
     delay (windDelay); // Wait x second to average
     PCMSK2 = 0x00;      //detach interrupt 
@@ -168,7 +168,7 @@ void GetAvgWInd() {
 }
 
 #ifndef UZ_Anemometer
-  #ifdef PCBVER==5
+  #ifdef PCBVER5
     ISR (PCINT2_vect)  {
   #else
     void ISRrotation () {  // This is the function that the interrupt calls to increment the rotation count

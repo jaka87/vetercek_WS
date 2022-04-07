@@ -170,7 +170,7 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
     int curr = 0;  // measure solar cell current
     volatile unsigned currCount = 0;
     while (currCount < 10) {
-      #ifdef PCBVER == 4 // old pcb
+      #ifdef PCBVER4 // old pcb
           curr += analogRead(A0)*3.8;
       #else         // new
           curr += ((analogRead(A0)*3.98)/1000/1.15)*940; //2.2k resistor
