@@ -7,7 +7,7 @@ void UltrasonicAnemometer() { //measure wind speed
     //delay(20);
 //
 //         #ifdef DEBUG 
-//          Serial.println(buffer);  
+//          DEBUGSERIAL.println(buffer);  
 //         delay(150);
 //         #endif 
     
@@ -37,11 +37,11 @@ void UltrasonicAnemometer() { //measure wind speed
           sonicError++; 
 //         #ifdef DEBUG 
 //         delay(70);
-//          Serial.println("UZ error :"); 
-//          Serial.println(dir); 
-//          Serial.println(wind); 
-//          Serial.println(hexbuffer); 
-//          Serial.println(check); 
+//          DEBUGSERIAL.println("UZ error :"); 
+//          DEBUGSERIAL.println(dir); 
+//          DEBUGSERIAL.println(wind); 
+//          DEBUGSERIAL.println(hexbuffer); 
+//          DEBUGSERIAL.println(check); 
 //         delay(70);
 //         #endif 
         }  // if more than x US errors                   
@@ -49,8 +49,8 @@ void UltrasonicAnemometer() { //measure wind speed
 
 // #ifdef DEBUG
 //delay(50);
-//  Serial.print("buffer: ");
-//  Serial.println(ultrasonic.available());
+//  DEBUGSERIAL.print("buffer: ");
+//  DEBUGSERIAL.println(ultrasonic.available());
 //delay(50);
 //#endif    
  ultrasonicFlush();   
@@ -92,14 +92,14 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
       changeSleep=0;
       stopSleepChange=0;
      #ifdef DEBUG 
-      Serial.println("sleep change ok"); 
+      DEBUGSERIAL.println("sleep change ok"); 
       delay(10);
      #endif 
       }
     else { 
      stopSleepChange++;
      #ifdef DEBUG 
-      Serial.println("sleep change error"); 
+      DEBUGSERIAL.println("sleep change error"); 
      #endif       
       }
 }
@@ -111,20 +111,17 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
     contactBounceTime = millis();
     rotations = 0; // Set rotations count to 0 ready for calculations
     EIFR = (1 << INTF0); // clear interrupt flag
-  #ifdef OLDPCB // old pcb
-    attachInterrupt(digitalPinToInterrupt(windSensorPin), ISRrotation, FALLING); //setup interrupt on anemometer input pin, interrupt will occur whenever falling edge is detected
-  #else
-    //PCICR |= B00000100;      //Bit2 = 1 -> "PCIE2" enabeled (PCINT16 to PCINT23)
+    
+  #ifdef PCBVER==5 
     PCMSK2 |= B00100000;      //Bit5 = 1 -> "PCINT21" enabeled -> D5 will trigger interrupt  
+    delay (windDelay); // Wait x second to average
+    PCMSK2 = 0x00;      //detach interrupt 
+  #else
+    attachInterrupt(digitalPinToInterrupt(windSensorPin), ISRrotation, FALLING); //setup interrupt on anemometer input pin, interrupt will occur whenever falling edge is detected
+    delay (windDelay); // Wait x second to average
+    detachInterrupt(digitalPinToInterrupt(windSensorPin));
   #endif
-
-  delay (windDelay); // Wait x second to average
   
-#ifdef OLDPCB // old pcb
-  detachInterrupt(digitalPinToInterrupt(windSensorPin));
-#else
-  PCMSK2 = 0x00;      //detach interrupt 
-#endif
   if (rotations == 0)  {
     windSpeed = 0;
   }
@@ -171,11 +168,10 @@ void GetAvgWInd() {
 }
 
 #ifndef UZ_Anemometer
-  #ifdef OLDPCB
-    void ISRrotation () {  // This is the function that the interrupt calls to increment the rotation count
-  #else
+  #ifdef PCBVER==5
     ISR (PCINT2_vect)  {
-    //NeoSWSerial::rxISR( *portInputRegister( digitalPinToPort( 5 ) ) );
+  #else
+    void ISRrotation () {  // This is the function that the interrupt calls to increment the rotation count
   #endif
   currentMillis = millis(); //we have to read millis at the same position in ISR each time to get the most accurate readings
   if (firstWindPulse == 1) { //discard first pulse as we don't know exactly when it happened
@@ -232,8 +228,8 @@ void GetAir() {
   digitalWrite(pwrAir, LOW);   // turn off power
 
 #ifdef DEBUG
-  Serial.print("tmp: ");
-  Serial.println(temp);
+  DEBUGSERIAL.print("tmp: ");
+  DEBUGSERIAL.println(temp);
 #endif
 }
 
@@ -247,8 +243,8 @@ void GetWater() {
   digitalWrite(pwrWater, LOW);   // turn off power
 
 #ifdef DEBUG
-    Serial.print("water: ");
-    Serial.println(water);
+    DEBUGSERIAL.print("water: ");
+    DEBUGSERIAL.println(water);
 #endif
 }
 
