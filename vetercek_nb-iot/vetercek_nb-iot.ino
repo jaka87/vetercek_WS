@@ -1,5 +1,5 @@
 //bin/avrdude -C//etc/avrdude.conf -v -V -patmega328p -cusbtiny -Uflash:w:/vetercek_nb-iot.ino.hex:i lfuse:w:0xEF:m efuse:w:0xFF:m hfuse:w:DA:m lock:w:0xFF:m 
-//NeoSWSerial RX buffer set to 128b, uncomment PCINT_ISR(2, PIND); for pin change interrupt minicore bootloader yesto work
+//NeoSWSerial RX buffer set to 128b, uncomment PCINT_ISR(2, PIND); for pin change interrupt to work
 #include <avr/wdt.h> //watchdog
 #include "src/LowPower/LowPower.h" //sleep library
 #include <math.h> // wind speed calculations
@@ -18,9 +18,9 @@ int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
-#define DEBUG // comment out if you want to turn off debugging
+//#define DEBUG // comment out if you want to turn off debugging
 #define PCBVER5 // 4,5,6
-#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define OLDPCB // if v.0.4.4 or older
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 ///////////////////////////////////////////////////////////////////////////////////
