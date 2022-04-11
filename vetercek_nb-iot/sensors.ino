@@ -31,11 +31,11 @@ void UltrasonicAnemometer() { //measure wind speed
           sonicError++; 
 //         #ifdef DEBUG 
 //         delay(70);
-//          DEBUGSERIAL.println("UZ error :"); 
-//          DEBUGSERIAL.println(dir); 
-//          DEBUGSERIAL.println(wind); 
-//          DEBUGSERIAL.println(hexbuffer); 
-//          DEBUGSERIAL.println(check); 
+//          Serial.println("UZ error :"); 
+//          Serial.println(dir); 
+//          Serial.println(wind); 
+//          Serial.println(hexbuffer); 
+//          Serial.println(check); 
 //         delay(70);
 //         #endif 
         }  // if more than x US errors                   
@@ -43,8 +43,8 @@ void UltrasonicAnemometer() { //measure wind speed
 
 // #ifdef DEBUG
 //delay(50);
-//  DEBUGSERIAL.print("buffer: ");
-//  DEBUGSERIAL.println(ultrasonic.available());
+//  Serial.print("buffer: ");
+//  Serial.println(ultrasonic.available());
 //delay(50);
 //#endif    
  ultrasonicFlush();   
@@ -86,14 +86,14 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
       changeSleep=0;
       stopSleepChange=0;
      #ifdef DEBUG 
-      DEBUGSERIAL.println("sleep change ok"); 
+      Serial.println("sleep change ok"); 
       delay(10);
      #endif 
       }
     else { 
      stopSleepChange++;
      #ifdef DEBUG 
-      DEBUGSERIAL.println("sleep change error"); 
+      Serial.println("sleep change error"); 
      #endif       
       }
 }
@@ -222,8 +222,8 @@ void GetAir() {
   digitalWrite(pwrAir, LOW);   // turn off power
 
 #ifdef DEBUG
-  DEBUGSERIAL.print("tmp: ");
-  DEBUGSERIAL.println(temp);
+  Serial.print("tmp: ");
+  Serial.println(temp);
 #endif
 }
 
@@ -237,8 +237,8 @@ void GetWater() {
   digitalWrite(pwrWater, LOW);   // turn off power
 
 #ifdef DEBUG
-    DEBUGSERIAL.print("water: ");
-    DEBUGSERIAL.println(water);
+    Serial.print("water: ");
+    Serial.println(water);
 #endif
 }
 

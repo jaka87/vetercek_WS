@@ -1,11 +1,11 @@
 bool netStatus() {
   int n = fona.getNetworkStatus();
   #ifdef DEBUG
-  if (n == 0) DEBUGSERIAL.println(F("NR"));
-  if (n == 1) DEBUGSERIAL.println(F("Reg"));
-  if (n == 2) DEBUGSERIAL.println(F("Src"));
-  if (n == 3) DEBUGSERIAL.println(F("NO"));
-  if (n == 5) DEBUGSERIAL.println(F("ROK"));
+  if (n == 0) Serial.println(F("NR"));
+  if (n == 1) Serial.println(F("Reg"));
+  if (n == 2) Serial.println(F("Src"));
+  if (n == 3) Serial.println(F("NO"));
+  if (n == 5) Serial.println(F("ROK"));
   #endif
 
   return n;
@@ -27,7 +27,7 @@ void moduleSetup() {
   // Press reset button if the module is still turning on and the board doesn't find it.
   // When the module is on it should communicate right after pressing reset
   //fonaSS.begin(115200); // Default SIM7000 shield baud rate
-  //DEBUGSERIAL.println(F("Configuring to 9600 baud"));
+  //Serial.println(F("Configuring to 9600 baud"));
   //fonaSS.println("AT+IPR=9600"); // Set baud rate
   //delay(100); // Short pause to let the command run
   delay(3000);
@@ -35,7 +35,7 @@ void moduleSetup() {
   //fonaSS.listen();
   while (! fona.begin(fonaSS)) {
       #ifdef DEBUG
-        DEBUGSERIAL.println(F("No F"));
+        Serial.println(F("No F"));
       #endif
       delay(5000);
       fonaSS.begin(9600);     
@@ -80,7 +80,7 @@ byte runState=0;
     while (netStatus() != 1 and netStatus() != 5) {
       if (millis() - startTime >= 8000 and netStatus() == 0 and runState==0)  {
        #ifdef DEBUG
-        DEBUGSERIAL.println(F("RstC1"));
+        Serial.println(F("RstC1"));
        #endif
       moduleSetup();
       runState=1;
@@ -88,7 +88,7 @@ byte runState=0;
        
       else if (millis() - startTime >= 20000 and netStatus() == 0 and runState==1)  {
        #ifdef DEBUG
-        DEBUGSERIAL.println(F("RstC2"));
+        Serial.println(F("RstC2"));
        #endif
       powerOn(); 
       wakeUp();
@@ -99,16 +99,16 @@ byte runState=0;
       }
 
       #ifdef DEBUG
-        DEBUGSERIAL.println(F("RetCON"));
+        Serial.println(F("RetCON"));
       #endif 
     }
   #ifdef DEBUG  
-    DEBUGSERIAL.println(F("CON"));
+    Serial.println(F("CON"));
   #endif 
 
   if (fona.enableGPRS(true)) {
   #ifdef DEBUG  
-    DEBUGSERIAL.println(F("GPRS"));
+    Serial.println(F("GPRS"));
   #endif 
   }
 }
@@ -117,7 +117,7 @@ byte runState=0;
 void PostData() {    
 if (fona.checkAT()) {  // wait untill modem is active
      #ifdef DEBUG
-      DEBUGSERIAL.println("Modem");
+      Serial.println("Modem");
      #endif  
 }
 
@@ -125,10 +125,10 @@ if (fona.checkAT()) {  // wait untill modem is active
 int8_t GPRSPDP=fona.GPRSPDP();  //check PDP
 int8_t GPRSstate=fona.GPRSstate();  //check GPRS
      #ifdef DEBUG
-      DEBUGSERIAL.print("PDP ");
-      DEBUGSERIAL.println(GPRSPDP);
-      DEBUGSERIAL.print("GPRS ");
-      DEBUGSERIAL.println(GPRSstate);
+      Serial.print("PDP ");
+      Serial.println(GPRSPDP);
+      Serial.print("GPRS ");
+      Serial.println(GPRSstate);
      #endif
 if (GPRSstate !=1 or GPRSPDP !=1) {
      fona.enableGPRS(false);
@@ -138,8 +138,8 @@ if (GPRSstate !=1 or GPRSPDP !=1) {
   
 bool isConnected = fona.UDPconnected();  // UDP connection to server
      #ifdef DEBUG
-      DEBUGSERIAL.print("UDP ");
-      DEBUGSERIAL.println(isConnected);
+      Serial.print("UDP ");
+      Serial.println(isConnected);
      #endif
      
     if (isConnected ==0) {
@@ -306,7 +306,7 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
 
 
      #ifdef DEBUG
-      DEBUGSERIAL.println("SEND");
+      Serial.println("SEND");
      #endif
   
   AfterPost(); 
@@ -318,7 +318,7 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
 
       if (failedSend > 2 and failedSend < 4) {
       #ifdef DEBUG
-        DEBUGSERIAL.println(F("RstC3"));
+        Serial.println(F("RstC3"));
       #endif
       powerOn(); // Power on the module
       wakeUp();

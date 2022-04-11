@@ -19,9 +19,8 @@ int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
-#define PCBVER5 // 4,5,6
-//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
-//#define OLDPCB // if v.0.4.4 or older
+#define PCBVER5 // 4,5
+#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 ///////////////////////////////////////////////////////////////////////////////////
 
@@ -35,7 +34,6 @@ const char* broker = "vetercek.com";
   #define RESET 7
   #define PWRAIR 11
   #define PWRWATER 12
-  auto& DEBUGSERIAL = Serial;
 #endif
     
 #ifdef PCBVER5 // old pcb
@@ -45,18 +43,8 @@ const char* broker = "vetercek.com";
   #define RESET (A2)
   #define PWRAIR 11
   #define PWRWATER 12
-  auto& DEBUGSERIAL = Serial;
 #endif
     
-#ifdef PCBVER6 // old pcb
-  #define windSensorPin 2 // The pin location of the anemometer sensor
-  #define USRX 11
-  #define USTX 12
-  #define RESET (A2)
-  #define PWRAIR 8
-  #define PWRWATER 9  
-#endif
-
 #define windVanePin (A3)       // The pin the wind vane sensor is connected to
 #define DTR 6
 #define PWRKEY 10
@@ -89,25 +77,12 @@ DallasTemperature sensor_water(&oneWire_out);
 // 85 - UDPclose
 // 88 - other
 
-#ifndef PCBVER6 or ifdef DEBUG
-  #include <NeoSWSerial.h>
-#endif
-
-#ifndef PCBVER6
-  #ifdef UZ_Anemometer
-    NeoSWSerial fonaSS( 8, 9 );
-    NeoSWSerial ultrasonic( USRX, USTX );
-  #else
-    NeoSWSerial fonaSS( 8, 9 );
-  #endif
-#else // ver 6 or newer
-  HardwareSerial *fonaSS = &Serial;
-    #ifdef UZ_Anemometer
-      HardwareSerial *ultrasonic = &Serial1;
-    #endif
-  #ifdef DEBUG
-    NeoSWSerial DEBUGSERIAL( 5, 7 );  
-  #endif
+#include <NeoSWSerial.h>
+#ifdef UZ_Anemometer
+  NeoSWSerial fonaSS( 8, 9 );
+  NeoSWSerial ultrasonic( USRX, USTX );
+#else
+  NeoSWSerial fonaSS( 8, 9 );
 #endif
 
 Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
@@ -186,9 +161,9 @@ digitalWrite(RESET, HIGH);
 digitalWrite(PWRKEY, LOW);
   
 #ifdef DEBUG
-  DEBUGSERIAL.begin(9600);
-  while (!DEBUGSERIAL);
-  DEBUGSERIAL.println("Start");
+  Serial.begin(9600);
+  while (!Serial);
+  Serial.println("Start");
 #endif
 
   pinMode(13, OUTPUT);     // this part is used when you bypass bootloader to signal when board is starting...
@@ -221,7 +196,7 @@ digitalWrite(PWRKEY, LOW);
     ultrasonicFlush();
   }
    #ifdef DEBUG
-    DEBUGSERIAL.println("UZ start");
+    Serial.println("UZ start");
   delay(50);
   #endif   
 #endif
@@ -298,8 +273,8 @@ void loop() {
       if ( millis() - startedWaiting <= 8900 and  ultrasonic.available() < 70)  {  
          #ifdef DEBUG
           delay(50);
-            DEBUGSERIAL.print("in buffer: ");
-            DEBUGSERIAL.println(ultrasonic.available());
+            Serial.print("in buffer: ");
+            Serial.println(ultrasonic.available());
           delay(50);
           #endif 
         UltrasonicAnemometer();
@@ -308,7 +283,7 @@ void loop() {
         ultrasonicFlush();
          #ifdef DEBUG
           delay(50);
-            DEBUGSERIAL.println("flush buffer");
+            Serial.println("flush buffer");
           delay(50);
           #endif 
       }
@@ -339,16 +314,16 @@ void loop() {
 
   
   #ifdef DEBUG                                 // debug data
-    DEBUGSERIAL.print(" d:");
-    DEBUGSERIAL.print(calDirection);
-    DEBUGSERIAL.print(" s:");
-    DEBUGSERIAL.print(windSpeed);
-    DEBUGSERIAL.print(" g:");
-    DEBUGSERIAL.print(windGustAvg);
-    DEBUGSERIAL.print(" c:");
-    DEBUGSERIAL.print(measureCount);
-    DEBUGSERIAL.print(" s:");
-    DEBUGSERIAL.println(sonicError);
+    Serial.print(" d:");
+    Serial.print(calDirection);
+    Serial.print(" s:");
+    Serial.print(windSpeed);
+    Serial.print(" g:");
+    Serial.print(windGustAvg);
+    Serial.print(" c:");
+    Serial.print(measureCount);
+    Serial.print(" s:");
+    Serial.println(sonicError);
   #endif
 
   GetAvgWInd();                                 // avg wind
@@ -412,7 +387,7 @@ void CheckTimerGPRS() { // if unable to send data in 200s
     
   if (timergprs > 200 ) {
     #ifdef DEBUG
-      DEBUGSERIAL.println("hardR");
+      Serial.println("hardR");
     #endif    
     timergprs = 0;
     reset(2);
@@ -421,8 +396,8 @@ void CheckTimerGPRS() { // if unable to send data in 200s
 
 void reset(byte rr) {
 //#ifdef DEBUG
-//  DEBUGSERIAL.flush();
-//  DEBUGSERIAL.end();
+//  Serial.flush();
+//  Serial.end();
 //#endif
   EEPROM.write(15, rr);
   delay(200);
@@ -444,7 +419,7 @@ void powerOn() {
   delay(3000); // For SIM7000 
   digitalWrite(PWRKEY, HIGH);
    #ifdef DEBUG
-    DEBUGSERIAL.println("Pwr on");
+    Serial.println("Pwr on");
    #endif   
   delay(8000);
 }
@@ -462,7 +437,7 @@ void UZ_wake(unsigned long startedWaiting) {
     delay(1200);
     }
 //   #ifdef DEBUG
-//    DEBUGSERIAL.println("UZ wake up");
+//    Serial.println("UZ wake up");
 //   #endif       
 }
 #endif 

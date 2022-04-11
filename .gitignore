@@ -9,6 +9,8 @@
 !/vetercek_nb-iot/
 !/vetercek_nb-iot/*
 /vetercek_nb-iot/config.h
+!/vetercek_nb-iot-HW/
+!/vetercek_nb-iot-HW/*
 !/3D prints/
 !/3D prints/*
 !.gitignore
