@@ -245,7 +245,8 @@ void GetWater() {
 
 #ifdef BMP
 void GetPressure() {
-  pressure=bmx280.readPressure() / 100.0F;
+  lps.requestOneShot();  // important to request new data before reading
+  pressure = lps.readPressure()*10;  // hPa
 }
 #endif
 

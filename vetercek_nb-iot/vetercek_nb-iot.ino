@@ -6,9 +6,9 @@
 #include "src/OneWire/OneWire.h" //tmp sensor
 #include "src/DS18B20/DallasTemperature.h"
 #include "src/TimerOne/TimerOne.h"
-#include "src/bmp/ErriezBMX280.h"
 #include "src/Fona/Adafruit_FONA.h"
 #include <EEPROM.h>
+
 
 //////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
 #define APN "iot.1nce.net"
@@ -49,7 +49,11 @@ const char* broker = "vetercek.com";
 #define DTR 6
 #define PWRKEY 10
 
-byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 0,0 }; // data
+#ifdef BMP
+  byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 0,0,0 }; // data
+#else
+  byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0 }; // data
+#endif  
 
 OneWire oneWire_in(ONE_WIRE_BUS_1);   //tmp
 DallasTemperature sensor_air(&oneWire_in);
@@ -88,7 +92,9 @@ DallasTemperature sensor_water(&oneWire_out);
 Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
 
 #ifdef BMP
-  ErriezBMX280 bmx280 = ErriezBMX280(0x76); //pressure
+  #include "LPS35HW.h"
+  const uint8_t address = 0x5D; 
+  LPS35HW lps(address);
 #endif
 
 //////////////////////////////////    RATHER DON'T CHANGE
@@ -207,15 +213,11 @@ digitalWrite(PWRKEY, LOW);
 
 
 #ifdef BMP
-  if ((EEPROM.read(13)==255 or EEPROM.read(13)==1) and bmx280.begin()) {  
+  if ((EEPROM.read(13)==255 or EEPROM.read(13)==1) and lps.begin()) {  
       enableBmp=1; 
-      bmx280.setSampling(BMX280_MODE_FORCED,    // SLEEP, FORCED, NORMAL
-                       BMX280_SAMPLING_NONE,   // Temp:  NONE, X1, X2, X4, X8, X16
-                       BMX280_SAMPLING_X8,   // Press: NONE, X1, X2, X4, X8, X16
-                       BMX280_SAMPLING_NONE,   // Hum:   NONE, X1, X2, X4, X8, X16 (BME280)
-                       BMX280_FILTER_X8,     // OFF, X2, X4, X8, X16
-                       BMX280_STANDBY_MS_500);// 0_5, 10, 20, 62_5, 125, 250, 500, 1000
-  }   
+      lps.setLowPower(true);
+      lps.setOutputRate(LPS35HW::OutputRate_OneShot);   
+      }
 #endif  
 
 moduleSetup(); // Establishes first-time serial comm and prints IMEI
