@@ -77,6 +77,7 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
     else if (sleepT==7) { ultrasonic.write(">PwrIdleCfg:1,7\r\n"); }
     else if (sleepT==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }  
     else if (sleepT==0) { ultrasonic.write(">PwrIdleCfg:0,1\r\n"); }
+    
       delay(300);
     }
 
@@ -246,7 +247,16 @@ void GetWater() {
 #ifdef BMP
 void GetPressure() {
   lps.requestOneShot();  // important to request new data before reading
-  pressure = lps.readPressure()*10;  // hPa
+  delay(100);
+  abs_pressure = lps.readPressure();  // hPa
+  if (temp> -30) { 
+    pressure=(abs_pressure / pow(1.0 - 0.0065 * sea_level_m / (temp  + 273.15), 5.255)))*10;  // ICAO formula
+    }
+  else { 
+    temp=lps.readTemp();
+    pressure=(abs_pressure / pow(1.0 - 0.0065 * sea_level_m / (temp  + 273.15), 5.255))*10;  // ICAO formula
+    }
+  }
 }
 #endif
 

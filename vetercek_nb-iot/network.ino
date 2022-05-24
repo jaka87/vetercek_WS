@@ -293,7 +293,7 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
 #ifdef UZ_Anemometer
   if ( response[7]!= sleepBetween and UltrasonicAnemo==1 and response[7] > -1 and response[7] < 9 and sleepBetween != response[7]) { //change of sleep time
     changeSleep=1;
-    sleepBetween=response[7];
+      sleepBetween=response[7];
   }
 #else
   if ( (response[7] > -1 and response[7] < 9 and sleepBetween != response[7])) { 

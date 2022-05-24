@@ -3,6 +3,11 @@ void UltrasonicAnemometer() { //measure wind speed
     char buffer[80];
     char hexbuffer[5];
     int sum;
+
+#ifndef ATMEGA328P
+    byte trow_away;
+    trow_away=(ultrasonic.read());
+#endif
     int size = ultrasonic.readBytesUntil('\r\n', buffer, 80); 
         
     char* first = strtok(buffer, ",/");
@@ -86,14 +91,18 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
       changeSleep=0;
       stopSleepChange=0;
      #ifdef DEBUG 
+     
       DEBUGSERIAL.println("sleep change ok"); 
+      
       delay(10);
      #endif 
       }
     else { 
      stopSleepChange++;
      #ifdef DEBUG 
+     
       DEBUGSERIAL.println("sleep change error"); 
+      
      #endif       
       }
 }
@@ -154,6 +163,22 @@ void GetAvgWInd() {
   wind_speed = windAvr / measureCount; // calculate average wind
 }
 
+//#ifndef ATMEGA328P
+//ISR(USART1_RX_vect)
+//{
+//#ifdef DEBUG
+//  DEBUGSERIAL.println("interrupt");
+//#endif
+//}
+//ISR(USART1_START)
+//{
+//#ifdef DEBUG
+//  DEBUGSERIAL.println("interrupt 2");
+//#endif
+//}
+//#endif
+
+
 #ifndef UZ_Anemometer
   void ISRrotation () {  // This is the function that the interrupt calls to increment the rotation count
   currentMillis = millis(); //we have to read millis at the same position in ISR each time to get the most accurate readings
@@ -193,7 +218,7 @@ void CalculateWindDirection() {
 
 void rain_count() {
   #ifdef UZ_Anemometer
-    NeoSWSerial::rxISR( *portInputRegister( digitalPinToPort( 3 ) ) );
+    //NeoSWSerial::rxISR( *portInputRegister( digitalPinToPort( 3 ) ) );
   #endif
   currentMillis2 = millis(); //we have to read millis at the same position in ISR each time to get the most accurate readings
 if ((currentMillis2 - contactBounceTime2) > 500 ) { // debounce the switch contact.
@@ -211,6 +236,7 @@ void GetAir() {
   digitalWrite(pwrAir, LOW);   // turn off power
 
 #ifdef DEBUG
+
   DEBUGSERIAL.print("tmp: ");
   DEBUGSERIAL.println(temp);
 #endif
@@ -226,6 +252,7 @@ void GetWater() {
   digitalWrite(pwrWater, LOW);   // turn off power
 
 #ifdef DEBUG
+
     DEBUGSERIAL.print("water: ");
     DEBUGSERIAL.println(water);
 #endif

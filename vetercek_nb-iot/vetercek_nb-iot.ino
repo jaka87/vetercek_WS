@@ -19,7 +19,7 @@ int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
-#define PCBVER5 // 4,5
+#define PCBVER5 // 4,5,6
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 ///////////////////////////////////////////////////////////////////////////////////
@@ -44,6 +44,16 @@ const char* broker = "vetercek.com";
   #define PWRAIR 11
   #define PWRWATER 12
 #endif
+
+#ifdef PCBVER6 // 0.6
+  #define windSensorPin 2 // The pin location of the anemometer sensor
+  #define USRX 12
+  #define USTX 13
+  #define RESET (A2)
+  #define PWRAIR 11
+  #define PWRWATER 12
+#endif
+
     
 #define windVanePin (A3)       // The pin the wind vane sensor is connected to
 #define DTR 6
@@ -83,10 +93,19 @@ DallasTemperature sensor_water(&oneWire_out);
 
 #include <NeoSWSerial.h>
 #ifdef UZ_Anemometer
-  NeoSWSerial fonaSS( 8, 9 );
-  NeoSWSerial ultrasonic( USRX, USTX );
+  #ifdef PCBVER6
+    NeoSWSerial fonaSS( 0, 1 );
+    NeoSWSerial ultrasonic( USRX, USTX );
+  #else
+    NeoSWSerial fonaSS( 8, 9 );
+    NeoSWSerial ultrasonic( USRX, USTX );
+  #endif
 #else
-  NeoSWSerial fonaSS( 8, 9 );
+  #ifdef PCBVER6
+    NeoSWSerial fonaSS( 0, 1 );
+  #else
+    NeoSWSerial fonaSS( 8, 9 );
+  #endif
 #endif
 
 Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
@@ -148,9 +167,11 @@ byte enableSolar=0;
 byte enableRain=0;
 byte enableBmp=0;
 int pressure=0;
+float abs_pressure;
 byte changeSleep=0;
 byte batteryState=0; // 0 normal; 1 low battery; 2 very low battery
 byte stopSleepChange=0; //on
+int sea_level_m=500; // enter elevation for your location
 
 void setup() {
   MCUSR = 0; // clear reset flags
@@ -216,14 +237,10 @@ digitalWrite(PWRKEY, LOW);
   if ((EEPROM.read(13)==255 or EEPROM.read(13)==1) and lps.begin()) {  
       enableBmp=1; 
       lps.setLowPower(true);
+      //lps.setOutputRate(LPS35HW::OutputRate_75Hz);  // optional, default is 10Hz
       lps.setOutputRate(LPS35HW::OutputRate_OneShot);   
       }
 #endif  
-
-moduleSetup(); // Establishes first-time serial comm and prints IMEI
-checkIMEI();
-connectGPRS();
-
 
   if (resetReason==8 ) { //////////////////// reset reason detailed        
     if (EEPROM.read(15)==1 ) { 
@@ -246,6 +263,17 @@ connectGPRS();
     }   
   EEPROM.write(15, 0); 
   }  
+
+#ifdef UZ_Anemometer
+    if (resetReason==81 ) { 
+      ultrasonic.write(">UartPro:0\r\n"); //set active ascii
+    }
+#endif    
+    
+moduleSetup(); // Establishes first-time serial comm and prints IMEI
+checkIMEI();
+connectGPRS();
+
 
 #ifdef UZ_Anemometer
   SendData();
@@ -353,21 +381,20 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
       delay(100);
       fonaSS.listen();
       delay(1000);
-      //noInterrupts();
         SendData();
       digitalWrite(DTR, HIGH);  //sleep  
       #ifdef UZ_Anemometer
         if (UltrasonicAnemo==1){
             if ( changeSleep== 1 and stopSleepChange<3) { //change of sleep time
-          unsigned long startedWaiting = millis();
-          UZ_wake(startedWaiting);
-           ultrasonicFlush();   
-           UZsleep(sleepBetween);
+              unsigned long startedWaiting = millis();
+              noInterrupts();
+                UZ_wake(startedWaiting);
+                ultrasonicFlush();  
+                UZsleep(sleepBetween);
+              interrupts();
             }
-         
         }
       #endif  
-      //interrupts();
 
   }
   else if ( UltrasonicAnemo==0 ){ // restart timer

@@ -9,19 +9,24 @@
 #include "src/bmp/ErriezBMX280.h"
 #include "src/Fona/Adafruit_FONA.h"
 #include <EEPROM.h>
+#include "PinChangeInterrupt.h"
 
 //////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
 #define APN "iot.1nce.net"
-byte GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
+byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
-#define DEBUG // comment out if you want to turn off debugging
-//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+//#define DEBUG // comment out if you want to turn off debugging
+#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
+//#define ATMEGA328P // if atmega 328p
 ///////////////////////////////////////////////////////////////////////////////////
+
+
+
 
 #define ONE_WIRE_BUS_1 4 //air
 #define ONE_WIRE_BUS_2 3 // water
@@ -68,7 +73,12 @@ DallasTemperature sensor_water(&oneWire_out);
 #endif
 HardwareSerial *fonaSS = &Serial;
 #ifdef UZ_Anemometer
-  HardwareSerial *ultrasonic = &Serial1;
+  #ifdef ATMEGA328P
+    #include <NeoSWSerial.h>
+    NeoSWSerial ultrasonic( 11, 12 );  
+  #else
+   #define ultrasonic Serial1
+  #endif
 #endif
 #ifdef DEBUG
   NeoSWSerial DEBUGSERIAL( 5, 7 );  
@@ -141,6 +151,7 @@ void setup() {
   
   Timer1.initialize(1000000UL);         // initialize timer1, and set a 1 second period
   Timer1.attachInterrupt(CheckTimerGPRS);  // attaches checkTimer() as a timer overflow interrupt
+  attachPCINT(digitalPinToPCINT(12), wake_from_sleep, FALLING);
 
 pinMode(DTR, OUTPUT);
 pinMode(RESET, OUTPUT);
@@ -148,6 +159,10 @@ pinMode(PWRKEY, OUTPUT);
 digitalWrite(DTR, LOW); 
 digitalWrite(RESET, HIGH); 
 digitalWrite(PWRKEY, LOW);
+
+//#ifndef ATMEGA328P
+//UCSR0D = 1 << RXCIE1 | 1 << RXSIE | 1 << SFDE;
+//#endif
   
 #ifdef DEBUG
   DEBUGSERIAL.begin(9600);
@@ -185,7 +200,9 @@ digitalWrite(PWRKEY, LOW);
     ultrasonicFlush();
   }
    #ifdef DEBUG
+   
     DEBUGSERIAL.println("UZ start");
+    
   delay(50);
   #endif   
 #endif
@@ -230,13 +247,14 @@ connectGPRS();
   }  
 
 #ifdef UZ_Anemometer
-  SendData();
+  //SendData();
 #endif 
 }
 
 void loop() {
 #ifdef UZ_Anemometer
  //if ( UltrasonicAnemo==1 ) {    // if ultrasonic anemometer pluged in at boot
+ 
   unsigned long startedWaiting = millis();
   //delay(15);
   delay(25);
@@ -257,8 +275,10 @@ void loop() {
       if ( millis() - startedWaiting <= 8900 and  ultrasonic.available() < 70)  {  
          #ifdef DEBUG
           delay(50);
+          
             DEBUGSERIAL.print("in buffer: ");
             DEBUGSERIAL.println(ultrasonic.available());
+            
           delay(50);
           #endif 
         UltrasonicAnemometer();
@@ -267,7 +287,9 @@ void loop() {
         ultrasonicFlush();
          #ifdef DEBUG
           delay(50);
+          
             DEBUGSERIAL.println("flush buffer");
+            
           delay(50);
           #endif 
       }
@@ -298,6 +320,7 @@ void loop() {
 
   
   #ifdef DEBUG                                 // debug data
+  
     DEBUGSERIAL.print(" d:");
     DEBUGSERIAL.print(calDirection);
     DEBUGSERIAL.print(" s:");
@@ -370,6 +393,7 @@ void CheckTimerGPRS() { // if unable to send data in 200s
     
   if (timergprs > 200 ) {
     #ifdef DEBUG
+    
       DEBUGSERIAL.println("hardR");
     #endif    
     timergprs = 0;
@@ -402,6 +426,7 @@ void powerOn() {
   delay(3000); // For SIM7000 
   digitalWrite(PWRKEY, HIGH);
    #ifdef DEBUG
+   
     DEBUGSERIAL.println("Pwr on");
    #endif   
   delay(8000);
@@ -424,3 +449,7 @@ void UZ_wake(unsigned long startedWaiting) {
 //   #endif       
 }
 #endif 
+
+
+void wake_from_sleep(void) {
+}
