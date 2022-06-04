@@ -72,7 +72,11 @@ int countBytes( const char * data )
 
 void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
   unsigned long startedWaiting = millis();   
-  while (ultrasonic.readStringUntil('\r\n').indexOf("IdleSec")<1 && millis() - startedWaiting <= 20000) {
+  char buffer[80];
+  int size = ultrasonic.readBytesUntil('\n', buffer, 80);
+
+  while (strchr(buffer, 'IdleSec') == NULL && millis() - startedWaiting <= 20000) {
+  int size = ultrasonic.readBytesUntil('\n', buffer, 80);
     if (sleepT==1) { ultrasonic.write(">PwrIdleCfg:1,1\r\n"); }
     else if (sleepT==2) { ultrasonic.write(">PwrIdleCfg:1,2\r\n"); }
     else if (sleepT==3) { ultrasonic.write(">PwrIdleCfg:1,3\r\n"); }
@@ -82,7 +86,7 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
     else if (sleepT==7) { ultrasonic.write(">PwrIdleCfg:1,7\r\n"); }
     else if (sleepT==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }  
     else if (sleepT==0) { ultrasonic.write(">PwrIdleCfg:0,1\r\n"); }
-      delay(300);
+      delay(200);
     }
 
     if(millis() - startedWaiting < 19900){ ultrasonic.write(">SaveConfig\r\n"); }
@@ -92,7 +96,7 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
       stopSleepChange=0;
      #ifdef DEBUG 
      
-      DEBUGSERIAL.println("sleep change ok"); 
+      DEBUGSERIAL.println("sleepcok"); 
       
       delay(10);
      #endif 
@@ -101,7 +105,7 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
      stopSleepChange++;
      #ifdef DEBUG 
      
-      DEBUGSERIAL.println("sleep change error"); 
+      DEBUGSERIAL.println("sleepc err"); 
       
      #endif       
       }

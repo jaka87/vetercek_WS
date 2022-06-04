@@ -167,7 +167,7 @@ digitalWrite(PWRKEY, LOW);
 #ifdef DEBUG
   DEBUGSERIAL.begin(9600);
   delay(20);
-  DEBUGSERIAL.println("Start");
+  DEBUGSERIAL.println("S");
 #endif
 
   pinMode(13, OUTPUT);     // this part is used when you bypass bootloader to signal when board is starting...
@@ -201,7 +201,7 @@ digitalWrite(PWRKEY, LOW);
   }
    #ifdef DEBUG
    
-    DEBUGSERIAL.println("UZ start");
+    DEBUGSERIAL.println("UZ");
     
   delay(50);
   #endif   
@@ -273,14 +273,6 @@ void loop() {
 
 
       if ( millis() - startedWaiting <= 8900 and  ultrasonic.available() < 70)  {  
-         #ifdef DEBUG
-          delay(50);
-          
-            DEBUGSERIAL.print("in buffer: ");
-            DEBUGSERIAL.println(ultrasonic.available());
-            
-          delay(50);
-          #endif 
         UltrasonicAnemometer();
       }
       else  {  
@@ -288,7 +280,7 @@ void loop() {
          #ifdef DEBUG
           delay(50);
           
-            DEBUGSERIAL.println("flush buffer");
+            DEBUGSERIAL.println("flushb");
             
           delay(50);
           #endif 
@@ -325,8 +317,6 @@ void loop() {
     DEBUGSERIAL.print(calDirection);
     DEBUGSERIAL.print(" s:");
     DEBUGSERIAL.print(windSpeed);
-    DEBUGSERIAL.print(" g:");
-    DEBUGSERIAL.print(windGustAvg);
     DEBUGSERIAL.print(" c:");
     DEBUGSERIAL.print(measureCount);
     DEBUGSERIAL.print(" s:");
@@ -360,13 +350,16 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
       //noInterrupts();
         SendData();
       digitalWrite(DTR, HIGH);  //sleep  
+
       #ifdef UZ_Anemometer
         if (UltrasonicAnemo==1){
             if ( changeSleep== 1 and stopSleepChange<3) { //change of sleep time
           unsigned long startedWaiting = millis();
           UZ_wake(startedWaiting);
-           ultrasonicFlush();   
-           UZsleep(sleepBetween);
+          ultrasonicFlush();   
+          //noInterrupts();   
+          UZsleep(sleepBetween);
+          //interrupts();
             }
          
         }
@@ -393,7 +386,6 @@ void CheckTimerGPRS() { // if unable to send data in 200s
     
   if (timergprs > 200 ) {
     #ifdef DEBUG
-    
       DEBUGSERIAL.println("hardR");
     #endif    
     timergprs = 0;

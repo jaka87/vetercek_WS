@@ -124,7 +124,7 @@ void PostData() {
 if (fona.checkAT()) {  // wait untill modem is active
      #ifdef DEBUG
      
-      DEBUGSERIAL.println("Modem");
+      DEBUGSERIAL.println("Mod");
      #endif  
 }
 
@@ -320,6 +320,7 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
    else {
      fona.UDPclose();
      failedSend=failedSend+1;
+     delay(10000);
 
       if (failedSend > 2 and failedSend < 4) {
       #ifdef DEBUG
