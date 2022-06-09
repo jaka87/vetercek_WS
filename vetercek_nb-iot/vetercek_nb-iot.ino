@@ -18,7 +18,7 @@ int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
-//#define DEBUG // comment out if you want to turn off debugging
+#define DEBUG // comment out if you want to turn off debugging
 #define PCBVER5 // 4,5,6
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
@@ -59,7 +59,7 @@ const char* broker = "vetercek.com";
 #define DTR 6
 #define PWRKEY 10
 
-#ifdef BMP
+#if defined BMP || defined UZ_Anemometer
   byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 0,0,0 }; // data
 #else
   byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0 }; // data
@@ -301,12 +301,6 @@ void loop() {
 
 
       if ( millis() - startedWaiting <= 8900 and  ultrasonic.available() < 70)  {  
-         #ifdef DEBUG
-          delay(50);
-            Serial.print("in buffer: ");
-            Serial.println(ultrasonic.available());
-          delay(50);
-          #endif 
         UltrasonicAnemometer();
       }
       else  {  

@@ -67,7 +67,11 @@ int countBytes( const char * data )
 
 void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
   unsigned long startedWaiting = millis();   
-  while (ultrasonic.readStringUntil('\r\n').indexOf("IdleSec")<1 && millis() - startedWaiting <= 20000) {
+  char buffer[80];
+  int size = ultrasonic.readBytesUntil('\n', buffer, 80);
+
+  while (strchr(buffer, 'IdleSec') == NULL && millis() - startedWaiting <= 20000) {
+  int size = ultrasonic.readBytesUntil('\n', buffer, 80);
     if (sleepT==1) { ultrasonic.write(">PwrIdleCfg:1,1\r\n"); }
     else if (sleepT==2) { ultrasonic.write(">PwrIdleCfg:1,2\r\n"); }
     else if (sleepT==3) { ultrasonic.write(">PwrIdleCfg:1,3\r\n"); }
@@ -77,8 +81,7 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
     else if (sleepT==7) { ultrasonic.write(">PwrIdleCfg:1,7\r\n"); }
     else if (sleepT==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }  
     else if (sleepT==0) { ultrasonic.write(">PwrIdleCfg:0,1\r\n"); }
-    
-      delay(300);
+      delay(200);
     }
 
     if(millis() - startedWaiting < 19900){ ultrasonic.write(">SaveConfig\r\n"); }
@@ -87,14 +90,14 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
       changeSleep=0;
       stopSleepChange=0;
      #ifdef DEBUG 
-      Serial.println("sleep change ok"); 
+      Serial.println("sleepcok"); 
       delay(10);
      #endif 
       }
     else { 
      stopSleepChange++;
      #ifdef DEBUG 
-      Serial.println("sleep change error"); 
+      Serial.println("sleepc err"); 
      #endif       
       }
 }
@@ -218,7 +221,7 @@ void GetAir() {
   digitalWrite(pwrAir, HIGH);   // turn on power
   delay(100);
   sensor_air.requestTemperatures(); // Send the command to get temperatures
-  delay (750) ;
+  delay (100) ;
   temp = sensor_air.getTempCByIndex(0);
   digitalWrite(pwrAir, LOW);   // turn off power
 
@@ -233,7 +236,7 @@ void GetWater() {
   digitalWrite(pwrWater, HIGH);   // turn on power
   delay(300);
   sensor_water.requestTemperatures(); // Send the command to get temperatures
-  delay (850) ;
+  delay (100) ;
   water = sensor_water.getTempCByIndex(0);
   digitalWrite(pwrWater, LOW);   // turn off power
 

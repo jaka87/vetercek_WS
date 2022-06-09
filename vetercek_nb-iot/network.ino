@@ -10,14 +10,25 @@ bool netStatus() {
 
   return n;
 
-//if (n == 0){
-//  fona.setFunctionality(0); // AT+CFUN=0
-//  delay(3000);
-//  fona.setFunctionality(1); // AT+CFUN=1
-//  delay(200);
-//  }
-//  if (!(n == 1 || n == 5)) return false;
-//  else return true;
+}
+
+
+
+void GSMerror() {
+  #ifdef DEBUG
+    Serial.println(F("gsm error"));
+  #endif
+  fona.enableGPRS(false);
+  //powerOn(); 
+  //wakeUp();
+  digitalWrite(RESET, LOW); 
+  delay(350);
+  digitalWrite(RESET, HIGH); 
+  delay(5000);
+  moduleSetup();      
+  connectGPRS();
+  fona.UDPconnect("vetercek.com",6789);
+  
 }
 
 
@@ -44,16 +55,15 @@ void moduleSetup() {
   fonaSS.println("AT+CIPMUX=0"); // single ip
 
   fona.setNetLED(true,3,64,5000);
-  delay(300);
-  
-  fona.setFunctionality(0); // AT+CFUN=0
-  delay(3000);
-  fona.setFunctionality(1); // AT+CFUN=1
+  delay(100);
+  //fona.setFunctionality(0); // AT+CFUN=0
+  //delay(3000);
+  //fona.setFunctionality(1); // AT+CFUN=1
   fona.setNetworkSettings(F(APN)); // APN
   delay(200);
 
   fona.setPreferredMode(GSMstate); 
-  delay(500);
+  delay(100);
 //  if (GSMstate == 38) {
 //    fona.setPreferredLTEMode(2);   
 //    fona.setOperatingBand("NB-IOT",20); 
@@ -90,10 +100,7 @@ byte runState=0;
        #ifdef DEBUG
         Serial.println(F("RstC2"));
        #endif
-      powerOn(); 
-      wakeUp();
-      delay(3000);
-      moduleSetup(); // Establishes first-time serial comm and prints IMEI
+      GSMerror();
       runState=0;
       startTime=millis(); 
       }
@@ -131,9 +138,7 @@ int8_t GPRSstate=fona.GPRSstate();  //check GPRS
       Serial.println(GPRSstate);
      #endif
 if (GPRSstate !=1 or GPRSPDP !=1) {
-     fona.enableGPRS(false);
-     connectGPRS();
-     fona.UDPconnect("vetercek.com",6789);
+  GSMerror();
  } 
   
 bool isConnected = fona.UDPconnected();  // UDP connection to server
@@ -147,9 +152,7 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
      }     
 
     else if (isConnected > 1) {
-     fona.enableGPRS(false);
-     connectGPRS();
-     fona.UDPconnect("vetercek.com",6789);
+     GSMerror();
      } 
 
 
@@ -316,18 +319,16 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
      fona.UDPclose();
      failedSend=failedSend+1;
 
-      if (failedSend > 2 and failedSend < 4) {
+      if (failedSend > 1 and failedSend < 3) {
       #ifdef DEBUG
         Serial.println(F("RstC3"));
       #endif
-      powerOn(); // Power on the module
-      wakeUp();
-      delay(3000);
+      delay(10000);
       moduleSetup(); // Establishes first-time serial comm and prints IMEI
       }
       
-      else if (failedSend > 3 ) {
-        reset(5);
+      else if (failedSend > 2 ) {
+        GSMerror();
       }      
    } 
   
@@ -356,14 +357,8 @@ void AfterPost() {
 
 // send data to server
 void SendData() {
-//    noInterrupts();
-//    timergprs = 0;
-//    interrupts();
   BeforePostCalculations();
   PostData();
-//  noInterrupts();
-//  timergprs = 0;
-//  interrupts();
 }
 
 void checkIMEI() {
