@@ -1,5 +1,5 @@
-//bin/avrdude -C//etc/avrdude.conf -v -V -patmega328p -cusbtiny -Uflash:w:/vetercek_nb-iot.ino.hex:i lfuse:w:0xEF:m efuse:w:0xFF:m hfuse:w:DA:m lock:w:0xFF:m 
-//NeoSWSerial RX buffer set to 128b, uncomment PCINT_ISR(2, PIND); for pin change interrupt to work
+//bin/avrdude -C//etc/avrdude.conf -v -V -patmega328pb -cusbtiny -Uflash:w:/vetercek_nb-iot.ino.hex:i lfuse:w:0xEF:m efuse:w:0xFF:m hfuse:w:DA:m lock:w:0xFF:m 
+// 57600 max baud rate
 #include <avr/wdt.h> //watchdog
 #include "src/LowPower/LowPower.h" //sleep library
 #include <math.h> // wind speed calculations
@@ -18,6 +18,7 @@ byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
+int sea_level_m=0; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
@@ -40,7 +41,7 @@ const char* broker = "vetercek.com";
 #define DTR 6
 #define PWRKEY 10
 
-byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 0,0 }; // data
+byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 0,0,0 }; // data
 
 OneWire oneWire_in(ONE_WIRE_BUS_1);   //tmp
 DallasTemperature sensor_air(&oneWire_in);
@@ -64,7 +65,7 @@ DallasTemperature sensor_water(&oneWire_out);
 // 81 - UZ 10 errors in loop function
 // 82 - unable to send data in 200s
 // 83 - manual remote reset 
-// 84 - 20 sonic errors in UZ function
+// 84 - X sonic errors in UZ function
 // 85 - UDPclose
 // 88 - other
 
@@ -87,7 +88,9 @@ HardwareSerial *fonaSS = &Serial;
 Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
 
 #ifdef BMP
-  ErriezBMX280 bmx280 = ErriezBMX280(0x76); //pressure
+  #include "LPS35HW.h"
+  const uint8_t address = 0x5D; 
+  LPS35HW lps(address);
 #endif
 
 //////////////////////////////////    RATHER DON'T CHANGE
@@ -208,16 +211,13 @@ digitalWrite(PWRKEY, LOW);
 #endif
 
 #ifdef BMP
-  if ((EEPROM.read(13)==255 or EEPROM.read(13)==1) and bmx280.begin()) {  
+  if ((EEPROM.read(13)==255 or EEPROM.read(13)==1) and lps.begin()) {  
       enableBmp=1; 
-      bmx280.setSampling(BMX280_MODE_FORCED,    // SLEEP, FORCED, NORMAL
-                       BMX280_SAMPLING_NONE,   // Temp:  NONE, X1, X2, X4, X8, X16
-                       BMX280_SAMPLING_X8,   // Press: NONE, X1, X2, X4, X8, X16
-                       BMX280_SAMPLING_NONE,   // Hum:   NONE, X1, X2, X4, X8, X16 (BME280)
-                       BMX280_FILTER_X8,     // OFF, X2, X4, X8, X16
-                       BMX280_STANDBY_MS_500);// 0_5, 10, 20, 62_5, 125, 250, 500, 1000
-  }   
-#endif  
+      lps.setLowPower(true);
+      //lps.setOutputRate(LPS35HW::OutputRate_75Hz);  // optional, default is 10Hz
+      lps.setOutputRate(LPS35HW::OutputRate_OneShot);   
+      }
+#endif   
 
 moduleSetup(); // Establishes first-time serial comm and prints IMEI
 checkIMEI();
@@ -246,8 +246,15 @@ connectGPRS();
   EEPROM.write(15, 0); 
   }  
 
+
 #ifdef UZ_Anemometer
-  //SendData();
+    if (resetReason==81 ) { 
+      ultrasonic.write(">UartPro:0\r\n"); //set active ascii
+    }
+#endif 
+
+#ifdef UZ_Anemometer
+  SendData();
 #endif 
 }
 
@@ -260,17 +267,16 @@ void loop() {
   delay(25);
   UZ_wake(startedWaiting);
 
-  if ( millis() - startedWaiting >= 10000 && sonicError < 10)  { // if US error 
+  if ( millis() - startedWaiting >= 10000 && sonicError < 5)  { // if US error 
     sonicError++;
      }
-  else if ( millis() - startedWaiting >= 10000 && sonicError >= 10)  { // if more than 20 US errors
+  else if ( millis() - startedWaiting >= 10000 && sonicError >= 5)  { // if more than X US errors
         reset(1);
      }
   else { 
       while(ultrasonic.available() < 66 and millis() - startedWaiting <= 9000) {
         delay(10);
       }
-
 
       if ( millis() - startedWaiting <= 8900 and  ultrasonic.available() < 70)  {  
         UltrasonicAnemometer();
@@ -285,12 +291,9 @@ void loop() {
           delay(50);
           #endif 
       }
-      //LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
   }
           
-#else
- //else { 
- 
+#else 
     Anemometer();                           // anemometer
     GetWindDirection();
 
@@ -307,12 +310,9 @@ void loop() {
     LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);  // sleep
   }
    
- //}
 #endif  
-
   
   #ifdef DEBUG                                 // debug data
-  
     DEBUGSERIAL.print(" d:");
     DEBUGSERIAL.print(calDirection);
     DEBUGSERIAL.print(" s:");
@@ -346,8 +346,7 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
      
       digitalWrite(DTR, LOW);  //wake up  
       delay(100);
-      delay(1000);
-      //noInterrupts();
+      //delay(1000);
         SendData();
       digitalWrite(DTR, HIGH);  //sleep  
 
@@ -357,14 +356,10 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
           unsigned long startedWaiting = millis();
           UZ_wake(startedWaiting);
           ultrasonicFlush();   
-          //noInterrupts();   
           UZsleep(sleepBetween);
-          //interrupts();
             }
-         
         }
       #endif  
-      //interrupts();
 
   }
   else if ( UltrasonicAnemo==0 ){ // restart timer
@@ -394,17 +389,10 @@ void CheckTimerGPRS() { // if unable to send data in 200s
 }
 
 void reset(byte rr) {
-//#ifdef DEBUG
-//  DEBUGSERIAL.flush();
-//  DEBUGSERIAL.end();
-//#endif
   EEPROM.write(15, rr);
   delay(200);
-
-  //if (rr != 3 ) {
   powerOn(); // turn off power
-  delay(10000);
-  //}
+  delay(1000);
   wdt_enable(WDTO_120MS);
 
 }
@@ -413,12 +401,10 @@ void reset(byte rr) {
 
 // Power on the module
 void powerOn() {
-    //pinMode(PWRKEY, OUTPUT);
   digitalWrite(PWRKEY, LOW);
   delay(3000); // For SIM7000 
   digitalWrite(PWRKEY, HIGH);
    #ifdef DEBUG
-   
     DEBUGSERIAL.println("Pwr on");
    #endif   
   delay(8000);
@@ -436,10 +422,7 @@ void UZ_wake(unsigned long startedWaiting) {
     ultrasonic.begin(9600);
     delay(1200);
     }
-//   #ifdef DEBUG
-//    DEBUGSERIAL.println("UZ wake up");
-//   #endif       
-}
+ }
 #endif 
 
 

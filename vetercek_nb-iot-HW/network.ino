@@ -1,7 +1,6 @@
 bool netStatus() {
   int n = fona.getNetworkStatus();
   #ifdef DEBUG
-  
   if (n == 0) DEBUGSERIAL.println(F("NR"));
   if (n == 1) DEBUGSERIAL.println(F("Reg"));
   if (n == 2) DEBUGSERIAL.println(F("Src"));
@@ -11,29 +10,34 @@ bool netStatus() {
 
   return n;
 
-//if (n == 0){
-//  fona.setFunctionality(0); // AT+CFUN=0
-//  delay(3000);
-//  fona.setFunctionality(1); // AT+CFUN=1
-//  delay(200);
-//  }
-//  if (!(n == 1 || n == 5)) return false;
-//  else return true;
 }
 
+
+  void GSMerror() {   
+  #ifdef DEBUG    
+    Serial.println(F("gsm error"));   
+  #endif    
+  fona.enableGPRS(false);   
+  //powerOn();    
+  //wakeUp();   
+  digitalWrite(RESET, LOW);     
+  delay(350);   
+  digitalWrite(RESET, HIGH);    
+  delay(5000);    
+  moduleSetup();          
+  connectGPRS();    
+  fona.UDPconnect("vetercek.com",6789);   
+      
+}
 
 void moduleSetup() {
   // Note: The SIM7000A baud rate seems to reset after being power cycled (SIMCom firmware thing)
   // SIM7000 takes about 3s to turn on but SIM7500 takes about 15s
   // Press reset button if the module is still turning on and the board doesn't find it.
   // When the module is on it should communicate right after pressing reset
-  //fonaSS.begin(115200); // Default SIM7000 shield baud rate
-  //DEBUGSERIAL.println(F("Configuring to 9600 baud"));
-  //fonaSS.println("AT+IPR=9600"); // Set baud rate
-  //delay(100); // Short pause to let the command run
   delay(3000);
   //fonaSS->begin(9600);
-  //fona.println("AT+IPR=115200"); // Set baud rate
+  //fona.println("AT+IPR=9600"); // Set baud rate
   fonaSS->begin(9600);
 
   while (! fona.begin(*fonaSS)) {
@@ -43,18 +47,16 @@ void moduleSetup() {
   }
 
   fona.println("AT+CIPMUX=0"); // single ip
-
   fona.setNetLED(true,3,64,5000);
-  delay(300);
-  
-  fona.setFunctionality(0); // AT+CFUN=0
-  delay(3000);
-  fona.setFunctionality(1); // AT+CFUN=1
+  delay(100);
+  //fona.setFunctionality(0); // AT+CFUN=0
+  //delay(3000);
+  //fona.setFunctionality(1); // AT+CFUN=1
   fona.setNetworkSettings(F(APN)); // APN
-  delay(200);
+  delay(100);
 
   fona.setPreferredMode(GSMstate); 
-  delay(500);
+  delay(100);
 //  if (GSMstate == 38) {
 //    fona.setPreferredLTEMode(2);   
 //    fona.setOperatingBand("NB-IOT",20); 
@@ -62,14 +64,14 @@ void moduleSetup() {
   
   //fona.setOperatingBand("NB-IOT",20); // AT&T uses band 12
   fona.enableSleepMode(true);
-  delay(200);
+  delay(100);
   if (GSMstate==38) {
     fona.set_eDRX(1, 5, "1001");    
   }
-  delay(200);
+  delay(100);
   fona.enablePSM(false);
   //fona.enablePSM(true, "00100001", "00100011");
-  delay(200);
+  delay(100);
 }  
 
 
@@ -81,7 +83,6 @@ byte runState=0;
     while (netStatus() != 1 and netStatus() != 5) {
       if (millis() - startTime >= 8000 and netStatus() == 0 and runState==0)  {
        #ifdef DEBUG
-       
         DEBUGSERIAL.println(F("RstC1"));
        #endif
       moduleSetup();
@@ -90,30 +91,23 @@ byte runState=0;
        
       else if (millis() - startTime >= 20000 and netStatus() == 0 and runState==1)  {
        #ifdef DEBUG
-       
         DEBUGSERIAL.println(F("RstC2"));
        #endif
-      powerOn(); 
-      wakeUp();
-      delay(3000);
-      moduleSetup(); // Establishes first-time serial comm and prints IMEI
+      GSMerror();
       runState=0;
       startTime=millis(); 
       }
 
       #ifdef DEBUG
-      
         DEBUGSERIAL.println(F("RetCON"));
       #endif 
     }
   #ifdef DEBUG  
-  
     DEBUGSERIAL.println(F("CON"));
   #endif 
 
   if (fona.enableGPRS(true)) {
   #ifdef DEBUG  
-  
     DEBUGSERIAL.println(F("GPRS"));
   #endif 
   }
@@ -121,32 +115,22 @@ byte runState=0;
 
 
 void PostData() {    
-if (fona.checkAT()) {  // wait untill modem is active
-     #ifdef DEBUG
-     
-      DEBUGSERIAL.println("Mod");
-     #endif  
-}
-
 
 int8_t GPRSPDP=fona.GPRSPDP();  //check PDP
 int8_t GPRSstate=fona.GPRSstate();  //check GPRS
      #ifdef DEBUG
-     
       DEBUGSERIAL.print("PDP ");
       DEBUGSERIAL.println(GPRSPDP);
       DEBUGSERIAL.print("GPRS ");
       DEBUGSERIAL.println(GPRSstate);
      #endif
-if (GPRSstate !=1 or GPRSPDP !=1) {
+if (GPRSstate !=1 or GPRSPDP !=1) {    // if no connection with network
      fona.enableGPRS(false);
-     connectGPRS();
-     fona.UDPconnect("vetercek.com",6789);
+      GSMerror();
  } 
   
 bool isConnected = fona.UDPconnected();  // UDP connection to server
      #ifdef DEBUG
-     
       DEBUGSERIAL.print("UDP ");
       DEBUGSERIAL.println(isConnected);
      #endif
@@ -156,9 +140,7 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
      }     
 
     else if (isConnected > 1) {
-     fona.enableGPRS(false);
-     connectGPRS();
-     fona.UDPconnect("vetercek.com",6789);
+     GSMerror();
      } 
 
 
@@ -190,8 +172,6 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
   else {
     sendBatTemp=sendBatTemp+1;
 }
-
-
   data[8]=windDir/100;
   data[9]=windDir%100;
   data[10]=wind_speed/10;
@@ -310,31 +290,26 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
 
 
      #ifdef DEBUG
-     
       DEBUGSERIAL.println("SEND");
      #endif
   
   AfterPost(); 
    } 
 
-   else {
+   else {  //if cannot send data to vetercek.com
      fona.UDPclose();
      failedSend=failedSend+1;
-     delay(10000);
+     delay(5000);
 
-      if (failedSend > 2 and failedSend < 4) {
+      if (failedSend > 1 and failedSend < 2) {
       #ifdef DEBUG
-      
         DEBUGSERIAL.println(F("RstC3"));
       #endif
-      powerOn(); // Power on the module
-      wakeUp();
-      delay(3000);
       moduleSetup(); // Establishes first-time serial comm and prints IMEI
       }
       
-      else if (failedSend > 3 ) {
-        reset(5);
+      else if (failedSend > 1 ) {
+        GSMerror();
       }      
    } 
   
@@ -363,14 +338,8 @@ void AfterPost() {
 
 // send data to server
 void SendData() {
-//    noInterrupts();
-//    timergprs = 0;
-//    interrupts();
   BeforePostCalculations();
   PostData();
-//  noInterrupts();
-//  timergprs = 0;
-//  interrupts();
 }
 
 void checkIMEI() {

@@ -20,7 +20,6 @@ void UltrasonicAnemometer() { //measure wind speed
       sum+=2605;
       sum=-(sum % 256);    
       sprintf(hexbuffer,"%02X", sum);
-      //delay(10);
 
     if( check[0] ==hexbuffer[2] and check[1] ==hexbuffer[3] )  {  
           calDirection = atoi(dir) + vaneOffset;
@@ -34,26 +33,10 @@ void UltrasonicAnemometer() { //measure wind speed
         else if ( sonicError >= 10)  { reset(4);  }   // if more than x US errors
         else { 
           sonicError++; 
-//         #ifdef DEBUG 
-//         delay(70);
-//          DEBUGSERIAL.println("UZ error :"); 
-//          DEBUGSERIAL.println(dir); 
-//          DEBUGSERIAL.println(wind); 
-//          DEBUGSERIAL.println(hexbuffer); 
-//          DEBUGSERIAL.println(check); 
-//         delay(70);
-//         #endif 
-        }  // if more than x US errors                   
-    //}
 
-// #ifdef DEBUG
-//delay(50);
-//  DEBUGSERIAL.print("buffer: ");
-//  DEBUGSERIAL.println(ultrasonic.available());
-//delay(50);
-//#endif    
+        }  // if more than x US errors                   
+  
  ultrasonicFlush();   
- //delay(50);
 }
 
 
@@ -95,18 +78,14 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
       changeSleep=0;
       stopSleepChange=0;
      #ifdef DEBUG 
-     
       DEBUGSERIAL.println("sleepcok"); 
-      
       delay(10);
      #endif 
       }
     else { 
      stopSleepChange++;
      #ifdef DEBUG 
-     
       DEBUGSERIAL.println("sleepc err"); 
-      
      #endif       
       }
 }
@@ -232,12 +211,12 @@ if ((currentMillis2 - contactBounceTime2) > 500 ) { // debounce the switch conta
 }
 
 void GetAir() {
-  digitalWrite(pwrAir, HIGH);   // turn on power
-  delay(100);
+  //digitalWrite(pwrAir, HIGH);   // turn on power
+  //delay(500);
   sensor_air.requestTemperatures(); // Send the command to get temperatures
-  delay (750) ;
+  //delay (750) ;
   temp = sensor_air.getTempCByIndex(0);
-  digitalWrite(pwrAir, LOW);   // turn off power
+  //digitalWrite(pwrAir, LOW);   // turn off power
 
 #ifdef DEBUG
 
@@ -248,12 +227,12 @@ void GetAir() {
 
 
 void GetWater() {
-  digitalWrite(pwrWater, HIGH);   // turn on power
-  delay(300);
+  //digitalWrite(pwrWater, HIGH);   // turn on power
+  //delay(500);
   sensor_water.requestTemperatures(); // Send the command to get temperatures
-  delay (850) ;
+  //delay (850) ;
   water = sensor_water.getTempCByIndex(0);
-  digitalWrite(pwrWater, LOW);   // turn off power
+  //digitalWrite(pwrWater, LOW);   // turn off power
 
 #ifdef DEBUG
 
@@ -265,7 +244,17 @@ void GetWater() {
 
 #ifdef BMP
 void GetPressure() {
-  pressure=bmx280.readPressure() / 100.0F;
+  lps.requestOneShot();  // important to request new data before reading
+  delay(100);
+  abs_pressure = lps.readPressure();  // hPa
+  if (temp> -30) { 
+    pressure=(abs_pressure / pow(1.0 - 0.0065 * sea_level_m / (temp  + 273.15), 5.255)))*10;  // ICAO formula
+    }
+  else { 
+    temp=lps.readTemp();
+    pressure=(abs_pressure / pow(1.0 - 0.0065 * sea_level_m / (temp  + 273.15), 5.255))*10;  // ICAO formula
+    }
+  }
 }
 #endif
 
@@ -276,27 +265,27 @@ void BeforePostCalculations() {
   if (onOffTmp == 1) {
     GetAir();                               // air
     data[18]=99;
-    delay(100);
+    delay(20);
   }
   else if (onOffTmp == 2) {    
     if (enableRain==0){  
       GetWater();                             // water
     }          
     data[19]=99;
-    delay(100);
+    delay(20);
   }
   else if (onOffTmp > 2) {
     GetAir();                               // air
     if (enableRain==0){  
       GetWater();                             // water
     }          
-    delay(100);
+    delay(20);
   }
 
   #ifdef BMP
     if (enableBmp == 1) {
       GetPressure();
-      delay(100);
+      delay(20);
     }
   #endif 
 
