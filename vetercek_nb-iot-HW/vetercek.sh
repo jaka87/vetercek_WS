@@ -1,5 +1,12 @@
 #!/bin/sh
+var1=$1
 
+if [ "$var1" == "1" ]; then
+	/usr/share/arduino/arduino-builder -compile -logger=machine -hardware /usr/share/arduino/hardware -hardware /home/jaka87/.arduino15/packages -hardware /home/jaka87/Arduino/hardware -tools /usr/share/arduino/tools-builder -tools /home/jaka87/.arduino15/packages -libraries /home/jaka87/Arduino/libraries -fqbn=MiniCore:avr:328:bootloader=uart0,eeprom=keep,variant=modelPB,BOD=disabled,LTO=Os,clock=8MHz_external -ide-version=10819 -build-path /home/jaka87/Arduino/temp/ -warnings=none -build-cache /tmp/arduino_cache_754522 -prefs=build.warn_data_percentage=75 -prefs=runtime.tools.arduinoOTA.path=/home/jaka87/.arduino15/packages/arduino/tools/arduinoOTA/1.3.0 -prefs=runtime.tools.arduinoOTA-1.3.0.path=/home/jaka87/.arduino15/packages/arduino/tools/arduinoOTA/1.3.0 -prefs=runtime.tools.avrdude.path=/home/jaka87/.arduino15/packages/arduino/tools/avrdude/6.3.0-arduino18 -prefs=runtime.tools.avrdude-6.3.0-arduino18.path=/home/jaka87/.arduino15/packages/arduino/tools/avrdude/6.3.0-arduino18 -prefs=runtime.tools.avr-gcc.path=/home/jaka87/.arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7 -prefs=runtime.tools.avr-gcc-7.3.0-atmel3.6.1-arduino7.path=/home/jaka87/.arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7 -verbose /home/jaka87/Arduino/vetercek_nb-iot-HW/vetercek_nb-iot-HW.ino
+elif [ "$var1" == "3" ]; then
+	//bin/avrdude -C//etc/avrdude.conf -v -V -patmega328pb -cusbtiny -Uflash:w:/home/jaka87/Arduino/temp/vetercek_nb-iot-HW.ino.hex:i lfuse:w:0xDF:m efuse:w:0xFF:m hfuse:w:DA:m lock:w:0xFF:m 
+
+else
 printf "
 What to do
 1. compile PB\n2. compile P\n3. upload PB\n4. upload P\n"
@@ -98,3 +105,4 @@ fi
 
 read
 
+fi

@@ -64,10 +64,10 @@ void moduleSetup() {
 
   fona.setPreferredMode(GSMstate); 
   delay(100);
-//  if (GSMstate == 38) {
-//    fona.setPreferredLTEMode(2);   
-//    fona.setOperatingBand("NB-IOT",20); 
-//  }
+  if (GSMstate == 38) {
+    fona.setPreferredLTEMode(2);   
+    //fona.setOperatingBand("NB-IOT",20); 
+  }
   
   //fona.setOperatingBand("NB-IOT",20); // AT&T uses band 12
   fona.enableSleepMode(true);

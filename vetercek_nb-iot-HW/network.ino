@@ -37,8 +37,8 @@ void moduleSetup() {
   // When the module is on it should communicate right after pressing reset
   delay(3000);
   //fonaSS->begin(9600);
-  //fona.println("AT+IPR=9600"); // Set baud rate
-  fonaSS->begin(9600);
+  //fona.println(F("AT+IPR=9600"); // Set baud rate
+  fonaSS->begin(57600);
 
   while (! fona.begin(*fonaSS)) {
       #ifdef DEBUG
@@ -84,6 +84,7 @@ byte runState=0;
       if (millis() - startTime >= 8000 and netStatus() == 0 and runState==0)  {
        #ifdef DEBUG
         DEBUGSERIAL.println(F("RstC1"));
+        DEBUGSERIAL.println(netStatus());
        #endif
       moduleSetup();
       runState=1;
@@ -119,9 +120,9 @@ void PostData() {
 int8_t GPRSPDP=fona.GPRSPDP();  //check PDP
 int8_t GPRSstate=fona.GPRSstate();  //check GPRS
      #ifdef DEBUG
-      DEBUGSERIAL.print("PDP ");
+      DEBUGSERIAL.print(F("PDP "));
       DEBUGSERIAL.println(GPRSPDP);
-      DEBUGSERIAL.print("GPRS ");
+      DEBUGSERIAL.print(F("GPRS "));
       DEBUGSERIAL.println(GPRSstate);
      #endif
 if (GPRSstate !=1 or GPRSPDP !=1) {    // if no connection with network
@@ -131,7 +132,7 @@ if (GPRSstate !=1 or GPRSPDP !=1) {    // if no connection with network
   
 bool isConnected = fona.UDPconnected();  // UDP connection to server
      #ifdef DEBUG
-      DEBUGSERIAL.print("UDP ");
+      DEBUGSERIAL.print(F("UDP "));
       DEBUGSERIAL.println(isConnected);
      #endif
      
@@ -290,7 +291,7 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
 
 
      #ifdef DEBUG
-      DEBUGSERIAL.println("SEND");
+      DEBUGSERIAL.println(F("SEND"));
      #endif
   
   AfterPost(); 
@@ -343,6 +344,7 @@ void SendData() {
 }
 
 void checkIMEI() {
+  char IMEI[15]; // Use this for device ID
    if (EEPROM.read(0)==1) {  // read from EEPROM if data in it 
       for (int i = 0; i < 8; i++){
        data[i]=EEPROM.read(i+1);

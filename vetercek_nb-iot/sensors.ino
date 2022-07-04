@@ -67,11 +67,15 @@ int countBytes( const char * data )
 
 void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
   unsigned long startedWaiting = millis();   
-  char buffer[80];
-  int size = ultrasonic.readBytesUntil('\n', buffer, 80);
+  char buffer[90];
 
-  while (strchr(buffer, 'IdleSec') == NULL && millis() - startedWaiting <= 20000) {
+#ifdef DEBUG
+    DEBUGSERIAL.println("UZzzz");
+    delay(20);
+#endif
   int size = ultrasonic.readBytesUntil('\n', buffer, 80);
+  while (strstr (buffer,"IdleSec") == NULL && millis() - startedWaiting <= 20000) {
+    size = ultrasonic.readBytesUntil('\n', buffer, 80);
     if (sleepT==1) { ultrasonic.write(">PwrIdleCfg:1,1\r\n"); }
     else if (sleepT==2) { ultrasonic.write(">PwrIdleCfg:1,2\r\n"); }
     else if (sleepT==3) { ultrasonic.write(">PwrIdleCfg:1,3\r\n"); }
@@ -81,7 +85,7 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
     else if (sleepT==7) { ultrasonic.write(">PwrIdleCfg:1,7\r\n"); }
     else if (sleepT==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }  
     else if (sleepT==0) { ultrasonic.write(">PwrIdleCfg:0,1\r\n"); }
-      delay(200);
+      delay(300);
     }
 
     if(millis() - startedWaiting < 19900){ ultrasonic.write(">SaveConfig\r\n"); }
@@ -90,14 +94,15 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
       changeSleep=0;
       stopSleepChange=0;
      #ifdef DEBUG 
-      Serial.println("sleepcok"); 
+      DEBUGSERIAL.print("sleepcok "); 
+      DEBUGSERIAL.println(sleepT); 
       delay(10);
      #endif 
       }
     else { 
      stopSleepChange++;
      #ifdef DEBUG 
-      Serial.println("sleepc err"); 
+      DEBUGSERIAL.println("sleepc err"); 
      #endif       
       }
 }
@@ -253,13 +258,12 @@ void GetPressure() {
   delay(100);
   abs_pressure = lps.readPressure();  // hPa
   if (temp> -30) { 
-    pressure=(abs_pressure / pow(1.0 - 0.0065 * sea_level_m / (temp  + 273.15), 5.255)))*10;  // ICAO formula
+    pressure=(abs_pressure / pow(1.0 - 0.0065 * sea_level_m / (temp  + 273.15), 5.255))*10;  // ICAO formula
     }
   else { 
     temp=lps.readTemp();
     pressure=(abs_pressure / pow(1.0 - 0.0065 * sea_level_m / (temp  + 273.15), 5.255))*10;  // ICAO formula
     }
-  }
 }
 #endif
 

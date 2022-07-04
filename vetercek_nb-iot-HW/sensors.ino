@@ -1,14 +1,13 @@
 #ifdef UZ_Anemometer
 void UltrasonicAnemometer() { //measure wind speed
-    char buffer[80];
+    char buffer[70];
     char hexbuffer[5];
     int sum;
 
-#ifndef ATMEGA328P
     byte trow_away;
     trow_away=(ultrasonic.read());
-#endif
-    int size = ultrasonic.readBytesUntil('\r\n', buffer, 80); 
+    int size = ultrasonic.readBytesUntil('\r\n', buffer, 70); 
+
         
     char* first = strtok(buffer, ",/");
     char *dir = strtok(NULL, ",/");
@@ -30,10 +29,15 @@ void UltrasonicAnemometer() { //measure wind speed
           timergprs = 0;                                            
     }
 
-        else if ( sonicError >= 10)  { reset(4);  }   // if more than x US errors
+        else if ( sonicError >= 3)  { reset(4);  }   // if more than x US errors     
         else { 
           sonicError++; 
-
+         #ifdef DEBUG 
+         delay(70);
+          Serial.println(F("UZ error")); 
+          Serial.println(buffer); 
+         delay(70);
+         #endif         
         }  // if more than x US errors                   
   
  ultrasonicFlush();   
@@ -55,11 +59,20 @@ int countBytes( const char * data )
 
 void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
   unsigned long startedWaiting = millis();   
-  char buffer[80];
-  int size = ultrasonic.readBytesUntil('\n', buffer, 80);
+  char buffer[70];
 
-  while (strchr(buffer, 'IdleSec') == NULL && millis() - startedWaiting <= 20000) {
-  int size = ultrasonic.readBytesUntil('\n', buffer, 80);
+#ifdef DEBUG
+    DEBUGSERIAL.println(F("UZzzz"));
+    delay(20);
+#endif
+
+  byte trow_away;
+  trow_away=(ultrasonic.read());
+  int size = ultrasonic.readBytesUntil('\n', buffer, 70);
+
+  while (strstr (buffer,"IdleSec") == NULL && millis() - startedWaiting <= 20000) {
+    trow_away=(ultrasonic.read());
+    size = ultrasonic.readBytesUntil('\n', buffer, 70); 
     if (sleepT==1) { ultrasonic.write(">PwrIdleCfg:1,1\r\n"); }
     else if (sleepT==2) { ultrasonic.write(">PwrIdleCfg:1,2\r\n"); }
     else if (sleepT==3) { ultrasonic.write(">PwrIdleCfg:1,3\r\n"); }
@@ -69,7 +82,8 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
     else if (sleepT==7) { ultrasonic.write(">PwrIdleCfg:1,7\r\n"); }
     else if (sleepT==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }  
     else if (sleepT==0) { ultrasonic.write(">PwrIdleCfg:0,1\r\n"); }
-      delay(200);
+    delay(300);
+     
     }
 
     if(millis() - startedWaiting < 19900){ ultrasonic.write(">SaveConfig\r\n"); }
@@ -78,14 +92,15 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
       changeSleep=0;
       stopSleepChange=0;
      #ifdef DEBUG 
-      DEBUGSERIAL.println("sleepcok"); 
+      DEBUGSERIAL.print(F("sleepcok ")); 
+      DEBUGSERIAL.println(sleepT); 
       delay(10);
      #endif 
       }
     else { 
      stopSleepChange++;
      #ifdef DEBUG 
-      DEBUGSERIAL.println("sleepc err"); 
+      DEBUGSERIAL.println(F("sleepc err")); 
      #endif       
       }
 }
@@ -93,6 +108,7 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
 
 #ifndef UZ_Anemometer
   void Anemometer() { //measure wind speed
+    float actualWindDelay; //time between first and last measured anemometer rotation
     firstWindPulse = 1; // dont count first rotation
     contactBounceTime = millis();
     rotations = 0; // Set rotations count to 0 ready for calculations
@@ -150,13 +166,13 @@ void GetAvgWInd() {
 //ISR(USART1_RX_vect)
 //{
 //#ifdef DEBUG
-//  DEBUGSERIAL.println("interrupt");
+//  DEBUGSERIAL.println(F("interrupt");
 //#endif
 //}
 //ISR(USART1_START)
 //{
 //#ifdef DEBUG
-//  DEBUGSERIAL.println("interrupt 2");
+//  DEBUGSERIAL.println(F("interrupt 2");
 //#endif
 //}
 //#endif
@@ -212,7 +228,7 @@ if ((currentMillis2 - contactBounceTime2) > 500 ) { // debounce the switch conta
 
 void GetAir() {
   //digitalWrite(pwrAir, HIGH);   // turn on power
-  //delay(500);
+  //delay(20);
   sensor_air.requestTemperatures(); // Send the command to get temperatures
   //delay (750) ;
   temp = sensor_air.getTempCByIndex(0);
@@ -220,7 +236,7 @@ void GetAir() {
 
 #ifdef DEBUG
 
-  DEBUGSERIAL.print("tmp: ");
+  DEBUGSERIAL.print(F("tmp: "));
   DEBUGSERIAL.println(temp);
 #endif
 }
@@ -236,7 +252,7 @@ void GetWater() {
 
 #ifdef DEBUG
 
-    DEBUGSERIAL.print("water: ");
+    DEBUGSERIAL.print(F("water: "));
     DEBUGSERIAL.println(water);
 #endif
 }
@@ -244,17 +260,17 @@ void GetWater() {
 
 #ifdef BMP
 void GetPressure() {
+  float abs_pressure;  
   lps.requestOneShot();  // important to request new data before reading
   delay(100);
   abs_pressure = lps.readPressure();  // hPa
   if (temp> -30) { 
-    pressure=(abs_pressure / pow(1.0 - 0.0065 * sea_level_m / (temp  + 273.15), 5.255)))*10;  // ICAO formula
+    pressure=(abs_pressure / pow(1.0 - 0.0065 * sea_level_m / (temp  + 273.15), 5.255))*10;  // ICAO formula
     }
   else { 
     temp=lps.readTemp();
     pressure=(abs_pressure / pow(1.0 - 0.0065 * sea_level_m / (temp  + 273.15), 5.255))*10;  // ICAO formula
     }
-  }
 }
 #endif
 
@@ -310,4 +326,6 @@ void ultrasonicFlush(){
     char t = ultrasonic.read();
   }
 }
+
+  
 #endif 
