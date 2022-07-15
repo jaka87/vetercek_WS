@@ -15,7 +15,7 @@ bool netStatus() {
 
   void GSMerror() {   
   #ifdef DEBUG    
-    Serial.println(F("gsm error"));   
+    DEBUGSERIAL.println(F("gsm error"));   
   #endif    
   fona.enableGPRS(false);   
   //powerOn();    
@@ -127,7 +127,9 @@ int8_t GPRSstate=fona.GPRSstate();  //check GPRS
      #endif
 if (GPRSstate !=1 or GPRSPDP !=1) {    // if no connection with network
      fona.enableGPRS(false);
-      GSMerror();
+     delay(500);
+     fona.enableGPRS(true);
+      //GSMerror();
  } 
   
 bool isConnected = fona.UDPconnected();  // UDP connection to server

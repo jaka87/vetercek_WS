@@ -4,13 +4,22 @@ void UltrasonicAnemometer() { //measure wind speed
     char hexbuffer[5];
     int sum;
 
-    byte trow_away;
-    trow_away=(ultrasonic.read());
-    int size = ultrasonic.readBytesUntil('\r\n', buffer, 70); 
+    //byte trow_away;
+    //trow_away=(ultrasonic.read());
+    while (ultrasonic.read() != ',') {  }
+    int size = ultrasonic.readBytesUntil('\r\n', buffer, 70);
+    buffer[size]='\0'; 
 
+         #ifdef DEBUG 
+         delay(20);
+          DEBUGSERIAL.print(size); 
+          DEBUGSERIAL.print(F(" buff ")); 
+          DEBUGSERIAL.println(buffer); 
+         delay(70);
+         #endif 
         
-    char* first = strtok(buffer, ",/");
-    char *dir = strtok(NULL, ",/");
+    //char* first = strtok(buffer, ",/");
+    char *dir = strtok(buffer, ",/");
     char *wind = strtok(NULL, ",/");
     char* check = strtok(NULL, ",/");
 
@@ -34,8 +43,8 @@ void UltrasonicAnemometer() { //measure wind speed
           sonicError++; 
          #ifdef DEBUG 
          delay(70);
-          Serial.println(F("UZ error")); 
-          Serial.println(buffer); 
+          DEBUGSERIAL.println(F("UZ error")); 
+          DEBUGSERIAL.println(buffer); 
          delay(70);
          #endif         
         }  // if more than x US errors                   
@@ -68,11 +77,15 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
 
   byte trow_away;
   trow_away=(ultrasonic.read());
+  //while (ultrasonic.read() != ':') {  }
   int size = ultrasonic.readBytesUntil('\n', buffer, 70);
+  buffer[size]='\0'; 
 
   while (strstr (buffer,"IdleSec") == NULL && millis() - startedWaiting <= 20000) {
     trow_away=(ultrasonic.read());
+    //while (ultrasonic.read() != ':') {  }
     size = ultrasonic.readBytesUntil('\n', buffer, 70); 
+    buffer[size]='\0';   
     if (sleepT==1) { ultrasonic.write(">PwrIdleCfg:1,1\r\n"); }
     else if (sleepT==2) { ultrasonic.write(">PwrIdleCfg:1,2\r\n"); }
     else if (sleepT==3) { ultrasonic.write(">PwrIdleCfg:1,3\r\n"); }
