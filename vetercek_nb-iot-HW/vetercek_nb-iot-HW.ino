@@ -10,10 +10,18 @@
 #include "src/Fona/Adafruit_FONA.h"
 #include <EEPROM.h>
 #include "PinChangeInterrupt.h"
+int resetReason = MCUSR;
+
+//atmega328pb has different MCUSR than atmega328p!
+// 6 - power ON 
+// 2 - WTR
+// 4 - brown out
+// 2 - external
+// 1 - power loss
 
 //////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
 #define APN "iot.1nce.net"
-byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
+byte GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
@@ -75,8 +83,10 @@ HardwareSerial *fonaSS = &Serial;
 #endif
 #ifdef DEBUG
   #include <NeoSWSerial.h>
-  NeoSWSerial DEBUGSERIAL( 5, 7 );  
+  NeoSWSerial DEBUGSERIAL( 5, 7 ); 
 #endif
+
+
 
 Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
 
@@ -89,7 +99,6 @@ Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
 //////////////////////////////////    RATHER DON'T CHANGE
 unsigned int pwrAir = PWRAIR; // power for air sensor
 unsigned int pwrWater = PWRWATER; // power for water sensor
-byte resetReason = MCUSR;
 int windDelay = 2300; // time for each anemometer measurement in miliseconds
 byte onOffTmp = 1;   //on/off temperature measure
 volatile unsigned long timergprs = 0; // timer to check if GPRS is taking to long to complete
@@ -165,7 +174,11 @@ digitalWrite(PWRKEY, LOW);
   DEBUGSERIAL.begin(9600);
   delay(20);
   DEBUGSERIAL.println(F("S"));
+  DEBUGSERIAL.println(resetReason);
 #endif
+
+  //Serial1.begin(9600); //for sim7070 debug
+
 
   pinMode(13, OUTPUT);     // this part is used when you bypass bootloader to signal when board is starting...
   digitalWrite(13, HIGH);   // turn the LED on
@@ -216,35 +229,63 @@ moduleSetup(); // Establishes first-time serial comm and prints IMEI
 checkIMEI();
 connectGPRS();
 
+ 
+
+
+
+  if (resetReason==2 ) { //////////////////// reset reason detailed        
+    if (EEPROM.read(15)>0 ) {
+      if (EEPROM.read(15)==1 ) { 
+        resetReason=21; 
+      }
+      else if (EEPROM.read(15)==2 ) { 
+        resetReason=22; 
+      }  
+      else if (EEPROM.read(15)==3 ) { 
+        resetReason=23; 
+      }  
+      else if (EEPROM.read(15)==4 ) { 
+        resetReason=24; 
+      }      
+      else if (EEPROM.read(15)==5 ) { 
+        resetReason=25; 
+      }  
+    else if (EEPROM.read(15)==6 ) { 
+      resetReason=26; 
+    }       
+      else { 
+        resetReason=22; 
+      }   
+    EEPROM.write(15, 0); 
+    } 
+  } 
 
   if (resetReason==8 ) { //////////////////// reset reason detailed        
-    if (EEPROM.read(15)==1 ) { 
-      resetReason=81; 
-    }
-    else if (EEPROM.read(15)==2 ) { 
-      resetReason=82; 
-    }  
-    else if (EEPROM.read(15)==3 ) { 
-      resetReason=83; 
-    }  
-    else if (EEPROM.read(15)==4 ) { 
-      resetReason=84; 
-    }      
-    else if (EEPROM.read(15)==5 ) { 
-      resetReason=85; 
-    }  
-    else { 
-      resetReason=88; 
-    }   
-  EEPROM.write(15, 0); 
-  }  
-
-
-#ifdef UZ_Anemometer
-    if (resetReason==81 ) { 
-      ultrasonic.write(">UartPro:0\r\n"); //set active ascii
-    }
-#endif 
+    if (EEPROM.read(15)>0 ) {
+      if (EEPROM.read(15)==1 ) { 
+        resetReason=81; 
+      }
+      else if (EEPROM.read(15)==2 ) { 
+        resetReason=82; 
+      }  
+      else if (EEPROM.read(15)==3 ) { 
+        resetReason=83; 
+      }  
+      else if (EEPROM.read(15)==4 ) { 
+        resetReason=84; 
+      }      
+      else if (EEPROM.read(15)==5 ) { 
+        resetReason=85; 
+      }  
+    else if (EEPROM.read(15)==6 ) { 
+      resetReason=86; 
+    } 
+      else { 
+        resetReason=88; 
+      }   
+    EEPROM.write(15, 0); 
+    } 
+  } 
 
 #ifdef UZ_Anemometer
   SendData();
@@ -260,7 +301,7 @@ void loop() {
   //delay(25);
   UZ_wake(startedWaiting);
 
-  if ( millis() - startedWaiting >= 5000 && sonicError < 3)  { // if US error 
+  if ( millis() - startedWaiting >= 10000 && sonicError < 10)  { // if US error 
     sonicError++;
     #ifdef DEBUG
     delay(50);
@@ -268,7 +309,7 @@ void loop() {
     delay(50);
     #endif 
      }
-  else if ( millis() - startedWaiting >= 10000 && sonicError >= 3)  { // if more than X US errors
+  else if ( millis() - startedWaiting >= 10000 && sonicError >= 10)  { // if more than X US errors
         reset(1);
      }
   else { 
@@ -326,8 +367,8 @@ void loop() {
   delay(50);                       // wait
   digitalWrite(13, LOW);    // turn the LED
  
-
 // check if is time to send data online  
+if ( (wind_speed >= (cutoffWind*10) and measureCount >= (whenSend+20) ) or (measureCount >= ((whenSend*2)+20)) )  {  reset(6);  } // reset if more than 40 tries
 if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset buttion is pressed and 3 measurements are made
   or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend ) // if wind avg exeeds cut off value and enough measurements are  made
   or (measureCount >= (whenSend*2))

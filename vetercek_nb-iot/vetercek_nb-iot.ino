@@ -20,7 +20,7 @@ const char* broker = "vetercek.com";
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
 #define PCBVER5 // 4,5,6
-#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 ///////////////////////////////////////////////////////////////////////////////////
 
@@ -134,7 +134,7 @@ volatile unsigned long updateBattery = 0;
 
 int rainCount=-1; // count rain bucket tilts
 byte SolarCurrent; // calculate solar cell current 
-String serialResponse = "";
+//String serialResponse = "";
 byte firstWindPulse; // ignore 1st anemometer rotation since it didn't make full circle
 int windSpeed; // speed
 long windAvr = 0; //sum of all wind speed between update
@@ -258,6 +258,9 @@ digitalWrite(PWRKEY, LOW);
     else if (EEPROM.read(15)==5 ) { 
       resetReason=85; 
     }  
+    else if (EEPROM.read(15)==6 ) { 
+      resetReason=86; 
+    } 
     else { 
       resetReason=88; 
     }   
@@ -284,8 +287,8 @@ void loop() {
 #ifdef UZ_Anemometer
  //if ( UltrasonicAnemo==1 ) {    // if ultrasonic anemometer pluged in at boot
   unsigned long startedWaiting = millis();
-  //delay(15);
-  delay(25);
+  delay(15);
+  //delay(25);
   UZ_wake(startedWaiting);
 
   if ( millis() - startedWaiting >= 10000 && sonicError < 10)  { // if US error 
@@ -359,6 +362,7 @@ void loop() {
  
 
 // check if is time to send data online  
+if ( (wind_speed >= (cutoffWind*10) and measureCount >= (whenSend+20) ) or (measureCount >= ((whenSend*2)+20)) )  {  reset(6);  } // reset if more than 40 tries
 if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset buttion is pressed and 3 measurements are made
   or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend ) // if wind avg exeeds cut off value and enough measurements are  made
   or (measureCount >= (whenSend*2))

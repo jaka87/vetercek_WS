@@ -25,7 +25,11 @@ bool netStatus() {
   digitalWrite(RESET, HIGH);    
   delay(5000);    
   moduleSetup();          
-  connectGPRS();    
+  connectGPRS();
+
+       #ifdef DEBUG
+        DEBUGSERIAL.print(F("vetercek"));
+     #endif   
   fona.UDPconnect("vetercek.com",6789);   
       
 }
@@ -37,7 +41,7 @@ void moduleSetup() {
   // When the module is on it should communicate right after pressing reset
   delay(3000);
   //fonaSS->begin(9600);
-  //fona.println(F("AT+IPR=9600"); // Set baud rate
+  //fona.println(F("AT+IPR=57600"); // Set baud rate
   fonaSS->begin(57600);
 
   while (! fona.begin(*fonaSS)) {
@@ -139,6 +143,9 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
      #endif
      
     if (isConnected ==0) {
+     #ifdef DEBUG
+        DEBUGSERIAL.print(F("vetercek"));
+     #endif
      fona.UDPconnect("vetercek.com",6789);
      }     
 

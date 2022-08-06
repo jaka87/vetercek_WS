@@ -51,7 +51,7 @@
 #if defined(ARDUINO_ARCH_SAMD)
   #define DebugStream   SERIAL_PORT_USBVIRTUAL // Needed for SAMD21
 #else
-  #define DebugStream		Serial
+  #define DebugStream		Serial1
 #endif
 
 #ifdef ADAFRUIT_FONA_DEBUG

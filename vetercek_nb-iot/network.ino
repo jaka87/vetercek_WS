@@ -9,26 +9,23 @@ bool netStatus() {
   #endif
 
   return n;
-
 }
 
 
-
-void GSMerror() {
-  #ifdef DEBUG
-    Serial.println(F("gsm error"));
-  #endif
-  fona.enableGPRS(false);
-  //powerOn(); 
-  //wakeUp();
-  digitalWrite(RESET, LOW); 
-  delay(350);
-  digitalWrite(RESET, HIGH); 
-  delay(5000);
-  moduleSetup();      
-  connectGPRS();
-  fona.UDPconnect("vetercek.com",6789);
-  
+  void GSMerror() {   
+  #ifdef DEBUG    
+    Serial.println(F("gsm error"));   
+  #endif    
+  fona.enableGPRS(false);   
+  //powerOn();    
+  //wakeUp();   
+  digitalWrite(RESET, LOW);     
+  delay(350);   
+  digitalWrite(RESET, HIGH);    
+  delay(5000);    
+  moduleSetup();          
+  connectGPRS();    
+  fona.UDPconnect("vetercek.com",6789);   
 }
 
 
@@ -91,6 +88,7 @@ byte runState=0;
       if (millis() - startTime >= 8000 and netStatus() == 0 and runState==0)  {
        #ifdef DEBUG
         Serial.println(F("RstC1"));
+        Serial.println(netStatus());
        #endif
       moduleSetup();
       runState=1;
@@ -122,28 +120,22 @@ byte runState=0;
 
 
 void PostData() {    
-if (fona.checkAT()) {  // wait untill modem is active
-     #ifdef DEBUG
-      Serial.println("Modem");
-     #endif  
-}
-
 
 int8_t GPRSPDP=fona.GPRSPDP();  //check PDP
 int8_t GPRSstate=fona.GPRSstate();  //check GPRS
      #ifdef DEBUG
-      Serial.print("PDP ");
+      Serial.print(F("PDP "));
       Serial.println(GPRSPDP);
-      Serial.print("GPRS ");
+      Serial.print(F("GPRS "));
       Serial.println(GPRSstate);
      #endif
-if (GPRSstate !=1 or GPRSPDP !=1) {
-  GSMerror();
+if (GPRSstate !=1 or GPRSPDP !=1) {    // if no connection with network
+     GSMerror();
  } 
   
 bool isConnected = fona.UDPconnected();  // UDP connection to server
      #ifdef DEBUG
-      Serial.print("UDP ");
+      Serial.print(F("UDP "));
       Serial.println(isConnected);
      #endif
      
@@ -154,7 +146,6 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
     else if (isConnected > 1) {
      GSMerror();
      } 
-
 
      
   if (millis() - updateBattery >= 130000 or updateBattery == 0) {  // send data about battery and signal every 8+ minutes

@@ -38,8 +38,9 @@ void UltrasonicAnemometer() { //measure wind speed
           timergprs = 0;                                            
     }
 
-        else if ( sonicError >= 3)  { reset(4);  }   // if more than x US errors     
+        else if ( sonicError >= 10)  { reset(4);  }   // if more than x US errors     
         else { 
+          delay(150);
           sonicError++; 
          #ifdef DEBUG 
          delay(70);
@@ -240,12 +241,12 @@ if ((currentMillis2 - contactBounceTime2) > 500 ) { // debounce the switch conta
 }
 
 void GetAir() {
-  //digitalWrite(pwrAir, HIGH);   // turn on power
-  //delay(20);
+  digitalWrite(pwrAir, HIGH);   // turn on power
+  delay(50);
   sensor_air.requestTemperatures(); // Send the command to get temperatures
-  //delay (750) ;
+  delay (750) ;
   temp = sensor_air.getTempCByIndex(0);
-  //digitalWrite(pwrAir, LOW);   // turn off power
+  digitalWrite(pwrAir, LOW);   // turn off power
 
 #ifdef DEBUG
 
@@ -256,12 +257,12 @@ void GetAir() {
 
 
 void GetWater() {
-  //digitalWrite(pwrWater, HIGH);   // turn on power
-  //delay(500);
+  digitalWrite(pwrWater, HIGH);   // turn on power
+  delay(50);
   sensor_water.requestTemperatures(); // Send the command to get temperatures
-  //delay (850) ;
+  delay (850) ;
   water = sensor_water.getTempCByIndex(0);
-  //digitalWrite(pwrWater, LOW);   // turn off power
+  digitalWrite(pwrWater, LOW);   // turn off power
 
 #ifdef DEBUG
 

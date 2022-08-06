@@ -1,12 +1,25 @@
 #ifdef UZ_Anemometer
 void UltrasonicAnemometer() { //measure wind speed
-    char buffer[80];
+    char buffer[70];
     char hexbuffer[5];
     int sum;
-    int size = ultrasonic.readBytesUntil('\r\n', buffer, 80); 
+
+    //byte trow_away;
+    //trow_away=(ultrasonic.read());
+    while (ultrasonic.read() != ',') {  }
+    int size = ultrasonic.readBytesUntil('\r\n', buffer, 70);
+    buffer[size]='\0'; 
+
+         #ifdef DEBUG 
+         delay(20);
+          Serial.print(size); 
+          Serial.print(F(" buff ")); 
+          Serial.println(buffer); 
+         delay(70);
+         #endif 
         
-    char* first = strtok(buffer, ",/");
-    char *dir = strtok(NULL, ",/");
+    //char* first = strtok(buffer, ",/");
+    char *dir = strtok(buffer, ",/");
     char *wind = strtok(NULL, ",/");
     char* check = strtok(NULL, ",/");
 
@@ -15,7 +28,6 @@ void UltrasonicAnemometer() { //measure wind speed
       sum+=2605;
       sum=-(sum % 256);    
       sprintf(hexbuffer,"%02X", sum);
-      //delay(10);
 
     if( check[0] ==hexbuffer[2] and check[1] ==hexbuffer[3] )  {  
           calDirection = atoi(dir) + vaneOffset;
@@ -26,29 +38,18 @@ void UltrasonicAnemometer() { //measure wind speed
           timergprs = 0;                                            
     }
 
-        else if ( sonicError >= 10)  { reset(4);  }   // if more than x US errors
+        else if ( sonicError >= 3)  { reset(4);  }   // if more than x US errors     
         else { 
           sonicError++; 
-//         #ifdef DEBUG 
-//         delay(70);
-//          Serial.println("UZ error :"); 
-//          Serial.println(dir); 
-//          Serial.println(wind); 
-//          Serial.println(hexbuffer); 
-//          Serial.println(check); 
-//         delay(70);
-//         #endif 
+         #ifdef DEBUG 
+         delay(70);
+          Serial.println(F("UZ error")); 
+          Serial.println(buffer); 
+         delay(70);
+         #endif         
         }  // if more than x US errors                   
-    //}
-
-// #ifdef DEBUG
-//delay(50);
-//  Serial.print("buffer: ");
-//  Serial.println(ultrasonic.available());
-//delay(50);
-//#endif    
+  
  ultrasonicFlush();   
- //delay(50);
 }
 
 
@@ -67,15 +68,24 @@ int countBytes( const char * data )
 
 void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
   unsigned long startedWaiting = millis();   
-  char buffer[90];
+  char buffer[70];
 
 #ifdef DEBUG
-    DEBUGSERIAL.println("UZzzz");
+    Serial.println(F("UZzzz"));
     delay(20);
 #endif
-  int size = ultrasonic.readBytesUntil('\n', buffer, 80);
+
+  //byte trow_away;
+  //trow_away=(ultrasonic.read());
+  //while (ultrasonic.read() != ':') {  }
+  int size = ultrasonic.readBytesUntil('\n', buffer, 70);
+  buffer[size]='\0'; 
+
   while (strstr (buffer,"IdleSec") == NULL && millis() - startedWaiting <= 20000) {
-    size = ultrasonic.readBytesUntil('\n', buffer, 80);
+    trow_away=(ultrasonic.read());
+    //while (ultrasonic.read() != ':') {  }
+    size = ultrasonic.readBytesUntil('\n', buffer, 70); 
+    buffer[size]='\0';   
     if (sleepT==1) { ultrasonic.write(">PwrIdleCfg:1,1\r\n"); }
     else if (sleepT==2) { ultrasonic.write(">PwrIdleCfg:1,2\r\n"); }
     else if (sleepT==3) { ultrasonic.write(">PwrIdleCfg:1,3\r\n"); }
@@ -85,7 +95,8 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
     else if (sleepT==7) { ultrasonic.write(">PwrIdleCfg:1,7\r\n"); }
     else if (sleepT==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }  
     else if (sleepT==0) { ultrasonic.write(">PwrIdleCfg:0,1\r\n"); }
-      delay(300);
+    delay(300);
+     
     }
 
     if(millis() - startedWaiting < 19900){ ultrasonic.write(">SaveConfig\r\n"); }
@@ -94,15 +105,15 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
       changeSleep=0;
       stopSleepChange=0;
      #ifdef DEBUG 
-      DEBUGSERIAL.print("sleepcok "); 
-      DEBUGSERIAL.println(sleepT); 
+      Serial.print(F("sleepcok ")); 
+      Serial.println(sleepT); 
       delay(10);
      #endif 
       }
     else { 
      stopSleepChange++;
      #ifdef DEBUG 
-      DEBUGSERIAL.println("sleepc err"); 
+      Serial.println(F("sleepc err")); 
      #endif       
       }
 }
