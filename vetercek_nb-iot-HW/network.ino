@@ -28,7 +28,7 @@ bool netStatus() {
   connectGPRS();
 
        #ifdef DEBUG
-        DEBUGSERIAL.print(F("vetercek"));
+        DEBUGSERIAL.println(F("vetercek"));
      #endif   
   fona.UDPconnect("vetercek.com",6789);   
       
@@ -81,6 +81,12 @@ void moduleSetup() {
 
 
 void connectGPRS() {
+
+int8_t info=fona.getNetworkInfo();  // check if connected to network, else try 2G
+if ((info <1 or info > 10) and GSMstate==2)  {
+  fona.setPreferredMode(13);   
+}
+
 unsigned long startTime=millis();  
 byte runState=0;
 
@@ -132,8 +138,8 @@ int8_t GPRSstate=fona.GPRSstate();  //check GPRS
 if (GPRSstate !=1 or GPRSPDP !=1) {    // if no connection with network
      fona.enableGPRS(false);
      delay(500);
-     fona.enableGPRS(true);
-      //GSMerror();
+     //fona.enableGPRS(true);
+     connectGPRS();
  } 
   
 bool isConnected = fona.UDPconnected();  // UDP connection to server
@@ -144,7 +150,7 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
      
     if (isConnected ==0) {
      #ifdef DEBUG
-        DEBUGSERIAL.print(F("vetercek"));
+        DEBUGSERIAL.println(F("vetercek"));
      #endif
      fona.UDPconnect("vetercek.com",6789);
      }     
@@ -327,6 +333,7 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
 
 
 void AfterPost() {
+    //fona.UDPclose();
     measureCount = 0;
     windAvr = 0;
     windGustAvg = 0;

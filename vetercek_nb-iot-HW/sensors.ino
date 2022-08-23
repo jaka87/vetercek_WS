@@ -241,15 +241,20 @@ if ((currentMillis2 - contactBounceTime2) > 500 ) { // debounce the switch conta
 }
 
 void GetAir() {
+#ifdef TMP_POWER_ONOFF
   digitalWrite(pwrAir, HIGH);   // turn on power
   delay(50);
+#endif  
   sensor_air.requestTemperatures(); // Send the command to get temperatures
+#ifdef TMP_POWER_ONOFF
   delay (750) ;
+#endif    
   temp = sensor_air.getTempCByIndex(0);
+#ifdef TMP_POWER_ONOFF
   digitalWrite(pwrAir, LOW);   // turn off power
+#endif
 
 #ifdef DEBUG
-
   DEBUGSERIAL.print(F("tmp: "));
   DEBUGSERIAL.println(temp);
 #endif
@@ -257,15 +262,20 @@ void GetAir() {
 
 
 void GetWater() {
+#ifdef TMP_POWER_ONOFF
   digitalWrite(pwrWater, HIGH);   // turn on power
   delay(50);
+#endif  
   sensor_water.requestTemperatures(); // Send the command to get temperatures
+#ifdef TMP_POWER_ONOFF
   delay (850) ;
+#endif    
   water = sensor_water.getTempCByIndex(0);
+#ifdef TMP_POWER_ONOFF
   digitalWrite(pwrWater, LOW);   // turn off power
+#endif
 
 #ifdef DEBUG
-
     DEBUGSERIAL.print(F("water: "));
     DEBUGSERIAL.println(water);
 #endif
@@ -292,6 +302,8 @@ void GetPressure() {
 void BeforePostCalculations() {
   DominantDirection();                          // wind direction
   GetAvgWInd();                                 // avg wind
+  
+  
   if (onOffTmp == 1) {
     GetAir();                               // air
     data[18]=99;

@@ -21,7 +21,7 @@ int resetReason = MCUSR;
 
 //////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
 #define APN "iot.1nce.net"
-byte GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
+byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
@@ -31,6 +31,7 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 //#define DEBUG // comment out if you want to turn off debugging
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
+#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
 ///////////////////////////////////////////////////////////////////////////////////
 
 
@@ -210,10 +211,8 @@ digitalWrite(PWRKEY, LOW);
     ultrasonicFlush();
   }
    #ifdef DEBUG
-   
     DEBUGSERIAL.println(F("UZ"));
-    
-  delay(50);
+    delay(50);
   #endif   
 #endif
 
@@ -384,8 +383,13 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
      
       digitalWrite(DTR, LOW);  //wake up  
       delay(100);
+      fona.flush();
+      fona.flushInput();
+      
       //delay(1000);
-        SendData();
+        bool checkAT = fona.checkAT();
+        if (fona.checkAT()) {SendData();}
+        else {moduleSetup(); SendData();}
       digitalWrite(DTR, HIGH);  //sleep  
 
       #ifdef UZ_Anemometer
