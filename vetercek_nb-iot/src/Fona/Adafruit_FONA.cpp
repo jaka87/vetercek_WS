@@ -461,9 +461,13 @@ boolean Adafruit_FONA::enableGPRS(boolean onoff) {
 
  
 
-void Adafruit_FONA::getNetworkInfo(void) {
-  getReply(F("AT+CPSI?"));
-  getReply(F("AT+COPS?"));
+int8_t Adafruit_FONA::getNetworkInfo(void) {
+  uint16_t state;
+  sendParseReply(F("AT+COPS?"), F("COPS: "), &state, ',', 3);
+  DEBUG_PRINT("cops: "); DEBUG_PRINTLN(state); // Print out server reply
+  return state;
+  //getReply(F("AT+COPS?"));
+  //DEBUG_PRINT("cops: "); DEBUG_PRINTLN(replybuffer); // Print out server reply
 }
 
 int8_t Adafruit_FONA::GPRSstate(void) {
@@ -498,66 +502,6 @@ void Adafruit_FONA::setNetworkSettings(FONAFlashStringPtr apn,
 
   if (_type >= SIM7000A) sendCheckReplyQuoted(F("AT+CGDCONT=1,\"IP\","), apn, ok_reply, 10000);
 }
-
-
-
-
-
-boolean Adafruit_FONA::postData(const char *URL, char *response) {
-  // NOTE: Need to open socket/enable GPRS before using this function
-  // char auxStr[64];
-
-  // Make sure HTTP service is terminated so initialization will run
-  sendCheckReply(F("AT+HTTPTERM"), ok_reply, 10000);
-
-  // Initialize HTTP service
-  if (! sendCheckReply(F("AT+HTTPINIT"), ok_reply, 10000))
-    return false;
-
-  // Set HTTP parameters
-  if (! sendCheckReply(F("AT+HTTPPARA=\"CID\",1"), ok_reply, 10000))
-    return false;
-
-  // Specify URL
-  char urlBuff[strlen(URL) + 22];
-
-  sprintf(urlBuff, "AT+HTTPPARA=\"URL\",\"%s\"", URL);
-
-  if (! sendCheckReply(urlBuff, ok_reply, 10000))
-    return false;
-
-    if (! sendCheckReply(F("AT+HTTPACTION=0"), ok_reply, 10000))
-      return false;
-
-
-  // Parse response status and size
-  uint16_t status, datalen;
-  readline(10000);
-  if (! parseReply(F("+HTTPACTION:"), &status, ',', 1))
-    return false;
-  if (! parseReply(F("+HTTPACTION:"), &datalen, ',', 2))
-    return false;
-
-  DEBUG_PRINT("HTTP s: "); DEBUG_PRINTLN(status);
-  DEBUG_PRINT("Dlength: "); DEBUG_PRINTLN(datalen);
-
-  if (status != 200) return false;
-
-  getReply(F("AT+HTTPREAD"));
-
-  readline(10000);
-  DEBUG_PRINT("\t<--- "); DEBUG_PRINTLN(replybuffer); // Print out server reply
-
-   strcpy(response, replybuffer);
-
-  // Terminate HTTP service
-  sendCheckReply(F("AT+HTTPTERM"), ok_reply, 10000);
-
-  return true;
-}
-
-
-
 
 
 
@@ -645,7 +589,9 @@ boolean Adafruit_FONA::UDPsend(unsigned char *packet, uint8_t len, byte response
   mySerial->write(packet, len);
 
 uint8_t sendD = readline(5000); // return SEND OK
-uint8_t receveD = readline2(4000,charr); // RETURN DATA
+  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
+if (strcmp(replybuffer, "SEND OK") != 0) { return false;}
+uint8_t receveD = readline2(5000,charr); // RETURN DATA
 
 
 	DEBUG_PRINTLN("response :");   
@@ -684,154 +630,6 @@ uint16_t Adafruit_FONA::UDPavailable(void) {
 
 
 
-
-/********* HTTP LOW LEVEL FUNCTIONS  ************************************/
-
-boolean Adafruit_FONA::HTTP_init() {
-  return sendCheckReply(F("AT+HTTPINIT"), ok_reply);
-}
-
-boolean Adafruit_FONA::HTTP_term() {
-  return sendCheckReply(F("AT+HTTPTERM"), ok_reply);
-}
-
-void Adafruit_FONA::HTTP_para_start(FONAFlashStringPtr parameter,
-                                    boolean quoted) {
-  flushInput();
-
-
-  DEBUG_PRINT(F("\t---> "));
-  DEBUG_PRINT(F("AT+HTTPPARA=\""));
-  DEBUG_PRINT(parameter);
-  DEBUG_PRINTLN('"');
-
-
-  mySerial->print(F("AT+HTTPPARA=\""));
-  mySerial->print(parameter);
-  if (quoted)
-    mySerial->print(F("\",\""));
-  else
-    mySerial->print(F("\","));
-}
-
-boolean Adafruit_FONA::HTTP_para_end(boolean quoted) {
-  if (quoted)
-    mySerial->println('"');
-  else
-    mySerial->println();
-
-  return expectReply(ok_reply);
-}
-
-boolean Adafruit_FONA::HTTP_para(FONAFlashStringPtr parameter,
-                                 const char *value) {
-  HTTP_para_start(parameter, true);
-  mySerial->print(value);
-  return HTTP_para_end(true);
-}
-
-boolean Adafruit_FONA::HTTP_para(FONAFlashStringPtr parameter,
-                                 FONAFlashStringPtr value) {
-  HTTP_para_start(parameter, true);
-  mySerial->print(value);
-  return HTTP_para_end(true);
-}
-
-boolean Adafruit_FONA::HTTP_para(FONAFlashStringPtr parameter,
-                                 int32_t value) {
-  HTTP_para_start(parameter, false);
-  mySerial->print(value);
-  return HTTP_para_end(false);
-}
-
-boolean Adafruit_FONA::HTTP_data(uint32_t size, uint32_t maxTime) {
-  flushInput();
-
-
-  DEBUG_PRINT(F("\t---> "));
-  DEBUG_PRINT(F("AT+HTTPDATA="));
-  DEBUG_PRINT(size);
-  DEBUG_PRINT(',');
-  DEBUG_PRINTLN(maxTime);
-
-
-  mySerial->print(F("AT+HTTPDATA="));
-  mySerial->print(size);
-  mySerial->print(",");
-  mySerial->println(maxTime);
-
-  return expectReply(F("DOWNLOAD"));
-}
-
-boolean Adafruit_FONA::HTTP_action(uint8_t method, uint16_t *status,
-                                   uint16_t *datalen, int32_t timeout) {
-  // Send request.
-  if (! sendCheckReply(F("AT+HTTPACTION="), method, ok_reply))
-    return false;
-
-  // Parse response status and size.
-  readline(timeout);
-  if (! parseReply(F("+HTTPACTION:"), status, ',', 1))
-    return false;
-  if (! parseReply(F("+HTTPACTION:"), datalen, ',', 2))
-    return false;
-
-  return true;
-}
-
-boolean Adafruit_FONA::HTTP_readall(uint16_t *datalen) {
-  getReply(F("AT+HTTPREAD"));
-  if (! parseReply(F("+HTTPREAD:"), datalen, ',', 0))
-    return false;
-
-  return true;
-}
-
-boolean Adafruit_FONA::HTTP_ssl(boolean onoff) {
-  return sendCheckReply(F("AT+HTTPSSL="), onoff ? 1 : 0, ok_reply);
-}
-
-/********* HTTP HIGH LEVEL FUNCTIONS ***************************/
-
-
-
-
-
-void Adafruit_FONA::setUserAgent(FONAFlashStringPtr useragent) {
-  this->useragent = useragent;
-}
-
-void Adafruit_FONA::setHTTPSRedirect(boolean onoff) {
-  httpsredirect = onoff;
-}
-
-/********* HTTP HELPERS ****************************************/
-
-boolean Adafruit_FONA::HTTP_setup(char *url) {
-  // Handle any pending
-  HTTP_term();
-
-  // Initialize and set parameters
-  if (! HTTP_init())
-    return false;
-  if (! HTTP_para(F("CID"), 1))
-    return false;
-  if (! HTTP_para(F("UA"), useragent))
-    return false;
-  if (! HTTP_para(F("URL"), url))
-    return false;
-
-  // HTTPS redirect
-  if (httpsredirect) {
-    if (! HTTP_para(F("REDIR"), 1))
-      return false;
-
-    if (! HTTP_ssl(true))
-      return false;
-  }
-
-  return true;
-}
 
 /********* HELPERS *********************************************/
 

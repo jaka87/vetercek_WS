@@ -34,19 +34,8 @@
 #define SIM7000E 10
 #define SIM7000G 11
 
-
-// Set the preferred SMS storage.
-//   Use "SM" for storage on the SIM.
-//   Use "ME" for internal storage on the FONA chip
-
-
-
 #define FONA_DEFAULT_TIMEOUT_MS 500
 #define FONA_NO_RST_PIN 99
-
-#define FONA_HTTP_GET   0
-#define FONA_HTTP_POST  1
-#define FONA_HTTP_HEAD  2
 
 
 class Adafruit_FONA : public FONAStreamType {
@@ -82,50 +71,19 @@ class Adafruit_FONA : public FONAStreamType {
   uint8_t getIMEI(char *imei);
 
   void setNetworkSettings(FONAFlashStringPtr apn, FONAFlashStringPtr username=0, FONAFlashStringPtr password=0);
-  boolean postData(const char *request_type, const char *URL, const char *body = "", const char *token = "", uint32_t bodylen = 0);
-  boolean postData(const char *server, uint16_t port, const char *connType, const char *URL, const char *body = "");
-  void getNetworkInfo(void);
-  
-  boolean postData(const char *URL, char *response);
-
-
+  int8_t getNetworkInfo(void);
   boolean enableGPRS(boolean onoff);
   int8_t GPRSstate(void);
   int8_t GPRSPDP(void);
+  void flushInput();
 
 
-  // TCP raw connections
+  // UDP raw connections
   boolean UDPconnect(char *server, uint16_t port);
   boolean UDPclose(void);
   uint8_t UDPconnected(void);
   boolean UDPsend(unsigned char *packet, uint8_t len, byte response[10],uint8_t charr);
   uint16_t UDPavailable(void);
-
-
-
-
-  // HTTP low level interface (maps directly to SIM800 commands).
-  boolean HTTP_init();
-  boolean HTTP_term();
-  void HTTP_para_start(FONAFlashStringPtr parameter, boolean quoted = true);
-  boolean HTTP_para_end(boolean quoted = true);
-  boolean HTTP_para(FONAFlashStringPtr parameter, const char *value);
-  boolean HTTP_para(FONAFlashStringPtr parameter, FONAFlashStringPtr value);
-  boolean HTTP_para(FONAFlashStringPtr parameter, int32_t value);
-  boolean HTTP_data(uint32_t size, uint32_t maxTime=10000);
-  boolean HTTP_action(uint8_t method, uint16_t *status, uint16_t *datalen, int32_t timeout = 10000);
-  boolean HTTP_readall(uint16_t *datalen);
-  boolean HTTP_ssl(boolean onoff);
-
-  // HTTP high level interface (easier to use, less flexible).
-  void setUserAgent(FONAFlashStringPtr useragent);
-
-  // HTTPS
-  void setHTTPSRedirect(boolean onoff);
-
-  // PWM (buzzer)
-  boolean setPWM(uint16_t period, uint8_t duty = 50);
-
 
   // Helper functions to verify responses.
   boolean expectReply(FONAFlashStringPtr reply, uint16_t timeout = 10000);
@@ -150,7 +108,6 @@ class Adafruit_FONA : public FONAStreamType {
   // HTTP helpers
   boolean HTTP_setup(char *url);
 
-  void flushInput();
   uint16_t readRaw(uint16_t b);
   uint8_t readline(uint16_t timeout = FONA_DEFAULT_TIMEOUT_MS, boolean multiline = false);
   uint8_t readline2(uint16_t timeout, uint8_t characters);
@@ -186,8 +143,6 @@ class Adafruit_FONA : public FONAStreamType {
          FONAFlashStringPtr toreply,
          float *f, char divider = ',', uint8_t index=0);
 
-  static boolean _incomingCall;
-  static void onIncomingCall();
 
   FONAStreamType *mySerial;
 };
