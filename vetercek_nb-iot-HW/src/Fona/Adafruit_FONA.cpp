@@ -224,36 +224,8 @@ boolean Adafruit_FONA::set_eDRX(uint8_t mode, uint8_t connType, char * eDRX_val)
   return sendCheckReply(auxStr, ok_reply);
 }
 
-// NOTE: Network must support PSM and modem needs to restart before it takes effect
-boolean Adafruit_FONA::enablePSM(bool onoff) {
-  return sendCheckReply(F("AT+CPSMS="), onoff, ok_reply);
-}
-// Set PSM with custom TAU and active time
-// For both TAU and Active time, leftmost 3 bits represent the multiplier and rightmost 5 bits represent the value in bits.
 
-// For TAU, left 3 bits:
-// 000 10min
-// 001 1hr
-// 010 10hr
-// 011 2s
-// 100 30s
-// 101 1min
-// For Active time, left 3 bits:
-// 000 2s
-// 001 1min
-// 010 6min
-// 111 disabled
 
-// Note: Network decides the final value of the TAU and active time. 
-boolean Adafruit_FONA::enablePSM(bool onoff, char * TAU_val, char * activeTime_val) { // AT+CPSMS command
-    if (strlen(activeTime_val) > 8) return false;
-    if (strlen(TAU_val) > 8) return false;
-
-    char auxStr[35];
-    sprintf(auxStr, "AT+CPSMS=%i,,,\"%s\",\"%s\"", onoff, TAU_val, activeTime_val);
-
-    return sendCheckReply(auxStr, ok_reply);
-}
 
 // Enable, disable, or set the blinking frequency of the network status LED
 // Default settings are the following:
@@ -282,26 +254,6 @@ boolean Adafruit_FONA::setNetLED(bool onoff, uint8_t mode, uint16_t timer_on, ui
   }
 }
 
-// Open or close wireless data connection
-boolean Adafruit_FONA_LTE::openWirelessConnection(bool onoff) {
-  if (!onoff) return sendCheckReply(F("AT+CNACT=0"), ok_reply); // Disconnect wireless
-  else {
-    getReplyQuoted(F("AT+CNACT=1,"), apn);
-    readline(); // Eat 'OK'
-
-    if (strcmp(replybuffer, "+APP PDP: ACTIVE") == 0) return true;
-    else return false;
-  }
-}
-
-// Query wireless connection status
-boolean Adafruit_FONA_LTE::wirelessConnStatus(void) {
-  getReply(F("AT+CNACT?"));
-  // Format of response:
-  // +CNACT: <status>,<ip_addr>
-  if (strstr(replybuffer, "+CNACT: 1") == NULL) return false;
-  return true;
-}
 
 
 
@@ -342,8 +294,6 @@ uint8_t Adafruit_FONA::getRSSI(void) {
 
   return reply;
 }
-
-
 
 
 
@@ -476,8 +426,8 @@ int8_t Adafruit_FONA::GPRSstate(void) {
   if (! sendParseReply(F("AT+CGATT?"), F("+CGATT: "), &state) )
     return -1;
     
-   //if (! sendCheckReply(F("AT+CIFSR"), ok_reply, 5000)) //jaka
-   //return -1;     
+   if (! sendCheckReply(F("AT+CIFSR"), ok_reply, 5000)) //jaka
+   return -1;     
 
   return state;
 }
@@ -539,7 +489,7 @@ boolean Adafruit_FONA::UDPconnect(char *server, uint16_t port) {
   mySerial->println(F("\""));
 
   if (! expectReply(ok_reply)) return false;
-  if (! expectReply(F("CONNECT OK"))) return false;
+  if (! expectReply(F("CONNECT OK"))) return false;  //if ALREADY CONNECT
 
   // looks like it was a success (?)
   return true;
@@ -554,16 +504,22 @@ boolean Adafruit_FONA::UDPclose(void) {
 }
 
 uint8_t Adafruit_FONA::UDPconnected(void) {
-  if (! sendCheckReply(F("AT+CIPSTATUS"), ok_reply, 200) ) return false;
+  if (! sendCheckReply(F("AT+CIPSTATUS"), ok_reply, 200) ) return 99;
   readline(200);
 
   DEBUG_PRINT (F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
 
-  //return (strcmp(replybuffer, "STATE: CONNECT OK") == 0);
-  
-  if (strcmp(replybuffer, "CONNECT OK") == 0) { return 1;}
-  else if (strcmp(replybuffer, "UDP CLOSED") == 0) { return 5;}
-  else if (strcmp(replybuffer, "PDP DEACT:") == 0) { return 10;}
+  //if (strcmp(replybuffer, "STATE: IP INITIAL") == 0) { return 2;}
+  //else if (strcmp(replybuffer, "STATE: IP START") == 0) { return 3;}
+  //else if (strcmp(replybuffer, "STATE: IP CONFIG") == 0) { return 4;}
+  //else if (strcmp(replybuffer, "STATE: IP GPRSACT") == 0) { return 2;}
+  //else if (strcmp(replybuffer, "STATE: UDP STATUS") == 0) { return 6;}
+  //else if (strcmp(replybuffer, "STATE: UDP CONNECTING") == 0) { return 7;}
+  //else if (strcmp(replybuffer, "STATE: SERVER LISTENING") == 0) { return 8;}
+  //else if (strcmp(replybuffer, "STATE: UDP CLOSING") == 0) { return 11;}
+  if (strcmp(replybuffer, "STATE: UDP CLOSED") == 0) { return 12;}
+  else if (strcmp(replybuffer, "STATE: PDP DEACT") == 0) { return 10;}
+  else if (strcmp(replybuffer, "STATE: CONNECT OK") == 0) { return 1;}
   else { return 0;}
 }
 

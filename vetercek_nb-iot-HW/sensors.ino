@@ -3,56 +3,64 @@ void UltrasonicAnemometer() { //measure wind speed
     char buffer[70];
     char hexbuffer[5];
     int sum;
-
-    //byte trow_away;
-    //trow_away=(ultrasonic.read());
-    while (ultrasonic.read() != ',') {  }
-    int size = ultrasonic.readBytesUntil('\r\n', buffer, 70);
-    buffer[size]='\0'; 
-
-         #ifdef DEBUG 
-         delay(20);
-          DEBUGSERIAL.print(size); 
-          DEBUGSERIAL.print(F(" buff ")); 
-          DEBUGSERIAL.println(buffer); 
-         delay(70);
-         #endif 
-        
-    //char* first = strtok(buffer, ",/");
-    char *dir = strtok(buffer, ",/");
-    char *wind = strtok(NULL, ",/");
-    char* check = strtok(NULL, ",/");
-
-      sum+=countBytes(dir);
-      sum+=countBytes(wind);
-      sum+=2605;
-      sum=-(sum % 256);    
-      sprintf(hexbuffer,"%02X", sum);
-
-    if( check[0] ==hexbuffer[2] and check[1] ==hexbuffer[3] )  {  
-          calDirection = atoi(dir) + vaneOffset;
-          CalculateWindDirection();  // calculate wind direction from data
-          windSpeed=atof(wind)*19.4384449;
-          CalculateWindGust(windSpeed);
-          CalculateWind();
-          timergprs = 0;                                            
-    }
-
-        else if ( sonicError >= 10)  { reset(4);  }   // if more than x US errors     
-        else { 
-          delay(150);
-          sonicError++; 
-         #ifdef DEBUG 
-         delay(70);
-          DEBUGSERIAL.println(F("UZ error")); 
-          DEBUGSERIAL.println(buffer); 
-         delay(70);
-         #endif         
-        }  // if more than x US errors                   
+    unsigned long startedWaiting = millis();
+       
+    while (ultrasonic.read() != ',') {  } //millis() - startedWaiting <= 500 and  
+      
+        #ifdef DEBUG 
+       delay(20);
+        DEBUGSERIAL.println(ultrasonic.available()); 
+       delay(70);
+       #endif 
+       
+      int size = ultrasonic.readBytesUntil('\r\n', buffer, 70);
+      buffer[size]='\0'; 
   
- ultrasonicFlush();   
-}
+       #ifdef DEBUG 
+       delay(20);
+        DEBUGSERIAL.print(size); 
+        DEBUGSERIAL.print(F(" buff ")); 
+        DEBUGSERIAL.println(buffer); 
+       delay(70);
+       #endif 
+          
+      char *dir = strtok(buffer, ",/");
+      char *wind = strtok(NULL, ",/");
+      char* check = strtok(NULL, ",/");
 
+//       #ifdef DEBUG 
+//       delay(20);
+//        DEBUGSERIAL.println(dir); 
+//        DEBUGSERIAL.println(wind); 
+//        DEBUGSERIAL.println(check); 
+//       delay(70);
+//       #endif 
+
+      if( check!=NULL and wind!=NULL and dir!=NULL)  {    
+        sum+=countBytes(dir);
+        sum+=countBytes(wind);
+        sum+=2605;
+        sum=-(sum % 256);    
+        sprintf(hexbuffer,"%02X", sum);
+    
+        if( check[0] ==hexbuffer[2] and check[1] ==hexbuffer[3] )  {  
+              calDirection = atoi(dir) + vaneOffset;
+              CalculateWindDirection();  // calculate wind direction from data
+              windSpeed=atof(wind)*19.4384449;
+              CalculateWindGust(windSpeed);
+              CalculateWind();
+              timergprs = 0;                                            
+        }
+        else { 
+          UZerror(3); 
+          }        
+      }
+      else { 
+        UZerror(2); 
+        }      
+
+ultrasonicFlush();
+}
 
 int countBytes( const char * data )
 {
@@ -65,7 +73,14 @@ int countBytes( const char * data )
   return total;
 }
 
-
+void UZerror(byte where) { //ultrasonic error
+  sonicError++;
+  #ifdef DEBUG
+      DEBUGSERIAL.print(F("err UZ "));
+      DEBUGSERIAL.println(where);
+  #endif
+  if ( sonicError >= 10)  { reset(4);  }   // if more than x US errors 
+}
 
 void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
   unsigned long startedWaiting = millis();   
@@ -114,7 +129,7 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
     else { 
      stopSleepChange++;
      #ifdef DEBUG 
-      DEBUGSERIAL.println(F("sleepc err")); 
+      DEBUGSERIAL.println(F("err sleepc")); 
      #endif       
       }
 }

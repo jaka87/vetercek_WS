@@ -59,8 +59,6 @@ class Adafruit_FONA : public FONAStreamType {
   boolean setFunctionality(uint8_t option); // AT+CFUN command
   boolean enableSleepMode(bool onoff); // AT+CSCLK command
   boolean set_eDRX(uint8_t mode, uint8_t connType, char * eDRX_val); // AT+CEDRXS command
-  boolean enablePSM(bool onoff); // AT+CPSMS command
-  boolean enablePSM(bool onoff, char * TAU_val, char * activeTime_val); // AT+CPSMS command
   boolean setNetLED(bool onoff, uint8_t mode = 0, uint16_t timer_on = 64, uint16_t timer_off = 3000); // AT+CNETLIGHT and AT+SLEDS commands
 
   // SIM query
@@ -105,8 +103,6 @@ class Adafruit_FONA : public FONAStreamType {
   FONAFlashStringPtr useragent;
   FONAFlashStringPtr ok_reply;
 
-  // HTTP helpers
-  boolean HTTP_setup(char *url);
 
   uint16_t readRaw(uint16_t b);
   uint8_t readline(uint16_t timeout = FONA_DEFAULT_TIMEOUT_MS, boolean multiline = false);
@@ -154,15 +150,13 @@ class Adafruit_FONA_LTE : public Adafruit_FONA {
  public:
   Adafruit_FONA_LTE () : Adafruit_FONA(FONA_NO_RST_PIN) { _type = SIM7000A; }
 
-  boolean openWirelessConnection(bool onoff);
-  boolean wirelessConnStatus(void);
   boolean setPreferredMode(uint8_t mode);
   boolean setPreferredLTEMode(uint8_t mode);
   boolean setOperatingBand(const char * mode, uint8_t band);
   boolean setBaudrate(uint16_t baud);
 
 
-  // SSL
+
   
 };
 

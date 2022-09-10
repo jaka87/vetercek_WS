@@ -28,10 +28,10 @@ int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 int sea_level_m=0; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
-//#define DEBUG // comment out if you want to turn off debugging
+#define DEBUG // comment out if you want to turn off debugging
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
-#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
+//#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
 ///////////////////////////////////////////////////////////////////////////////////
 
 
@@ -148,7 +148,9 @@ int pressure=0;
 byte changeSleep=0;
 byte batteryState=0; // 0 normal; 1 low battery; 2 very low battery
 byte stopSleepChange=0; //on
-//char buffer[70];
+volatile byte countWake = 0;
+//volatile static bool triggered;
+
 
 void setup() {
   MCUSR = 0; // clear reset flags
@@ -157,7 +159,7 @@ void setup() {
   Timer1.initialize(1000000UL);         // initialize timer1, and set a 1 second period
   Timer1.attachInterrupt(CheckTimerGPRS);  // attaches checkTimer() as a timer overflow interrupt
   #ifdef UZ_Anemometer
-    attachPCINT(digitalPinToPCINT(12), wake_from_sleep, FALLING);
+    attachPinChangeInterrupt(digitalPinToPCINT(12), wake_from_sleep, FALLING);
   #endif
 
 pinMode(DTR, OUTPUT);
@@ -177,6 +179,7 @@ digitalWrite(PWRKEY, LOW);
   DEBUGSERIAL.println(F("S"));
   DEBUGSERIAL.println(resetReason);
 #endif
+//powerOn();
 
   //Serial1.begin(9600); //for sim7070 debug
 
@@ -292,19 +295,27 @@ connectGPRS();
 }
 
 void loop() {
+     
 #ifdef UZ_Anemometer
- //if ( UltrasonicAnemo==1 ) {    // if ultrasonic anemometer pluged in at boot
- 
+  disablePinChangeInterrupt(digitalPinToPinChangeInterrupt(12));
+
+    #ifdef DEBUG
+      DEBUGSERIAL.println(F("wk"));
+    #endif 
+
   unsigned long startedWaiting = millis();
-  //delay(15);
-  //delay(25);
   UZ_wake(startedWaiting);
 
+  #ifdef DEBUG
+    DEBUGSERIAL.print(F("buf: "));
+    DEBUGSERIAL.println(ultrasonic.available() );
+  #endif 
+          
   if ( millis() - startedWaiting >= 10000 && sonicError < 10)  { // if US error 
     sonicError++;
     #ifdef DEBUG
     delay(50);
-      DEBUGSERIAL.println(F("UZ err"));
+      DEBUGSERIAL.println(F("UZerr"));
     delay(50);
     #endif 
      }
@@ -312,6 +323,7 @@ void loop() {
         reset(1);
      }
   else { 
+
       while(ultrasonic.available() < 66 and millis() - startedWaiting <= 9000) {
         delay(10);
       }
@@ -323,7 +335,7 @@ void loop() {
         ultrasonicFlush();
          #ifdef DEBUG
           delay(50);
-            DEBUGSERIAL.println(F("flushb"));
+            DEBUGSERIAL.println(F("err flushb"));
           delay(50);
           #endif 
       }
@@ -376,11 +388,6 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
   
   {  
       /////////////////////////// send data to server ///////////////////////////////////////////////     
-     #ifdef UZ_Anemometer
-      //ultrasonic.end();
-      detachPinChangeInterrupt(digitalPinToPCINT(12));
-     #endif
-     
       digitalWrite(DTR, LOW);  //wake up  
       delay(100);
       fona.flush();
@@ -401,8 +408,8 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
           UZsleep(sleepBetween);
             }
         }
-      ultrasonicFlush();     
-      attachPCINT(digitalPinToPCINT(12), wake_from_sleep, FALLING);
+      ultrasonicFlush();  
+      enablePinChangeInterrupt(digitalPinToPinChangeInterrupt(12));
       #endif  
   }
   
@@ -413,9 +420,17 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
   }
 
 #ifdef UZ_Anemometer
-  else if ( UltrasonicAnemo==1 ){ // restart timer
+  else if ( UltrasonicAnemo==1 ){ // go to sleep
+      #ifdef DEBUG
+      DEBUGSERIAL.print(F("wc "));
+      DEBUGSERIAL.println(countWake);
+    #endif   
+    enablePinChangeInterrupt(digitalPinToPinChangeInterrupt(12));
+    //triggered = false; // reset flag
+    countWake=0;
     LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
-  }
+    }    
+
 #endif 
 }
 
@@ -435,6 +450,10 @@ void CheckTimerGPRS() { // if unable to send data in 200s
 void reset(byte rr) {
   EEPROM.write(15, rr);
   delay(200);
+  #ifdef DEBUG
+    DEBUGSERIAL.print(F("err_r: "));
+    DEBUGSERIAL.println(rr);
+  #endif  
   if (rr==2 or rr==5){ powerOn(); }
   delay(100);
   wdt_enable(WDTO_60MS);
@@ -450,9 +469,9 @@ void powerOn() {
   delay(3000); // For SIM7000 
   digitalWrite(PWRKEY, HIGH);
    #ifdef DEBUG
-    DEBUGSERIAL.println(F("Pwr on"));
+    DEBUGSERIAL.println(F("Pwron"));
    #endif   
-  //delay(8000);
+  delay(5000);
 }
 
 void wakeUp() {
@@ -472,4 +491,7 @@ void UZ_wake(unsigned long startedWaiting) {
 
 
 void wake_from_sleep(void) {
+  //disablePinChangeInterrupt(digitalPinToPinChangeInterrupt(12));
+  //triggered=true;
+  countWake++;
 }

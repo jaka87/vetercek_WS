@@ -266,12 +266,7 @@ digitalWrite(PWRKEY, LOW);
     }   
   EEPROM.write(15, 0); 
   }  
-
-#ifdef UZ_Anemometer
-    if (resetReason==81 ) { 
-      ultrasonic.write(">UartPro:0\r\n"); //set active ascii
-    }
-#endif    
+  
     
 moduleSetup(); // Establishes first-time serial comm and prints IMEI
 checkIMEI();
