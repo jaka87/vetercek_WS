@@ -70,7 +70,7 @@ class Adafruit_FONA : public FONAStreamType {
 
   void setNetworkSettings(FONAFlashStringPtr apn, FONAFlashStringPtr username=0, FONAFlashStringPtr password=0);
   int8_t getNetworkInfo(void);
-  boolean enableGPRS(boolean onoff);
+  boolean enableGPRS();
   int8_t GPRSstate(void);
   int8_t GPRSPDP(void);
   void flushInput();

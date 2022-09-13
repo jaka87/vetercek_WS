@@ -307,18 +307,16 @@ uint8_t Adafruit_FONA::getRSSI(void) {
 /********* GPRS **********************************************************/
 
 
-boolean Adafruit_FONA::enableGPRS(boolean onoff) {
-    if (onoff) {
-      // if (_type < SIM7000A) { // UNCOMMENT FOR LTE ONLY!
-        // disconnect all sockets
-        sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 20000);
+boolean Adafruit_FONA::enableGPRS() {
+	// DISCONNECT
+      // disconnect all sockets
+      sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 2000);
+      // close bearer
+      sendCheckReply(F("AT+SAPBR=0,1"), ok_reply, 1000);
+		
+		sendCheckReply(F("AT+CGATT=0"), ok_reply, 10000);
 
-        if (! sendCheckReply(F("AT+CIPMODE=0"), ok_reply, 10000)) //jaka
-          return false;
-
-        //if (! sendCheckReply(F("AT+CGATT=1"), ok_reply, 10000))  //jaka
-          //return false;
-
+	// CONNECT
       // set bearer profile! connection type GPRS
       if (! sendCheckReply(F("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\""), ok_reply, 10000))
         return false;
@@ -388,23 +386,8 @@ boolean Adafruit_FONA::enableGPRS(boolean onoff) {
         //if (! sendCheckReply(F("AT+CIFSR"), ok_reply, 10000)) //jaka - gets ip not ok status - parse reply
           //return false;          
           
-      // } // UNCOMMENT FOR LTE ONLY!
 
-    } else {
-      // disconnect all sockets
-      if (! sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 20000))
-        return false;
 
-      // close bearer
-      if (! sendCheckReply(F("AT+SAPBR=0,1"), ok_reply, 10000))
-        return false;
-
-      // if (_type < SIM7000A) { // UNCOMMENT FOR LTE ONLY!
-        if (! sendCheckReply(F("AT+CGATT=0"), ok_reply, 10000))
-          return false;
-    // } // UNCOMMENT FOR LTE ONLY!
-
-    }
  
   return true;
 }
@@ -426,8 +409,8 @@ int8_t Adafruit_FONA::GPRSstate(void) {
   if (! sendParseReply(F("AT+CGATT?"), F("+CGATT: "), &state) )
     return -1;
     
-   if (! sendCheckReply(F("AT+CIFSR"), ok_reply, 5000)) //jaka
-   return -1;     
+   //if (! sendCheckReply(F("AT+CIFSR"), ok_reply, 5000)) //jaka
+   //return -1;     
 
   return state;
 }
@@ -498,29 +481,33 @@ boolean Adafruit_FONA::UDPconnect(char *server, uint16_t port) {
 boolean Adafruit_FONA::UDPclose(void) {
       if (! sendCheckReply(F("AT+CIPCLOSE"),  F("CLOSE OK"), 3000))
         return false;
-      //if (! sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 3000))
-        //return false;	
+      if (! sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 3000))
+        return false;	
   return true;
 }
 
 uint8_t Adafruit_FONA::UDPconnected(void) {
   if (! sendCheckReply(F("AT+CIPSTATUS"), ok_reply, 200) ) return 99;
   readline(200);
-
   DEBUG_PRINT (F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
+  byte res;
 
-  //if (strcmp(replybuffer, "STATE: IP INITIAL") == 0) { return 2;}
-  //else if (strcmp(replybuffer, "STATE: IP START") == 0) { return 3;}
-  //else if (strcmp(replybuffer, "STATE: IP CONFIG") == 0) { return 4;}
-  //else if (strcmp(replybuffer, "STATE: IP GPRSACT") == 0) { return 2;}
-  //else if (strcmp(replybuffer, "STATE: UDP STATUS") == 0) { return 6;}
-  //else if (strcmp(replybuffer, "STATE: UDP CONNECTING") == 0) { return 7;}
-  //else if (strcmp(replybuffer, "STATE: SERVER LISTENING") == 0) { return 8;}
-  //else if (strcmp(replybuffer, "STATE: UDP CLOSING") == 0) { return 11;}
-  if (strcmp(replybuffer, "STATE: UDP CLOSED") == 0) { return 12;}
-  else if (strcmp(replybuffer, "STATE: PDP DEACT") == 0) { return 10;}
-  else if (strcmp(replybuffer, "STATE: CONNECT OK") == 0) { return 1;}
-  else { return 0;}
+  if (strcmp(replybuffer, "STATE: IP INITIAL") == 0) { res=2;}
+  //else if (strcmp(replybuffer, "STATE: IP START") == 0) { res=3;}
+  //else if (strcmp(replybuffer, "STATE: IP CONFIG") == 0) { res=4;}
+  else if (strcmp(replybuffer, "STATE: IP GPRSACT") == 0) { res=5;}
+  //else if (strcmp(replybuffer, "STATE: UDP STATUS") == 0) { res=6;}
+  //else if (strcmp(replybuffer, "STATE: UDP CONNECTING") == 0) { res=7;}
+  //else if (strcmp(replybuffer, "STATE: SERVER LISTENING") == 0) { res=8;;}
+  //else if (strcmp(replybuffer, "STATE: UDP CLOSING") == 0) { res=11;}
+  else if (strcmp(replybuffer, "STATE: UDP CLOSED") == 0) { res=12;}
+  else if (strcmp(replybuffer, "STATE: PDP DEACT") == 0) { res=10;}
+  else if (strcmp(replybuffer, "STATE: CONNECT OK") == 0) { res=1;}
+  else { res=0;}
+  
+    DEBUG_PRINT (F("\t<--- ")); DEBUG_PRINTLN(res);
+
+  return res;
 }
 
 boolean Adafruit_FONA::UDPsend(unsigned char *packet, uint8_t len, byte response[10],uint8_t charr) {

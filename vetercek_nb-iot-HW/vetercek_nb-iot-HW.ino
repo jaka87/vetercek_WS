@@ -1,5 +1,7 @@
 //bin/avrdude -C//etc/avrdude.conf -v -V -patmega328pb -cusbtiny -Uflash:w:/vetercek_nb-iot-HW.ino.hex:i lfuse:w:0xEF:m efuse:w:0xFF:m hfuse:w:DA:m lock:w:0xFF:m 
 // 57600 max baud rate
+// before uploading skech burn bootloader
+// hardware serial buffer 128b 
 #include <avr/wdt.h> //watchdog
 #include "src/LowPower/LowPower.h" //sleep library
 #include <math.h> // wind speed calculations
@@ -204,21 +206,6 @@ digitalWrite(PWRKEY, LOW);
   else if (EEPROM.read(9)==38) {GSMstate=38; } //#define NBIOT
   if (EEPROM.read(14)==10) { stopSleepChange=3; } // UZ sleep on/off
 
-
-#ifdef UZ_Anemometer
-  unsigned long startedWaiting = millis();
-  UZ_wake(startedWaiting);
-  if (millis() - startedWaiting <= 9900 ) {
-    UltrasonicAnemo=1;
-    windDelay=1000;
-    ultrasonicFlush();
-  }
-   #ifdef DEBUG
-    DEBUGSERIAL.println(F("UZ"));
-    delay(50);
-  #endif   
-#endif
-
 #ifdef BMP
   if ((EEPROM.read(13)==255 or EEPROM.read(13)==1) and lps.begin()) {  
       enableBmp=1; 
@@ -291,6 +278,18 @@ connectGPRS();
 
 #ifdef UZ_Anemometer
   SendData();
+
+  unsigned long startedWaiting = millis();
+  UZ_wake(startedWaiting);
+  if (millis() - startedWaiting <= 9900 ) {
+    UltrasonicAnemo=1;
+    windDelay=1000;
+    ultrasonicFlush();
+  }
+   #ifdef DEBUG
+    DEBUGSERIAL.println(F("UZ"));
+    delay(50);
+  #endif   
 #endif 
 }
 
@@ -300,16 +299,12 @@ void loop() {
   disablePinChangeInterrupt(digitalPinToPinChangeInterrupt(12));
 
     #ifdef DEBUG
+    delay(20);
       DEBUGSERIAL.println(F("wk"));
     #endif 
 
   unsigned long startedWaiting = millis();
   UZ_wake(startedWaiting);
-
-  #ifdef DEBUG
-    DEBUGSERIAL.print(F("buf: "));
-    DEBUGSERIAL.println(ultrasonic.available() );
-  #endif 
           
   if ( millis() - startedWaiting >= 10000 && sonicError < 10)  { // if US error 
     sonicError++;

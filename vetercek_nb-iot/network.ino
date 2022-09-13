@@ -1,4 +1,4 @@
-bool netStatus() {
+byte netStatus() {
   int n = fona.getNetworkStatus();
   #ifdef DEBUG
   if (n == 0) Serial.println(F("NR"));
@@ -9,24 +9,24 @@ bool netStatus() {
   #endif
 
   return n;
+
 }
 
 
   void GSMerror() {   
   #ifdef DEBUG    
-    Serial.println(F("gsm error"));   
+    Serial.println(F("err gsm"));   
   #endif    
-  fona.enableGPRS(false);   
-  //powerOn();    
-  //wakeUp();   
+  //fona.enableGPRS(false);     
   digitalWrite(RESET, LOW);     
   delay(350);   
   digitalWrite(RESET, HIGH);    
   delay(5000);    
   moduleSetup();          
-  connectGPRS();    
-  fona.UDPconnect("vetercek.com",6789);   
+  connectGPRS();  
+      
 }
+
 
 
 void moduleSetup() {
@@ -39,6 +39,7 @@ void moduleSetup() {
   //fonaSS.println("AT+IPR=9600"); // Set baud rate
   //delay(100); // Short pause to let the command run
   delay(3000);
+      
   fonaSS.begin(9600);
   //fonaSS.listen();
   while (! fona.begin(fonaSS)) {
@@ -48,6 +49,7 @@ void moduleSetup() {
       delay(5000);
       fonaSS.begin(9600);     
   }
+
 
   fonaSS.println("AT+CIPMUX=0"); // single ip
 
@@ -73,21 +75,25 @@ void moduleSetup() {
     fona.set_eDRX(1, 5, "1001");    
   }
   delay(200);
-  fona.enablePSM(false);
   //fona.enablePSM(true, "00100001", "00100011");
   delay(200);
 }  
 
 
-
 void connectGPRS() {
+
+int8_t info=fona.getNetworkInfo();  // check if connected to network, else try 2G
+if ((info <1 or info > 10) and GSMstate==2)  {
+  fona.setPreferredMode(13);   
+}
+
 unsigned long startTime=millis();  
 byte runState=0;
 
-    while (netStatus() != 1 and netStatus() != 5) {
+    while (netStatus() != 5 and netStatus() != 1) {
       if (millis() - startTime >= 8000 and netStatus() == 0 and runState==0)  {
        #ifdef DEBUG
-        Serial.println(F("RstC1"));
+        Serial.println(F("err RstC1"));
         Serial.println(netStatus());
        #endif
       moduleSetup();
@@ -96,7 +102,7 @@ byte runState=0;
        
       else if (millis() - startTime >= 20000 and netStatus() == 0 and runState==1)  {
        #ifdef DEBUG
-        Serial.println(F("RstC2"));
+        Serial.println(F("err RstC2"));
        #endif
       GSMerror();
       runState=0;
@@ -104,14 +110,13 @@ byte runState=0;
       }
 
       #ifdef DEBUG
-        Serial.println(F("RetCON"));
+        Serial.println(F("err RetCON"));
       #endif 
+    delay(1000);  
     }
-  #ifdef DEBUG  
-    Serial.println(F("CON"));
-  #endif 
 
-  if (fona.enableGPRS(true)) {
+
+  if (fona.enableGPRS()) {
   #ifdef DEBUG  
     Serial.println(F("GPRS"));
   #endif 
@@ -121,31 +126,65 @@ byte runState=0;
 
 void PostData() {    
 
-int8_t GPRSPDP=fona.GPRSPDP();  //check PDP
-int8_t GPRSstate=fona.GPRSstate();  //check GPRS
-     #ifdef DEBUG
-      Serial.print(F("PDP "));
-      Serial.println(GPRSPDP);
-      Serial.print(F("GPRS "));
-      Serial.println(GPRSstate);
-     #endif
-if (GPRSstate !=1 or GPRSPDP !=1) {    // if no connection with network
-     GSMerror();
- } 
-  
-bool isConnected = fona.UDPconnected();  // UDP connection to server
-     #ifdef DEBUG
-      Serial.print(F("UDP "));
-      Serial.println(isConnected);
-     #endif
-     
-    if (isConnected ==0) {
-     fona.UDPconnect("vetercek.com",6789);
-     }     
+  int8_t GPRSPDP=fona.GPRSPDP();  //check PDP
+  int8_t GPRSstate=fona.GPRSstate();  //check GPRS
 
-    else if (isConnected > 1) {
-     GSMerror();
-     } 
+  if (GPRSstate !=1 or GPRSPDP !=1) {    // if no connection with network
+       #ifdef DEBUG
+        Serial.println(F("err PDP"));
+        Serial.print(F("PDP "));
+        Serial.println(GPRSPDP);
+        Serial.print(F("GPRS "));
+        Serial.println(GPRSstate);      
+       #endif
+       connectGPRS();
+   } 
+
+  sig=fona.getRSSI(); 
+  #ifdef DEBUG  
+    Serial.println(F("NET"));
+    Serial.println(sig);
+  #endif 
+
+  if (sig < 5 or sig >50) {    // if no connection with network
+       #ifdef DEBUG
+        Serial.println(F("err sig"));     
+       #endif
+   } 
+   
+
+  unsigned long startTime=millis();      
+  byte isConnected = fona.UDPconnected();  // UDP connection to server
+       #ifdef DEBUG
+        Serial.print(F("UDP "));
+        Serial.println(isConnected);
+       #endif
+
+    if (isConnected ==10 ) { // if  PDP deact
+       connectGPRS();
+    } 
+     #ifdef DEBUG
+        Serial.println(F("vetercek"));
+     #endif
+      while (fona.UDPconnect("vetercek.com",6789)==false and millis() - startTime <= 120000) {
+        fona.UDPconnect("vetercek.com",6789);
+          #ifdef DEBUG
+            Serial.println(F("err no_vet"));
+         #endif
+        delay(30*1000);
+      } 
+      if (millis() - startTime >= 120000 )  {
+        #ifdef DEBUG
+        Serial.println(F("err vet_err"));
+        #endif
+        GSMerror();
+      }        
+     // }     
+
+    //else  {
+     //GSMerror();
+     //} 
+
 
      
   if (millis() - updateBattery >= 130000 or updateBattery == 0) {  // send data about battery and signal every 8+ minutes
@@ -164,24 +203,17 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
     int curr = 0;  // measure solar cell current
     volatile unsigned currCount = 0;
     while (currCount < 10) {
-      #ifdef PCBVER4 // old pcb
-          curr += analogRead(A0)*3.8;
-      #else         // new
           curr += ((analogRead(A0)*3.98)/1000/1.15)*940; //2.2k resistor
-      #endif
-
           currCount++;
           delay(50);
       }
     SolarCurrent=(curr/currCount)/5;  // calculate average solar current // divide with 5 so it can be send as byte
 
-  }    
-}
-  else {
-    sendBatTemp=sendBatTemp+1;
-}
-
-
+    }    
+  }
+    else {
+      sendBatTemp=sendBatTemp+1;
+  }
   data[8]=windDir/100;
   data[9]=windDir%100;
   data[10]=wind_speed/10;
@@ -268,57 +300,57 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
   onOffTmp=response[5];
   cutoffWind=response[6];
 
-// if low battery increase sleep time
-  if ( (response[7] < 4 and battLevel < 180 and battLevel > 170) or (batteryState==1 and response[7] < 4)) { // if low battery < 3.6V
-     response[7]=4;
-     batteryState=1;
-  }
-  else if (( response[7] < 8 and battLevel < 170 and battLevel > 17) or (batteryState==2 and response[7] < 8)) { // if low battery < 3.4V
-     response[7]=8;
-     batteryState=2;
-  }
+  // if low battery increase sleep time
+    if ( (response[7] < 4 and battLevel < 180 and battLevel > 170) or (batteryState==1 and response[7] < 4)) { // if low battery < 3.6V
+       response[7]=4;
+       batteryState=1;
+    }
+    else if (( response[7] < 8 and battLevel < 170 and battLevel > 17) or (batteryState==2 and response[7] < 8)) { // if low battery < 3.4V
+       response[7]=8;
+       batteryState=2;
+    }
 
-// once battery gets charged change the battery state  
-  if (  battLevel > 190 and batteryState==1) { batteryState=0; }// if battery > 3.8V
-  else if (  battLevel >= 180 and battLevel >= 190 and batteryState==2) { batteryState=1; }// if battery > 3.6V
+  // once battery gets charged change the battery state  
+    if (  battLevel > 190 and batteryState==1) { batteryState=0; }// if battery > 3.8V
+    else if (  battLevel >= 180 and battLevel >= 190 and batteryState==2) { batteryState=1; }// if battery > 3.6V
+    
   
-
-
-#ifdef UZ_Anemometer
-  if ( response[7]!= sleepBetween and UltrasonicAnemo==1 and response[7] > -1 and response[7] < 9 and sleepBetween != response[7]) { //change of sleep time
-    changeSleep=1;
+  
+  #ifdef UZ_Anemometer
+    if ( response[7]!= sleepBetween and UltrasonicAnemo==1 and response[7] > -1 and response[7] < 9 and sleepBetween != response[7]) { //change of sleep time
+      changeSleep=1;
       sleepBetween=response[7];
-  }
-#else
-  if ( (response[7] > -1 and response[7] < 9 and sleepBetween != response[7])) { 
-    sleepBetween=response[7];
-  }  
-#endif
+    }
+  #else
+    if ( (response[7] > -1 and response[7] < 9 and sleepBetween != response[7])) { 
+      sleepBetween=response[7];
+    }  
+  #endif
 
   if (response[0] >0 and sleepBetween==0) { whenSend=response[0]*2;} // when sleep is 0 updates =2x
   else if (response[0] >0 ) { whenSend=response[0];}
 
 
      #ifdef DEBUG
-      Serial.println("SEND");
+      Serial.println(F("SEND"));
      #endif
   
   AfterPost(); 
    } 
 
-   else {
+   else {  //if cannot send data to vetercek.com
      fona.UDPclose();
      failedSend=failedSend+1;
+     delay(5000);
 
-      if (failedSend > 1 and failedSend < 3) {
+      if (failedSend > 1 and failedSend < 2) {
       #ifdef DEBUG
-        Serial.println(F("RstC3"));
+        Serial.println(F("err RstC3"));
       #endif
-      delay(10000);
       moduleSetup(); // Establishes first-time serial comm and prints IMEI
       }
       
-      else if (failedSend > 2 ) {
+      else if (failedSend > 1 ) {
         GSMerror();
       }      
    } 
@@ -327,6 +359,7 @@ bool isConnected = fona.UDPconnected();  // UDP connection to server
 
 
 void AfterPost() {
+    fona.UDPclose();
     measureCount = 0;
     windAvr = 0;
     windGustAvg = 0;
@@ -353,6 +386,7 @@ void SendData() {
 }
 
 void checkIMEI() {
+  char IMEI[15]; // Use this for device ID
    if (EEPROM.read(0)==1) {  // read from EEPROM if data in it 
       for (int i = 0; i < 8; i++){
        data[i]=EEPROM.read(i+1);
