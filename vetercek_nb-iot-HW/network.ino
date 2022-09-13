@@ -140,17 +140,17 @@ void PostData() {
        connectGPRS();
    } 
 
-  sig=fona.getRSSI(); 
-  #ifdef DEBUG  
-    DEBUGSERIAL.println(F("NET"));
-    DEBUGSERIAL.println(sig);
-  #endif 
-
-  if (sig < 5 or sig >50) {    // if no connection with network
-       #ifdef DEBUG
-        DEBUGSERIAL.println(F("err sig"));     
-       #endif
-   } 
+//  sig=fona.getRSSI(); 
+//  #ifdef DEBUG  
+//    DEBUGSERIAL.println(F("NET"));
+//    DEBUGSERIAL.println(sig);
+//  #endif 
+//
+//  if (sig < 5 or sig >50) {    // if no connection with network
+//       #ifdef DEBUG
+//        DEBUGSERIAL.println(F("err sig"));     
+//       #endif
+//   } 
    
 
   unsigned long startTime=millis();      
@@ -187,16 +187,16 @@ void PostData() {
 
 
      
-  if (millis() - updateBattery >= 130000 or updateBattery == 0) {  // send data about battery and signal every 8+ minutes
-    updateBattery=millis();
+  //if (millis() - updateBattery >= 130000 or updateBattery == 0) {  // send data about battery and signal every 8+ minutes
+    //updateBattery=millis();
     sig=fona.getRSSI(); 
-    delay(300);
+    //delay(300);
     //#ifdef OLDPCB // old pcb
       battLevel = readVcc(); // Get voltage %
     //#else         // new
      // battLevel = analogRead(A1)*0.1999;      
     //#endif    
-    sendBatTemp=0;
+    //sendBatTemp=0;
 
 
   if (enableSolar==1){
@@ -205,15 +205,15 @@ void PostData() {
     while (currCount < 10) {
           curr += ((analogRead(A0)*3.98)/1000/1.15)*940; //2.2k resistor
           currCount++;
-          delay(50);
+          delay(20);
       }
     SolarCurrent=(curr/currCount)/5;  // calculate average solar current // divide with 5 so it can be send as byte
 
     }    
-  }
-    else {
-      sendBatTemp=sendBatTemp+1;
-  }
+  //}
+    //else {
+    //  sendBatTemp=sendBatTemp+1;
+  //}
   data[8]=windDir/100;
   data[9]=windDir%100;
   data[10]=wind_speed/10;

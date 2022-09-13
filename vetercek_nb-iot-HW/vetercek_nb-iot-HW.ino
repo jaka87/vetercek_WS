@@ -308,6 +308,7 @@ void loop() {
           
   if ( millis() - startedWaiting >= 10000 && sonicError < 10)  { // if US error 
     sonicError++;
+    ultrasonicFlush();
     #ifdef DEBUG
     delay(50);
       DEBUGSERIAL.println(F("UZerr"));
@@ -324,6 +325,10 @@ void loop() {
       }
 
       if ( millis() - startedWaiting <= 8900 )  {  
+         #ifdef DEBUG
+            DEBUGSERIAL.print(F("wkt"));
+            DEBUGSERIAL.println(millis() - startedWaiting);
+          #endif         
         UltrasonicAnemometer();
       }
       else  {  
