@@ -110,7 +110,7 @@ byte runState=0;
       }
 
       #ifdef DEBUG
-        DEBUGSERIAL.println(F("err RetCON"));
+        DEBUGSERIAL.println(F("RetCON"));
       #endif 
     delay(1000);  
     }

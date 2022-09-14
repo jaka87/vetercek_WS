@@ -30,7 +30,7 @@ int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 int sea_level_m=0; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
-#define DEBUG // comment out if you want to turn off debugging
+//#define DEBUG // comment out if you want to turn off debugging
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
@@ -116,7 +116,6 @@ volatile unsigned long updateBattery = 0;
 
 int rainCount=-1; // count rain bucket tilts
 byte SolarCurrent; // calculate solar cell current 
-//String serialResponse = "";
 byte firstWindPulse; // ignore 1st anemometer rotation since it didn't make full circle
 int windSpeed; // speed
 long windAvr = 0; //sum of all wind speed between update
@@ -151,7 +150,6 @@ byte changeSleep=0;
 byte batteryState=0; // 0 normal; 1 low battery; 2 very low battery
 byte stopSleepChange=0; //on
 volatile byte countWake = 0;
-//volatile static bool triggered;
 
 
 void setup() {
@@ -280,7 +278,7 @@ connectGPRS();
   SendData();
 
   unsigned long startedWaiting = millis();
-  UZ_wake(startedWaiting);
+  //UZ_wake(startedWaiting);
   if (millis() - startedWaiting <= 9900 ) {
     UltrasonicAnemo=1;
     windDelay=1000;
@@ -290,21 +288,25 @@ connectGPRS();
     DEBUGSERIAL.println(F("UZ"));
     delay(50);
   #endif   
+  LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
 #endif 
 }
 
 void loop() {
      
 #ifdef UZ_Anemometer
-  disablePinChangeInterrupt(digitalPinToPinChangeInterrupt(12));
-
+  disablePinChangeInterrupt(digitalPinToPinChangeInterrupt(12));  
     #ifdef DEBUG
-    delay(20);
       DEBUGSERIAL.println(F("wk"));
     #endif 
 
+  if (sleepBetween>2){
+    LowPower.idle(SLEEP_2S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
+    wdt_disable();
+  }
   unsigned long startedWaiting = millis();
-  UZ_wake(startedWaiting);
+  //UZ_wake(startedWaiting);
+
           
   if ( millis() - startedWaiting >= 10000 && sonicError < 10)  { // if US error 
     sonicError++;
@@ -326,7 +328,7 @@ void loop() {
 
       if ( millis() - startedWaiting <= 8900 )  {  
          #ifdef DEBUG
-            DEBUGSERIAL.print(F("wkt"));
+            DEBUGSERIAL.print(F("wkt "));
             DEBUGSERIAL.println(millis() - startedWaiting);
           #endif         
         UltrasonicAnemometer();
@@ -410,6 +412,7 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
         }
       ultrasonicFlush();  
       enablePinChangeInterrupt(digitalPinToPinChangeInterrupt(12));
+      LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
       #endif  
   }
   
@@ -480,14 +483,14 @@ void wakeUp() {
   digitalWrite(PWRKEY, HIGH);
 }
 
-#ifdef UZ_Anemometer
-void UZ_wake(unsigned long startedWaiting) {
-  while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
-    ultrasonic.begin(9600);
-    delay(1200);
-    }
- }
-#endif 
+//#ifdef UZ_Anemometer
+//void UZ_wake(unsigned long startedWaiting) {
+//  while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
+//    ultrasonic.begin(9600);
+//    delay(10);
+//    }
+// }
+//#endif 
 
 
 void wake_from_sleep(void) {
