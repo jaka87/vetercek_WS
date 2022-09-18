@@ -160,7 +160,7 @@ void PostData() {
         DEBUGSERIAL.println(isConnected);
        #endif
 
-    if (isConnected ==10 ) { // if  PDP deact
+    if (isConnected ==10 or  isConnected ==99) { // if  PDP deact
        connectGPRS();
     } 
      #ifdef DEBUG
@@ -187,17 +187,10 @@ void PostData() {
 
 
      
-  //if (millis() - updateBattery >= 130000 or updateBattery == 0) {  // send data about battery and signal every 8+ minutes
-    //updateBattery=millis();
+  if (millis() - updateBattery >= 40000 or updateBattery == 0) {  // send data about battery and signal every x
+    updateBattery=millis();
     sig=fona.getRSSI(); 
-    //delay(300);
-    //#ifdef OLDPCB // old pcb
-      battLevel = readVcc(); // Get voltage %
-    //#else         // new
-     // battLevel = analogRead(A1)*0.1999;      
-    //#endif    
-    //sendBatTemp=0;
-
+    battLevel = readVcc(); // Get voltage %   
 
   if (enableSolar==1){
     int curr = 0;  // measure solar cell current
@@ -208,12 +201,9 @@ void PostData() {
           delay(20);
       }
     SolarCurrent=(curr/currCount)/5;  // calculate average solar current // divide with 5 so it can be send as byte
-
     }    
-  //}
-    //else {
-    //  sendBatTemp=sendBatTemp+1;
-  //}
+ }
+
   data[8]=windDir/100;
   data[9]=windDir%100;
   data[10]=wind_speed/10;

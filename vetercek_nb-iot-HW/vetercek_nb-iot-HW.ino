@@ -6,12 +6,14 @@
 #include "src/LowPower/LowPower.h" //sleep library
 #include <math.h> // wind speed calculations
 #include "src/OneWire/OneWire.h" //tmp sensor
+//#include "src/DS18B20/DS18B20.h"
 #include "src/DS18B20/DallasTemperature.h"
 #include "src/TimerOne/TimerOne.h"
 #include "src/bmp/ErriezBMX280.h"
 #include "src/Fona/Adafruit_FONA.h"
+#include <avr/interrupt.h>
 #include <EEPROM.h>
-#include "PinChangeInterrupt.h"
+//#include "PinChangeInterrupt.h"
 int resetReason = MCUSR;
 
 //atmega328pb has different MCUSR than atmega328p!
@@ -30,7 +32,7 @@ int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 int sea_level_m=0; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
-//#define DEBUG // comment out if you want to turn off debugging
+#define DEBUG // comment out if you want to turn off debugging
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
@@ -50,9 +52,16 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 #define windVanePin (A3)       // The pin the wind vane sensor is connected to
 #define DTR 6
 #define PWRKEY 10
+#define ENABLE_UART_START_FRAME_INTERRUPT UCSR1D = (1 << RXSIE) | (1 << SFDE)
+#define DISABLE_UART_START_FRAME_INTERRUPT UCSR1D = (0 << RXSIE) | (0 << SFDE)
 
 byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 0,0,0 }; // data
 
+
+//OneWire oneWire_in(ONE_WIRE_BUS_1);   //tmp
+//DS18B20 sensor_air(&oneWire_in);
+//OneWire oneWire_out(ONE_WIRE_BUS_2);
+//DS18B20 sensor_water(&oneWire_out);
 OneWire oneWire_in(ONE_WIRE_BUS_1);   //tmp
 DallasTemperature sensor_air(&oneWire_in);
 OneWire oneWire_out(ONE_WIRE_BUS_2);
@@ -137,7 +146,6 @@ uint16_t battVoltage = 0; // Battery voltage
 unsigned int sig = 0;
 int idd[15];
 byte sleepBetween=2;
-byte sendBatTemp=10;
 int PDPcount=0; // first reset after 100s
 byte failedSend=0; // if send fail
 byte sonicError=0;
@@ -159,7 +167,8 @@ void setup() {
   Timer1.initialize(1000000UL);         // initialize timer1, and set a 1 second period
   Timer1.attachInterrupt(CheckTimerGPRS);  // attaches checkTimer() as a timer overflow interrupt
   #ifdef UZ_Anemometer
-    attachPinChangeInterrupt(digitalPinToPCINT(12), wake_from_sleep, FALLING);
+    //attachPinChangeInterrupt(digitalPinToPCINT(12), wake_from_sleep, FALLING);
+    ENABLE_UART_START_FRAME_INTERRUPT;
   #endif
 
 pinMode(DTR, OUTPUT);
@@ -169,9 +178,6 @@ digitalWrite(DTR, LOW);
 digitalWrite(RESET, HIGH); 
 digitalWrite(PWRKEY, LOW);
 
-//#ifndef ATMEGA328P
-//UCSR0D = 1 << RXCIE1 | 1 << RXSIE | 1 << SFDE;
-//#endif
   
 #ifdef DEBUG
   DEBUGSERIAL.begin(9600);
@@ -278,7 +284,7 @@ connectGPRS();
   SendData();
 
   unsigned long startedWaiting = millis();
-  //UZ_wake(startedWaiting);
+  UZ_wake(startedWaiting);
   if (millis() - startedWaiting <= 9900 ) {
     UltrasonicAnemo=1;
     windDelay=1000;
@@ -295,54 +301,42 @@ connectGPRS();
 void loop() {
      
 #ifdef UZ_Anemometer
-  disablePinChangeInterrupt(digitalPinToPinChangeInterrupt(12));  
+  DISABLE_UART_START_FRAME_INTERRUPT;
+    //UZ_wake(startedWaiting);
     #ifdef DEBUG
       DEBUGSERIAL.println(F("wk"));
     #endif 
 
-  if (sleepBetween>2){
-    LowPower.idle(SLEEP_2S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
-    wdt_disable();
-  }
   unsigned long startedWaiting = millis();
-  //UZ_wake(startedWaiting);
-
-          
-  if ( millis() - startedWaiting >= 10000 && sonicError < 10)  { // if US error 
-    sonicError++;
-    ultrasonicFlush();
-    #ifdef DEBUG
-    delay(50);
-      DEBUGSERIAL.println(F("UZerr"));
-    delay(50);
-    #endif 
-     }
-  else if ( millis() - startedWaiting >= 10000 && sonicError >= 10)  { // if more than X US errors
-        reset(1);
-     }
-  else { 
-
-      while(ultrasonic.available() < 66 and millis() - startedWaiting <= 9000) {
-        delay(10);
-      }
-
-      if ( millis() - startedWaiting <= 8900 )  {  
-         #ifdef DEBUG
-            DEBUGSERIAL.print(F("wkt "));
-            DEBUGSERIAL.println(millis() - startedWaiting);
-          #endif         
-        UltrasonicAnemometer();
-      }
-      else  {  
-        ultrasonicFlush();
-         #ifdef DEBUG
-          delay(50);
-            DEBUGSERIAL.println(F("err flushb"));
-          delay(50);
-          #endif 
-      }
+  while(ultrasonic.available() < 10 and millis() - startedWaiting <= 50) {
+    delay(5);
   }
-          
+
+  if (ultrasonic.available() < 2 ) { // sleep while receiving data and anemometer sleep time 3s or more
+    #ifdef DEBUG
+      DEBUGSERIAL.println("slp");
+    #endif
+        LowPower.idle(SLEEP_2S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
+        wdt_disable();
+  }
+
+  else { // sleep while receiving data and anemometer sleep time 2s or less
+    #ifdef DEBUG
+      DEBUGSERIAL.println("slp2");
+    #endif    
+        LowPower.idle(SLEEP_250MS, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
+        wdt_disable();
+  }
+  
+
+    while (ultrasonic.read() != ',') {  } 
+    UltrasonicAnemometer();
+    #ifdef DEBUG
+      DEBUGSERIAL.print(F("WKT "));
+      DEBUGSERIAL.println(millis()-startedWaiting);
+    #endif
+
+                    
 #else 
     Anemometer();                           // anemometer
     GetWindDirection();
@@ -392,8 +386,8 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
       /////////////////////////// send data to server ///////////////////////////////////////////////     
       digitalWrite(DTR, LOW);  //wake up  
       delay(100);
-      fona.flush();
-      fona.flushInput();
+      //fona.flush();
+      //fona.flushInput();
       
       //delay(1000);
         bool checkAT = fona.checkAT();
@@ -411,7 +405,7 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
             }
         }
       ultrasonicFlush();  
-      enablePinChangeInterrupt(digitalPinToPinChangeInterrupt(12));
+      ENABLE_UART_START_FRAME_INTERRUPT;
       LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
       #endif  
   }
@@ -428,8 +422,9 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
       DEBUGSERIAL.print(F("wc "));
       DEBUGSERIAL.println(countWake);
     #endif   
-    enablePinChangeInterrupt(digitalPinToPinChangeInterrupt(12));
+    //enablePinChangeInterrupt(digitalPinToPinChangeInterrupt(12));
     //triggered = false; // reset flag
+    ENABLE_UART_START_FRAME_INTERRUPT;
     countWake=0;
     LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
     }    
@@ -483,18 +478,16 @@ void wakeUp() {
   digitalWrite(PWRKEY, HIGH);
 }
 
-//#ifdef UZ_Anemometer
-//void UZ_wake(unsigned long startedWaiting) {
-//  while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
-//    ultrasonic.begin(9600);
-//    delay(10);
-//    }
-// }
-//#endif 
+void UZ_wake(unsigned long startedWaiting) {
+  while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
+    ultrasonic.begin(9600);
+    delay(1200);
+    }      
+}
 
 
-void wake_from_sleep(void) {
-  //disablePinChangeInterrupt(digitalPinToPinChangeInterrupt(12));
-  //triggered=true;
-  countWake++;
+
+
+ISR(USART1_START_vect){
+countWake++;
 }

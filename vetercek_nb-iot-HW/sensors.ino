@@ -4,18 +4,15 @@ void UltrasonicAnemometer() { //measure wind speed
     char hexbuffer[5];
     int sum;
     unsigned long startedWaiting = millis();
-       
-    while (ultrasonic.read() != ',') {  } //millis() - startedWaiting <= 500 and  
-      
-        #ifdef DEBUG 
-       delay(20);
-        DEBUGSERIAL.println(ultrasonic.available()); 
-       delay(70);
-       #endif 
-       
+             
+      while(ultrasonic.available() < 63 ) {
+        delay(10);
+      }  
       int size = ultrasonic.readBytesUntil('\r\n', buffer, 70);
       buffer[size]='\0'; 
-  
+
+         delay(20);
+
        #ifdef DEBUG 
        delay(20);
         DEBUGSERIAL.print(size); 
@@ -256,14 +253,13 @@ if ((currentMillis2 - contactBounceTime2) > 500 ) { // debounce the switch conta
 }
 
 void GetAir() {
+  unsigned long startedWaiting = millis();    
 #ifdef TMP_POWER_ONOFF
   digitalWrite(pwrAir, HIGH);   // turn on power
-  delay(50);
+  delay(100);
 #endif  
   sensor_air.requestTemperatures(); // Send the command to get temperatures
-#ifdef TMP_POWER_ONOFF
-  delay (750) ;
-#endif    
+  while (!sensor_air.isConversionComplete() and millis()-startedWaiting<900);
   temp = sensor_air.getTempCByIndex(0);
 #ifdef TMP_POWER_ONOFF
   digitalWrite(pwrAir, LOW);   // turn off power
@@ -277,14 +273,13 @@ void GetAir() {
 
 
 void GetWater() {
+  unsigned long startedWaiting = millis();    
 #ifdef TMP_POWER_ONOFF
   digitalWrite(pwrWater, HIGH);   // turn on power
-  delay(50);
+  delay(100);
 #endif  
   sensor_water.requestTemperatures(); // Send the command to get temperatures
-#ifdef TMP_POWER_ONOFF
-  delay (850) ;
-#endif    
+  while (!sensor_water.isConversionComplete() and millis()-startedWaiting<1500);  
   water = sensor_water.getTempCByIndex(0);
 #ifdef TMP_POWER_ONOFF
   digitalWrite(pwrWater, LOW);   // turn off power
