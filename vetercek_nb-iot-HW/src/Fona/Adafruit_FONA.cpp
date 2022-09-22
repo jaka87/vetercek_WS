@@ -79,14 +79,12 @@ boolean Adafruit_FONA::begin(Stream &port) {
   if (timeout <= 0) {
 #ifdef ADAFRUIT_FONA_DEBUG
     DEBUG_PRINTLN(F("No response, last attempt"));
+#endif
   //pinMode(10, OUTPUT);
   digitalWrite(10, LOW);
-  delay(3000); // For SIM7000 
+  delay(1200); // For SIM7000 
   digitalWrite(10, HIGH);
   delay(1000);    
-    
-#endif
-
     
     sendCheckReply(F("AT"), ok_reply);
     delay(100);
@@ -145,6 +143,13 @@ boolean Adafruit_FONA_LTE::setBaudrate(uint16_t baud) {
 
 
 /********* POWER, BATTERY & ADC ********************************************/
+
+/* powers down the SIM module */
+boolean Adafruit_FONA::powerDown(void) {
+    if (! sendCheckReply(F("AT+CPOWD=1"), F("NORMAL POWER DOWN"))) // Normal power off
+        return false;
+  return true;
+}
 
 /* returns value in mV (uint16_t) */
 boolean Adafruit_FONA::getBattVoltage(uint16_t *v) {
@@ -386,9 +391,6 @@ boolean Adafruit_FONA::enableGPRS() {
         //if (! sendCheckReply(F("AT+CIFSR"), ok_reply, 10000)) //jaka - gets ip not ok status - parse reply
           //return false;          
           
-
-
- 
   return true;
 }
 
@@ -495,7 +497,7 @@ uint8_t Adafruit_FONA::UDPconnected(void) {
   if (strcmp(replybuffer, "STATE: IP INITIAL") == 0) { res=2;}
   //else if (strcmp(replybuffer, "STATE: IP START") == 0) { res=3;}
   //else if (strcmp(replybuffer, "STATE: IP CONFIG") == 0) { res=4;}
-  else if (strcmp(replybuffer, "STATE: IP GPRSACT") == 0) { res=5;}
+  //else if (strcmp(replybuffer, "STATE: IP GPRSACT") == 0) { res=5;}
   //else if (strcmp(replybuffer, "STATE: UDP STATUS") == 0) { res=6;}
   //else if (strcmp(replybuffer, "STATE: UDP CONNECTING") == 0) { res=7;}
   //else if (strcmp(replybuffer, "STATE: SERVER LISTENING") == 0) { res=8;;}

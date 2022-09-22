@@ -16,12 +16,6 @@
 //#include "PinChangeInterrupt.h"
 int resetReason = MCUSR;
 
-//atmega328pb has different MCUSR than atmega328p!
-// 6 - power ON 
-// 2 - WTR
-// 4 - brown out
-// 2 - external
-// 1 - power loss
 
 //////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
 #define APN "iot.1nce.net"
@@ -46,10 +40,9 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 #define windSensorPin 2 // The pin location of the anemometer sensor
 #define USRX 11
 #define USTX 12
-#define RESET (A2)
 #define PWRAIR 8
 #define PWRWATER 9  
-#define windVanePin (A3)       // The pin the wind vane sensor is connected to
+#define windVanePin PIN_A3       // The pin the wind vane sensor is connected to
 #define DTR 6
 #define PWRKEY 10
 #define ENABLE_UART_START_FRAME_INTERRUPT UCSR1D = (1 << RXSIE) | (1 << SFDE)
@@ -166,29 +159,6 @@ void setup() {
   
   Timer1.initialize(1000000UL);         // initialize timer1, and set a 1 second period
   Timer1.attachInterrupt(CheckTimerGPRS);  // attaches checkTimer() as a timer overflow interrupt
-  #ifdef UZ_Anemometer
-    //attachPinChangeInterrupt(digitalPinToPCINT(12), wake_from_sleep, FALLING);
-    ENABLE_UART_START_FRAME_INTERRUPT;
-  #endif
-
-pinMode(DTR, OUTPUT);
-pinMode(RESET, OUTPUT);
-pinMode(PWRKEY, OUTPUT);
-digitalWrite(DTR, LOW); 
-digitalWrite(RESET, HIGH); 
-digitalWrite(PWRKEY, LOW);
-
-  
-#ifdef DEBUG
-  DEBUGSERIAL.begin(9600);
-  delay(20);
-  DEBUGSERIAL.println(F("S"));
-  DEBUGSERIAL.println(resetReason);
-#endif
-//powerOn();
-
-  //Serial1.begin(9600); //for sim7070 debug
-
 
   pinMode(13, OUTPUT);     // this part is used when you bypass bootloader to signal when board is starting...
   digitalWrite(13, HIGH);   // turn the LED on
@@ -199,9 +169,34 @@ digitalWrite(PWRKEY, LOW);
   pinMode(pwrWater, OUTPUT);      // sets the digital pin as output
   digitalWrite(pwrAir, HIGH);   // turn on power
   digitalWrite(pwrWater, HIGH);   // turn on power  
-  delay(100);
-  sensor_air.begin();
+  pinMode(DTR, OUTPUT);
+  digitalWrite(DTR, LOW); 
+  pinMode(PWRKEY, OUTPUT);
+  digitalWrite(PWRKEY, HIGH);
+  pinMode(PIN_A2, OUTPUT);
+  digitalWrite(PIN_A2, HIGH); 
+  pinMode(DTR, OUTPUT);
+  digitalWrite(DTR, LOW);   
+  delay(5000);
 
+
+  #ifdef UZ_Anemometer
+    ENABLE_UART_START_FRAME_INTERRUPT;
+  #endif
+
+
+  
+#ifdef DEBUG
+  DEBUGSERIAL.begin(9600);
+  delay(20);
+  DEBUGSERIAL.println(F("S"));
+  DEBUGSERIAL.println(resetReason);
+#endif
+
+  //Serial1.begin(9600); //for sim7070 debug
+
+
+  sensor_air.begin();
   if (EEPROM.read(11)==255 or EEPROM.read(11)==1) {  enableSolar=1; }   
   if (EEPROM.read(10)==0) { attachInterrupt(digitalPinToInterrupt(3), rain_count, FALLING); enableRain=1;} // rain counts
   else { sensor_water.begin(); } // water temperature
@@ -220,38 +215,8 @@ digitalWrite(PWRKEY, LOW);
 
 moduleSetup(); // Establishes first-time serial comm and prints IMEI
 checkIMEI();
-connectGPRS();
+connectGPRS(); 
 
- 
-
-
-
-  if (resetReason==2 ) { //////////////////// reset reason detailed        
-    if (EEPROM.read(15)>0 ) {
-      if (EEPROM.read(15)==1 ) { 
-        resetReason=21; 
-      }
-      else if (EEPROM.read(15)==2 ) { 
-        resetReason=22; 
-      }  
-      else if (EEPROM.read(15)==3 ) { 
-        resetReason=23; 
-      }  
-      else if (EEPROM.read(15)==4 ) { 
-        resetReason=24; 
-      }      
-      else if (EEPROM.read(15)==5 ) { 
-        resetReason=25; 
-      }  
-    else if (EEPROM.read(15)==6 ) { 
-      resetReason=26; 
-    }       
-      else { 
-        resetReason=22; 
-      }   
-    EEPROM.write(15, 0); 
-    } 
-  } 
 
   if (resetReason==8 ) { //////////////////// reset reason detailed        
     if (EEPROM.read(15)>0 ) {
@@ -280,9 +245,9 @@ connectGPRS();
     } 
   } 
 
-#ifdef UZ_Anemometer
-  SendData();
+  beforeSend();
 
+#ifdef UZ_Anemometer
   unsigned long startedWaiting = millis();
   UZ_wake(startedWaiting);
   if (millis() - startedWaiting <= 9900 ) {
@@ -308,6 +273,7 @@ void loop() {
     #endif 
 
   unsigned long startedWaiting = millis();
+  UZ_wake(startedWaiting);
   while(ultrasonic.available() < 10 and millis() - startedWaiting <= 50) {
     delay(5);
   }
@@ -355,7 +321,10 @@ void loop() {
   }
    
 #endif  
-  
+
+if (measureCount==1){
+  GetTmpNow();
+}  
   #ifdef DEBUG                                 // debug data
     DEBUGSERIAL.print(F(" d:"));
     DEBUGSERIAL.print(calDirection);
@@ -383,31 +352,7 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
   )
   
   {  
-      /////////////////////////// send data to server ///////////////////////////////////////////////     
-      digitalWrite(DTR, LOW);  //wake up  
-      delay(100);
-      //fona.flush();
-      //fona.flushInput();
-      
-      //delay(1000);
-        bool checkAT = fona.checkAT();
-        if (fona.checkAT()) {SendData();}
-        else {moduleSetup(); SendData();}
-      digitalWrite(DTR, HIGH);  //sleep  
-
-      #ifdef UZ_Anemometer
-        if (UltrasonicAnemo==1){
-            if ( changeSleep== 1 and stopSleepChange<3) { //change of sleep time
-          unsigned long startedWaiting = millis();
-          //UZ_wake(startedWaiting);
-          ultrasonicFlush();   
-          UZsleep(sleepBetween);
-            }
-        }
-      ultrasonicFlush();  
-      ENABLE_UART_START_FRAME_INTERRUPT;
-      LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
-      #endif  
+    beforeSend();
   }
   
   else if ( UltrasonicAnemo==0 ){ // restart timer
@@ -433,6 +378,37 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
 }
 
 
+void beforeSend() { 
+      /////////////////////////// send data to server ///////////////////////////////////////////////  
+//      #ifdef UZ_Anemometer
+//        ultrasonic.end();
+//      #endif 
+      digitalWrite(DTR, LOW);  //wake up  
+      delay(100);
+      bool checkAT = fona.checkAT();
+        if (fona.checkAT()) { SendData(); }
+        else {moduleSetup(); SendData(); }
+      digitalWrite(DTR, HIGH);  //sleep  
+      delay(100);
+
+      #ifdef UZ_Anemometer
+        unsigned long startedWaiting = millis();
+        UZ_wake(startedWaiting);
+        if (UltrasonicAnemo==1){
+            if ( changeSleep== 1 and stopSleepChange<3) { //change of sleep time
+          unsigned long startedWaiting = millis();
+          //UZ_wake(startedWaiting);
+          ultrasonicFlush();   
+          UZsleep(sleepBetween);
+            }
+        }
+      ultrasonicFlush();  
+      ENABLE_UART_START_FRAME_INTERRUPT;
+      LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
+      #endif    
+}
+
+
 void CheckTimerGPRS() { // if unable to send data in 200s
   timergprs++;
     
@@ -447,44 +423,43 @@ void CheckTimerGPRS() { // if unable to send data in 200s
 
 void reset(byte rr) {
   EEPROM.write(15, rr);
-  delay(200);
+  delay(20);
   #ifdef DEBUG
     DEBUGSERIAL.print(F("err_r: "));
     DEBUGSERIAL.println(rr);
   #endif  
-  if (rr==2 or rr==5){ powerOn(); }
-  delay(100);
   wdt_enable(WDTO_60MS);
   delay(100);
-
 }
 
 
+//// Power on the module
+//void powerOn() {
+//  digitalWrite(PWRKEY, LOW);
+//  delay(1200); // For SIM7000 
+//  digitalWrite(PWRKEY, HIGH);
+//   #ifdef DEBUG
+//   delay(100);
+//    DEBUGSERIAL.println(F("Pwron"));
+//   #endif   
+//  delay(4000);
+//}
 
-// Power on the module
-void powerOn() {
-  digitalWrite(PWRKEY, LOW);
-  delay(3000); // For SIM7000 
-  digitalWrite(PWRKEY, HIGH);
-   #ifdef DEBUG
-    DEBUGSERIAL.println(F("Pwron"));
-   #endif   
-  delay(5000);
-}
+//void wakeUp() {
+//  digitalWrite(PWRKEY, LOW);
+//  delay(100); // For SIM7000 
+//  digitalWrite(PWRKEY, HIGH);
+//}
 
-void wakeUp() {
-  digitalWrite(PWRKEY, LOW);
-  delay(100); // For SIM7000 
-  digitalWrite(PWRKEY, HIGH);
-}
 
+#ifdef UZ_Anemometer
 void UZ_wake(unsigned long startedWaiting) {
   while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
     ultrasonic.begin(9600);
-    delay(1200);
+    delay(700);
     }      
 }
-
+#endif  
 
 
 

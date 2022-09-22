@@ -227,7 +227,7 @@ void DominantDirection() { // get dominant wind direction
 
 // Get Wind direction, and split it in 16 parts and save it to array
 void GetWindDirection() {
-  vaneValue = analogRead(windVanePin);
+  vaneValue = analogRead(PIN_A3);
   direction = map(vaneValue, 0, 1023, 0, 360);
   calDirection = direction + vaneOffset;
   CalculateWindDirection();
@@ -308,12 +308,7 @@ void GetPressure() {
 }
 #endif
 
-
-void BeforePostCalculations() {
-  DominantDirection();                          // wind direction
-  GetAvgWInd();                                 // avg wind
-  
-  
+void GetTmpNow() {
   if (onOffTmp == 1) {
     GetAir();                               // air
     data[18]=99;
@@ -339,8 +334,13 @@ void BeforePostCalculations() {
       GetPressure();
       delay(20);
     }
-  #endif 
+  #endif   
+}
 
+
+void BeforePostCalculations() {
+  DominantDirection();                          // wind direction
+  GetAvgWInd();                                 // avg wind
 }
 
 // Read the module's power supply voltage
