@@ -144,13 +144,6 @@ boolean Adafruit_FONA_LTE::setBaudrate(uint16_t baud) {
 
 /********* POWER, BATTERY & ADC ********************************************/
 
-/* powers down the SIM module */
-boolean Adafruit_FONA::powerDown(void) {
-    if (! sendCheckReply(F("AT+CPOWD=1"), F("NORMAL POWER DOWN"))) // Normal power off
-        return false;
-  return true;
-}
-
 /* returns value in mV (uint16_t) */
 boolean Adafruit_FONA::getBattVoltage(uint16_t *v) {
     return sendParseReply(F("AT+CBC"), F("+CBC: "), v, ',', 2);

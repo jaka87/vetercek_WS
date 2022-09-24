@@ -11,7 +11,7 @@ void UltrasonicAnemometer() { //measure wind speed
       int size = ultrasonic.readBytesUntil('\r\n', buffer, 70);
       buffer[size]='\0'; 
 
-         delay(20);
+         //delay(20);
 
        #ifdef DEBUG 
        delay(20);
@@ -188,21 +188,6 @@ void GetAvgWInd() {
   wind_speed = windAvr / measureCount; // calculate average wind
 }
 
-//#ifndef ATMEGA328P
-//ISR(USART1_RX_vect)
-//{
-//#ifdef DEBUG
-//  DEBUGSERIAL.println(F("interrupt");
-//#endif
-//}
-//ISR(USART1_START)
-//{
-//#ifdef DEBUG
-//  DEBUGSERIAL.println(F("interrupt 2");
-//#endif
-//}
-//#endif
-
 
 #ifndef UZ_Anemometer
   void ISRrotation () {  // This is the function that the interrupt calls to increment the rotation count
@@ -242,9 +227,6 @@ void CalculateWindDirection() {
 }
 
 void rain_count() {
-  #ifdef UZ_Anemometer
-    //NeoSWSerial::rxISR( *portInputRegister( digitalPinToPort( 3 ) ) );
-  #endif
   currentMillis2 = millis(); //we have to read millis at the same position in ISR each time to get the most accurate readings
 if ((currentMillis2 - contactBounceTime2) > 500 ) { // debounce the switch contact.
     contactBounceTime2 = currentMillis2;

@@ -36,33 +36,25 @@ if (!fona.begin(Serial)) {
 byte netStatus() {
   byte n = fona.getNetworkStatus();
   return n;
-
 }
 
 
-  void GSMerror(byte what) {   
-   
+void GSMerror(byte what) {      
   if (what==1) {
-  #ifdef DEBUG    
-    DEBUGSERIAL.println(F("gerr1"));   
-  #endif 
-    digitalWrite(PIN_A2, LOW);     
-    delay(300);   
-    digitalWrite(PIN_A2, HIGH);  
-//  fona.setFunctionality(0); // AT+CFUN=0
-//  delay(3000);
-//  fona.setFunctionality(1); // AT+CFUN=1    
+    #ifdef DEBUG    
+      DEBUGSERIAL.println(F("gerr1"));   
+    #endif 
+      digitalWrite(PIN_A2, LOW);     
+      delay(300);   
+      digitalWrite(PIN_A2, HIGH);  
   }
   else {
-  fona.setFunctionality(0); // AT+CFUN=0
-  delay(3000);
-  fona.setFunctionality(1); // AT+CFUN=1        
-//  #ifdef DEBUG    
-//    DEBUGSERIAL.println(F("gerr0"));   
-//  #endif 
-//  fona.setFunctionality(0); // AT+CFUN=0
-//  delay(3000);
-//  fona.setFunctionality(1); // AT+CFUN=1
+    #ifdef DEBUG    
+      DEBUGSERIAL.println(F("gerr0"));   
+    #endif     
+    fona.setFunctionality(0); // AT+CFUN=0
+    delay(3000);
+    fona.setFunctionality(1); // AT+CFUN=1        
   }
 
   delay(5000);     
@@ -96,7 +88,6 @@ unsigned long startTime=millis();
      }
   } 
   while (GSMstatus !=5 and GSMstatus !=1 );
-  
   return true;    
 }
 
@@ -128,9 +119,9 @@ bool checkGPRS() {
   }
   while (GPRS!=1 and PDP!=1 and millis() - startTime <= 60*1000);
 
-#ifdef DEBUG
-DEBUGSERIAL.println("GPRS");
-#endif  
+  #ifdef DEBUG
+    DEBUGSERIAL.println("GPRS");
+  #endif  
 }
 
 
@@ -340,17 +331,20 @@ void PostData() {
    else {  //if cannot send data to vetercek.com
      fona.UDPclose();
      failedSend=failedSend+1;
-     delay(5000);
+     delay(3000);
 
-      if (failedSend > 1 and failedSend < 2) {
+      if (failedSend > 1 and failedSend < 3) {
       #ifdef DEBUG
         DEBUGSERIAL.println(F("errRC3"));
       #endif
-      moduleSetup(); // Establishes first-time serial comm and prints IMEI
+        GSMerror(0);
       }
       
-      else if (failedSend > 1 ) {
-        GSMerror(0);
+      else if (failedSend > 2 ) {
+      #ifdef DEBUG
+        DEBUGSERIAL.println(F("errRC4"));
+      #endif        
+        GSMerror(1);
       }      
    } 
   

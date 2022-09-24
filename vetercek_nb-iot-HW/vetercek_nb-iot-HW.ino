@@ -13,7 +13,6 @@
 #include "src/Fona/Adafruit_FONA.h"
 #include <avr/interrupt.h>
 #include <EEPROM.h>
-//#include "PinChangeInterrupt.h"
 int resetReason = MCUSR;
 
 
@@ -26,7 +25,7 @@ int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 int sea_level_m=0; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
-#define DEBUG // comment out if you want to turn off debugging
+//#define DEBUG // comment out if you want to turn off debugging
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
@@ -177,7 +176,7 @@ void setup() {
   digitalWrite(PIN_A2, HIGH); 
   pinMode(DTR, OUTPUT);
   digitalWrite(DTR, LOW);   
-  delay(5000);
+  
 
 
   #ifdef UZ_Anemometer
@@ -273,7 +272,7 @@ void loop() {
     #endif 
 
   unsigned long startedWaiting = millis();
-  UZ_wake(startedWaiting);
+  //UZ_wake(startedWaiting);
   while(ultrasonic.available() < 10 and millis() - startedWaiting <= 50) {
     delay(5);
   }
@@ -322,9 +321,7 @@ void loop() {
    
 #endif  
 
-if (measureCount==1){
-  GetTmpNow();
-}  
+
   #ifdef DEBUG                                 // debug data
     DEBUGSERIAL.print(F(" d:"));
     DEBUGSERIAL.print(calDirection);
@@ -367,8 +364,6 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
       DEBUGSERIAL.print(F("wc "));
       DEBUGSERIAL.println(countWake);
     #endif   
-    //enablePinChangeInterrupt(digitalPinToPinChangeInterrupt(12));
-    //triggered = false; // reset flag
     ENABLE_UART_START_FRAME_INTERRUPT;
     countWake=0;
     LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
@@ -380,16 +375,14 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
 
 void beforeSend() { 
       /////////////////////////// send data to server ///////////////////////////////////////////////  
-//      #ifdef UZ_Anemometer
-//        ultrasonic.end();
-//      #endif 
+      GetTmpNow();
       digitalWrite(DTR, LOW);  //wake up  
-      delay(100);
+      delay(10);
       bool checkAT = fona.checkAT();
         if (fona.checkAT()) { SendData(); }
         else {moduleSetup(); SendData(); }
       digitalWrite(DTR, HIGH);  //sleep  
-      delay(100);
+      delay(20);
 
       #ifdef UZ_Anemometer
         unsigned long startedWaiting = millis();
@@ -433,23 +426,17 @@ void reset(byte rr) {
 }
 
 
-//// Power on the module
-//void powerOn() {
-//  digitalWrite(PWRKEY, LOW);
-//  delay(1200); // For SIM7000 
-//  digitalWrite(PWRKEY, HIGH);
-//   #ifdef DEBUG
-//   delay(100);
-//    DEBUGSERIAL.println(F("Pwron"));
-//   #endif   
-//  delay(4000);
-//}
-
-//void wakeUp() {
-//  digitalWrite(PWRKEY, LOW);
-//  delay(100); // For SIM7000 
-//  digitalWrite(PWRKEY, HIGH);
-//}
+// Power on the module
+void powerOn() {
+  digitalWrite(PWRKEY, LOW);
+  delay(1200); // For SIM7000 
+  digitalWrite(PWRKEY, HIGH);
+   #ifdef DEBUG
+   delay(100);
+    DEBUGSERIAL.println(F("Pwron"));
+   #endif   
+  delay(3000);
+}
 
 
 #ifdef UZ_Anemometer
