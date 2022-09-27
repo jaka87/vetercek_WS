@@ -44,9 +44,10 @@ void GSMerror(byte what) {
     #ifdef DEBUG    
       DEBUGSERIAL.println(F("gerr1"));   
     #endif 
-      digitalWrite(PIN_A2, LOW);     
-      delay(300);   
-      digitalWrite(PIN_A2, HIGH);  
+//      digitalWrite(PIN_A2, LOW);     
+//      delay(300);   
+//      digitalWrite(PIN_A2, HIGH);  
+    reset(6);
   }
   else {
     #ifdef DEBUG    
@@ -148,7 +149,7 @@ bool checkServer() {
     #ifdef DEBUG
     DEBUGSERIAL.println(F("veterr"));
     #endif
-    GSMerror(0);
+    reset(5);
   }    
 }
 

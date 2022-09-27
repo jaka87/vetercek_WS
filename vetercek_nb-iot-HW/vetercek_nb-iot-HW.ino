@@ -78,6 +78,7 @@ DallasTemperature sensor_water(&oneWire_out);
 // 83 - manual remote reset 
 // 84 - X sonic errors in UZ function
 // 85 - UDPclose
+// 86 - gsm NC
 // 88 - other
 
 
@@ -272,25 +273,25 @@ void loop() {
     #endif 
 
   unsigned long startedWaiting = millis();
-  //UZ_wake(startedWaiting);
-  while(ultrasonic.available() < 10 and millis() - startedWaiting <= 50) {
+  ///UZ_wake(startedWaiting);
+  while(ultrasonic.available() < 2 and millis() - startedWaiting <= 50) {
     delay(5);
   }
 
   if (ultrasonic.available() < 2 ) { // sleep while receiving data and anemometer sleep time 3s or more
-    #ifdef DEBUG
-      DEBUGSERIAL.println("slp");
-    #endif
+//    #ifdef DEBUG
+//      DEBUGSERIAL.println("slp");
+//    #endif
         LowPower.idle(SLEEP_2S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
-        wdt_disable();
+        //wdt_disable();
   }
 
   else { // sleep while receiving data and anemometer sleep time 2s or less
-    #ifdef DEBUG
-      DEBUGSERIAL.println("slp2");
-    #endif    
+//    #ifdef DEBUG
+//      DEBUGSERIAL.println("slp2");
+//    #endif    
         LowPower.idle(SLEEP_250MS, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
-        wdt_disable();
+        //wdt_disable();
   }
   
 
@@ -375,6 +376,9 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
 
 void beforeSend() { 
       /////////////////////////// send data to server ///////////////////////////////////////////////  
+//      #ifdef UZ_Anemometer
+//        ultrasonic.end();
+//      #endif
       GetTmpNow();
       digitalWrite(DTR, LOW);  //wake up  
       delay(10);
@@ -382,15 +386,13 @@ void beforeSend() {
         if (fona.checkAT()) { SendData(); }
         else {moduleSetup(); SendData(); }
       digitalWrite(DTR, HIGH);  //sleep  
-      delay(20);
+      delay(50);
 
       #ifdef UZ_Anemometer
-        unsigned long startedWaiting = millis();
-        UZ_wake(startedWaiting);
+//        unsigned long startedWaiting = millis();
+//        UZ_wake(startedWaiting);
         if (UltrasonicAnemo==1){
             if ( changeSleep== 1 and stopSleepChange<3) { //change of sleep time
-          unsigned long startedWaiting = millis();
-          //UZ_wake(startedWaiting);
           ultrasonicFlush();   
           UZsleep(sleepBetween);
             }
@@ -443,7 +445,7 @@ void powerOn() {
 void UZ_wake(unsigned long startedWaiting) {
   while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
     ultrasonic.begin(9600);
-    delay(700);
+    delay(800);
     }      
 }
 #endif  

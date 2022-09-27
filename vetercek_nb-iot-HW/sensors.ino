@@ -11,14 +11,14 @@ void UltrasonicAnemometer() { //measure wind speed
       int size = ultrasonic.readBytesUntil('\r\n', buffer, 70);
       buffer[size]='\0'; 
 
-         //delay(20);
+      delay(20); // important in case of error
 
        #ifdef DEBUG 
        delay(20);
         DEBUGSERIAL.print(size); 
         DEBUGSERIAL.print(F(" buff ")); 
         DEBUGSERIAL.println(buffer); 
-       delay(70);
+       delay(20);
        #endif 
           
       char *dir = strtok(buffer, ",/");
@@ -71,12 +71,18 @@ int countBytes( const char * data )
 }
 
 void UZerror(byte where) { //ultrasonic error
+  if ( sonicError>0){
+      ultrasonic.end();
+      delay(2000);
+      unsigned long startedWaiting = millis();
+      UZ_wake(startedWaiting);
+  }
   sonicError++;
   #ifdef DEBUG
       DEBUGSERIAL.print(F("err UZ "));
       DEBUGSERIAL.println(where);
   #endif
-  if ( sonicError >= 10)  { reset(4);  }   // if more than x US errors 
+if ( sonicError >=5)  { reset(4);  }   // if more than x US errors 
 }
 
 void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
