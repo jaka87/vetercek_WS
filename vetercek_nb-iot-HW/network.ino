@@ -96,30 +96,38 @@ bool checkGPRS() {
   unsigned long startTime=millis();  
   byte GPRS=99;
   byte PDP=99;
+  byte count=0;
   do {
-    if (millis() - startTime >= 60000 )  {
+    if (millis() - startTime >= 119000 )  {
       #ifdef DEBUG
-      DEBUGSERIAL.println(F("GPRSerr"));
+        DEBUGSERIAL.println(F("GPRSerr"));
       #endif
-      GSMerror(3);
-      startTime=millis();
+      reset(6);
     } 
-    else if (millis() - startTime < 60000  and millis() - startTime > 500)  {
+    else if (millis() - startTime < 120000  and count==1)  {
       #ifdef DEBUG
         DEBUGSERIAL.println(F("rGPRS"));
       #endif    
-      delay(5000);
+      delay(3000);
       fona.enableGPRS();
+    } 
+    else if (millis() - startTime < 120000 and count > 1)  {
+      #ifdef DEBUG
+        DEBUGSERIAL.println(F("rGPRS2"));
+      #endif    
+      GSMerror(0);
+      connectGPRS();
     } 
       GPRS=fona.GPRSstate();
       PDP=fona.GPRSPDP();
+      count++;
       #ifdef DEBUG
         DEBUGSERIAL.println(GPRS);
         DEBUGSERIAL.println(PDP);
       #endif 
   }
-  while (GPRS!=1 and PDP!=1 and millis() - startTime <= 60*1000);
-
+  while (GPRS!=1 and PDP!=1 and millis() - startTime <= 120000);
+  count=0;
   #ifdef DEBUG
     DEBUGSERIAL.println("GPRS");
   #endif  

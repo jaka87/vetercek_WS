@@ -73,7 +73,7 @@ int countBytes( const char * data )
 void UZerror(byte where) { //ultrasonic error
   if ( sonicError>0){
       ultrasonic.end();
-      delay(2000);
+      delay(1000);
       unsigned long startedWaiting = millis();
       UZ_wake(startedWaiting);
   }

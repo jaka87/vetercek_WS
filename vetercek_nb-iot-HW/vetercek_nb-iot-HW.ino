@@ -174,12 +174,8 @@ void setup() {
   pinMode(PWRKEY, OUTPUT);
   digitalWrite(PWRKEY, HIGH);
   pinMode(PIN_A2, OUTPUT);
-  digitalWrite(PIN_A2, HIGH); 
-  pinMode(DTR, OUTPUT);
-  digitalWrite(DTR, LOW);   
+  digitalWrite(PIN_A2, HIGH);   
   
-
-
   #ifdef UZ_Anemometer
     ENABLE_UART_START_FRAME_INTERRUPT;
   #endif
@@ -213,6 +209,7 @@ void setup() {
       }
 #endif   
 
+if (resetReason!=8 ) { powerOn();   }
 moduleSetup(); // Establishes first-time serial comm and prints IMEI
 checkIMEI();
 connectGPRS(); 
@@ -423,6 +420,7 @@ void reset(byte rr) {
     DEBUGSERIAL.print(F("err_r: "));
     DEBUGSERIAL.println(rr);
   #endif  
+  //simReset();
   wdt_enable(WDTO_60MS);
   delay(100);
 }
@@ -431,13 +429,19 @@ void reset(byte rr) {
 // Power on the module
 void powerOn() {
   digitalWrite(PWRKEY, LOW);
-  delay(1200); // For SIM7000 
+  delay(100); // For SIM7000 
   digitalWrite(PWRKEY, HIGH);
    #ifdef DEBUG
    delay(100);
     DEBUGSERIAL.println(F("Pwron"));
    #endif   
   delay(3000);
+}
+
+void simReset() {
+  digitalWrite(PIN_A2, LOW);     
+  delay(300);   
+  digitalWrite(PIN_A2, HIGH);  
 }
 
 
