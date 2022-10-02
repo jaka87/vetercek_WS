@@ -67,6 +67,7 @@ class Adafruit_FONA : public FONAStreamType {
 
   // IMEI
   uint8_t getIMEI(char *imei);
+  boolean powerDown(void);
 
   void setNetworkSettings(FONAFlashStringPtr apn, FONAFlashStringPtr username=0, FONAFlashStringPtr password=0);
   int8_t getNetworkInfo(void);

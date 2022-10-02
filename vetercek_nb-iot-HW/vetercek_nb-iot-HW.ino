@@ -33,7 +33,6 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 
 
 
-
 #define ONE_WIRE_BUS_1 4 //air
 #define ONE_WIRE_BUS_2 3 // water
 #define windSensorPin 2 // The pin location of the anemometer sensor
@@ -209,11 +208,12 @@ void setup() {
       }
 #endif   
 
-if (resetReason!=8 ) { powerOn();   }
+powerOn(0); 
+
+
 moduleSetup(); // Establishes first-time serial comm and prints IMEI
 checkIMEI();
 connectGPRS(); 
-
 
   if (resetReason==8 ) { //////////////////// reset reason detailed        
     if (EEPROM.read(15)>0 ) {
@@ -241,6 +241,33 @@ connectGPRS();
     EEPROM.write(15, 0); 
     } 
   } 
+
+  else if (resetReason==2) { 
+    if (EEPROM.read(15)>0 ) {
+      if (EEPROM.read(15)==1 ) { 
+        resetReason=71; 
+      }
+      else if (EEPROM.read(15)==2 ) { 
+        resetReason=72; 
+      }  
+      else if (EEPROM.read(15)==3 ) { 
+        resetReason=73; 
+      }  
+      else if (EEPROM.read(15)==4 ) { 
+        resetReason=74; 
+      }      
+      else if (EEPROM.read(15)==5 ) { 
+        resetReason=75; 
+      }  
+    else if (EEPROM.read(15)==6 ) { 
+      resetReason=76; 
+    } 
+      else { 
+        resetReason=7; 
+      }   
+    EEPROM.write(15, 0); 
+    }     
+  }
 
   beforeSend();
 
@@ -421,21 +448,27 @@ void reset(byte rr) {
     DEBUGSERIAL.println(rr);
   #endif  
   //simReset();
+  //powerOn(1); 
+  fona.powerDown();
+  delay(3000);
   wdt_enable(WDTO_60MS);
   delay(100);
 }
 
 
 // Power on the module
-void powerOn() {
+void powerOn(byte version) {
   digitalWrite(PWRKEY, LOW);
-  delay(100); // For SIM7000 
+  if (version==0) { delay(100);  }
+  else { delay(1200);  }
   digitalWrite(PWRKEY, HIGH);
-   #ifdef DEBUG
-   delay(100);
-    DEBUGSERIAL.println(F("Pwron"));
-   #endif   
-  delay(3000);
+  if (version==1) { 
+    delay(3000);  
+    digitalWrite(PWRKEY, LOW);
+    delay(1200);
+    digitalWrite(PWRKEY, HIGH);
+    }
+  
 }
 
 void simReset() {
