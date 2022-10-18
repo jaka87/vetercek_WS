@@ -1,5 +1,4 @@
 void moduleSetup() {
-
 Serial.begin(57600);
 while (!Serial) {
   ; // wait for serial port to connect. Needed for native USB
@@ -44,10 +43,8 @@ void GSMerror(byte what) {
     #ifdef DEBUG    
       DEBUGSERIAL.println(F("gerr1"));   
     #endif 
-//      digitalWrite(PIN_A2, LOW);     
-//      delay(300);   
-//      digitalWrite(PIN_A2, HIGH);  
-    reset(6);
+      simReset();
+      moduleSetup();
   }
   else {
     #ifdef DEBUG    
@@ -341,15 +338,8 @@ void PostData() {
      fona.UDPclose();
      failedSend=failedSend+1;
      delay(3000);
-
-      if (failedSend > 1 and failedSend < 3) {
-      #ifdef DEBUG
-        DEBUGSERIAL.println(F("errRC3"));
-      #endif
-        GSMerror(0);
-      }
       
-      else if (failedSend > 2 ) {
+      if (failedSend > 2 ) {
       #ifdef DEBUG
         DEBUGSERIAL.println(F("errRC4"));
       #endif        
