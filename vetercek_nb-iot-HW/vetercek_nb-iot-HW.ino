@@ -209,8 +209,6 @@ void setup() {
 #endif   
 
 powerOn(0); 
-
-
 moduleSetup(); // Establishes first-time serial comm and prints IMEI
 checkIMEI();
 connectGPRS(); 
@@ -242,32 +240,8 @@ connectGPRS();
     } 
   } 
 
-  else if (resetReason==2) { 
-    if (EEPROM.read(15)>0 ) {
-      if (EEPROM.read(15)==1 ) { 
-        resetReason=71; 
-      }
-      else if (EEPROM.read(15)==2 ) { 
-        resetReason=72; 
-      }  
-      else if (EEPROM.read(15)==3 ) { 
-        resetReason=73; 
-      }  
-      else if (EEPROM.read(15)==4 ) { 
-        resetReason=74; 
-      }      
-      else if (EEPROM.read(15)==5 ) { 
-        resetReason=75; 
-      }  
-    else if (EEPROM.read(15)==6 ) { 
-      resetReason=76; 
-    } 
-      else { 
-        resetReason=7; 
-      }   
-    EEPROM.write(15, 0); 
-    }     
-  }
+
+ 
 
   beforeSend();
 
@@ -319,7 +293,7 @@ void loop() {
   }
   
 
-    while (ultrasonic.read() != ',') {  } 
+    while (ultrasonic.read() != ',' and millis() - startedWaiting <= 1000) {  } 
     UltrasonicAnemometer();
     #ifdef DEBUG
       DEBUGSERIAL.print(F("WKT "));

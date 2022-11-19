@@ -5,7 +5,7 @@ void UltrasonicAnemometer() { //measure wind speed
     int sum;
     unsigned long startedWaiting = millis();
              
-      while(ultrasonic.available() < 63 ) {
+      while(ultrasonic.available() < 63 and millis() - startedWaiting <= 1000) {
         delay(10);
       }  
       int size = ultrasonic.readBytesUntil('\r\n', buffer, 70);
