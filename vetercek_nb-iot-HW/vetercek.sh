@@ -8,7 +8,7 @@ elif [ "$var1" == "3" ]; then
 
 
 elif [[ $var1 == "4" ]]; then
-	//bin/avrdude -C//etc/avrdude.conf -v -V -patmega328pb -cusbtiny -Uflash:w:/home/jaka87/Arduino/vetercek_nb-iot-HW/tiny7070.ino.hex:i lfuse:w:0xDF:m efuse:w:0xFF:m hfuse:w:DA:m lock:w:0xFF:m 
+	//bin/avrdude -C//etc/avrdude.conf -v -V -patmega328pb -cusbtiny -Uflash:w:/home/jaka87/Arduino/vetercek_nb-iot-HW/tiny7070.ino.hex:i lfuse:w:0xDF:m efuse:w:0xFD:m hfuse:w:DA:m lock:w:0xFF:m 
 
 else
 printf "
@@ -97,7 +97,7 @@ fi
 #read -n1 input
 #if [[ $input == "1" ]]; then
 
-#//bin/avrdude -C//etc/avrdude.conf -v -V -patmega328p -cusbtiny -Uflash:w:/home/jaka87/Arduino/temp/vetercek_nb-iot.ino.hex:i lfuse:w:0xDF:m efuse:w:0xFF:m hfuse:w:DA:m lock:w:0xFF:m 
+#//bin/avrdude -C//etc/avrdude.conf -v -V -patmega328p -cusbtiny -Uflash:w:/home/jaka87/Arduino/temp/vetercek_nb-iot.ino.hex:i lfuse:w:0xDF:m efuse:w:0xFD:m hfuse:w:DA:m lock:w:0xFF:m 
 
 #elif [[ $input == "2" ]]; then
 #arduino-cli compile --fqbn arduino:avr:pro:cpu=8MHzatmega328 --build-property build.extra_flags="$stringg"  /home/jaka87/Arduino/vetercek_nb-iot/vetercek_nb-iot.ino 

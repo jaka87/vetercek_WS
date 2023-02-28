@@ -38,7 +38,7 @@ void UltrasonicAnemometer() { //measure wind speed
           timergprs = 0;                                            
     }
 
-        else if ( sonicError >= 3)  { reset(4);  }   // if more than x US errors     
+        else if ( sonicError >= 5)  { reset(4);  }   // if more than x US errors     
         else { 
           sonicError++; 
          #ifdef DEBUG 

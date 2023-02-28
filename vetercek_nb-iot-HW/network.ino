@@ -1,16 +1,19 @@
 void moduleSetup() {
 Serial.begin(57600);
-while (!Serial) {
-  ; // wait for serial port to connect. Needed for native USB
+delay(10000);
+unsigned long startedWaiting = millis();
+while (!Serial and millis() - startedWaiting <= 10000) {
+  delay(1000); // wait for serial port to connect. Needed for native USB
 }
+if(millis() - startedWaiting > 9900){ reset(8); }
 
-if (!fona.begin(Serial)) {
+while (!fona.begin(Serial) and millis() - startedWaiting <= 20000) {
+  delay(1000);
   #ifdef DEBUG
     DEBUGSERIAL.println(F("NoF"));
   #endif 
-  while (1);
 }
-
+if(millis() - startedWaiting > 19900){ reset(0); }
 
   fona.println("AT+CIPMUX=0"); // single ip
   fona.setNetLED(true,3,64,5000);

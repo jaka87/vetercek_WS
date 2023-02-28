@@ -2,6 +2,12 @@
 // 57600 max baud rate
 // before uploading skech burn bootloader
 // hardware serial buffer 128b 
+
+//ultrasonic anemometer To active ASCI.
+//>UartPro:2\r\n
+//>SaveConfig\r\n
+
+
 #include <avr/wdt.h> //watchdog
 #include "src/LowPower/LowPower.h" //sleep library
 #include <math.h> // wind speed calculations
@@ -23,7 +29,7 @@ byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
-int sea_level_m=0; // enter elevation for your location for pressure calculation
+int sea_level_m=5; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
@@ -79,6 +85,7 @@ DallasTemperature sensor_water(&oneWire_out);
 // 85 - UDPclose
 // 86 - gsm NC
 // 88 - other
+// 89 - no GSM serial connection
 
 
 HardwareSerial *fonaSS = &Serial;
@@ -233,6 +240,9 @@ connectGPRS();
     else if (EEPROM.read(15)==6 ) { 
       resetReason=86; 
     } 
+    else if (EEPROM.read(15)==9 ) { 
+      resetReason=89; 
+    } 
       else { 
         resetReason=88; 
       }   
@@ -340,7 +350,7 @@ void loop() {
   digitalWrite(13, LOW);    // turn the LED
  
 // check if is time to send data online  
-if ( (wind_speed >= (cutoffWind*10) and measureCount >= (whenSend+20) ) or (measureCount >= ((whenSend*2)+20)) )  {  reset(6);  } // reset if more than 40 tries
+if ( measureCount >= ((whenSend*2)+40))   {  reset(6);  } // reset if more than 40 tries
 if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset buttion is pressed and 3 measurements are made
   or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend ) // if wind avg exeeds cut off value and enough measurements are  made
   or (measureCount >= (whenSend*2))
@@ -415,7 +425,9 @@ void CheckTimerGPRS() { // if unable to send data in 200s
 }
 
 void reset(byte rr) {
-  EEPROM.write(15, rr);
+    if (rr > 0 ) {
+      EEPROM.write(15, rr);
+    }
   delay(20);
   #ifdef DEBUG
     DEBUGSERIAL.print(F("err_r: "));

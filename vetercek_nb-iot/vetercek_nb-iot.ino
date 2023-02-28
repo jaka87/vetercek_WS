@@ -15,7 +15,7 @@
 byte GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
-int whenSend = 10; // interval after how many measurements data is send
+int whenSend = 0; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
@@ -273,9 +273,7 @@ checkIMEI();
 connectGPRS();
 
 
-#ifdef UZ_Anemometer
   SendData();
-#endif 
 }
 
 void loop() {
@@ -357,7 +355,7 @@ void loop() {
  
 
 // check if is time to send data online  
-if ( (wind_speed >= (cutoffWind*10) and measureCount >= (whenSend+20) ) or (measureCount >= ((whenSend*2)+20)) )  {  reset(6);  } // reset if more than 40 tries
+if ( measureCount >= ((whenSend*2)+50) )  {  reset(6);  } // reset if more than 40 tries
 if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset buttion is pressed and 3 measurements are made
   or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend ) // if wind avg exeeds cut off value and enough measurements are  made
   or (measureCount >= (whenSend*2))
