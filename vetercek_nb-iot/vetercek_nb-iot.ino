@@ -15,7 +15,7 @@
 byte GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
-int whenSend = 0; // interval after how many measurements data is send
+int whenSend = 100; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
@@ -214,19 +214,6 @@ digitalWrite(PWRKEY, LOW);
   if (EEPROM.read(14)==10) { stopSleepChange=3; } // UZ sleep on/off
 
 
-#ifdef UZ_Anemometer
-  unsigned long startedWaiting = millis();
-  UZ_wake(startedWaiting);
-  if (millis() - startedWaiting <= 9900 ) {
-    UltrasonicAnemo=1;
-    windDelay=1000;
-    ultrasonicFlush();
-  }
-   #ifdef DEBUG
-    Serial.println("UZ start");
-  delay(50);
-  #endif   
-#endif
 
 #ifndef UZ_Anemometer and ifdef PCBVER5
   PCICR |= B00000100;      //Bit2 = 1 -> "PCIE2" enabeled (PCINT16 to PCINT23)
@@ -271,9 +258,22 @@ digitalWrite(PWRKEY, LOW);
 moduleSetup(); // Establishes first-time serial comm and prints IMEI
 checkIMEI();
 connectGPRS();
+SendData();
 
 
-  SendData();
+#ifdef UZ_Anemometer
+  unsigned long startedWaiting = millis();
+  UZ_wake(startedWaiting);
+  if (millis() - startedWaiting <= 9900 ) {
+    UltrasonicAnemo=1;
+    windDelay=1000;
+    ultrasonicFlush();
+  }
+   #ifdef DEBUG
+    Serial.println("UZ start");
+  delay(50);
+  #endif   
+#endif
 }
 
 void loop() {

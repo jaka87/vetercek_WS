@@ -303,7 +303,7 @@ void loop() {
   }
   
 
-    while (ultrasonic.read() != ',' and millis() - startedWaiting <= 1000) {  } 
+    while (ultrasonic.read() != ',' and millis() - startedWaiting <= 10000) {  } 
     UltrasonicAnemometer();
     #ifdef DEBUG
       DEBUGSERIAL.print(F("WKT "));
