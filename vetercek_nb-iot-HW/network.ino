@@ -109,7 +109,14 @@ bool checkGPRS() {
         DEBUGSERIAL.println(F("rGPRS"));
       #endif    
       delay(3000);
+
+    #ifdef SIM_NEW_LIBRARY 
+      fona.enableGPRS(false);
+      fona.enableGPRS(true);
+    #else
       fona.enableGPRS();
+    #endif
+      
     } 
     else if (millis() - startTime < 120000 and count > 1)  {
       #ifdef DEBUG
@@ -184,7 +191,14 @@ void connectGPRS() {
       delay(10000);
       GSMerror(1);
     }      
-    GPRS=fona.enableGPRS();
+
+    #ifdef SIM_NEW_LIBRARY 
+      GPRS=fona.enableGPRS(false);
+      GPRS=fona.enableGPRS(true);
+    #else
+      GPRS=fona.enableGPRS();
+    #endif
+    
     #ifdef DEBUG
       DEBUGSERIAL.print(F("GPRS "));
       DEBUGSERIAL.println(GPRS);
@@ -265,7 +279,11 @@ void PostData() {
 
 
   byte response[10];  
-  if ( fona.UDPsend(data,sizeof(data),response,9)) {
+  #ifdef SIM_NEW_LIBRARY 
+    if ( fona.UDPsend(data,sizeof(data),response,22)) {
+  #else
+    if ( fona.UDPsend(data,sizeof(data),response,9)) {
+  #endif
 
   if (response[1] ==1 ) {  
     vaneOffset=(response[2]*100)+response[3];    // if byte is positive value

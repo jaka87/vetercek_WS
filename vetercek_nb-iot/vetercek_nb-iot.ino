@@ -6,7 +6,6 @@
 #include "src/OneWire/OneWire.h" //tmp sensor
 #include "src/DS18B20/DallasTemperature.h"
 #include "src/TimerOne/TimerOne.h"
-#include "src/Fona/Adafruit_FONA.h"
 #include <EEPROM.h>
 
 
@@ -15,14 +14,21 @@
 byte GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
-int whenSend = 100; // interval after how many measurements data is send
+int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
 #define PCBVER5 // 4,5,6
 //#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
+#define SIM_NEW_LIBRARY
 ///////////////////////////////////////////////////////////////////////////////////
+
+#ifdef SIM_NEW_LIBRARY 
+  #include "src/SIM/BotleticsSIM7000.h"
+#else
+  #include "src/Fona/Adafruit_FONA.h"
+#endif
 
 #define ONE_WIRE_BUS_1 4 //air
 #define ONE_WIRE_BUS_2 3 // water
@@ -108,7 +114,11 @@ DallasTemperature sensor_water(&oneWire_out);
   #endif
 #endif
 
-Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
+#ifdef SIM_NEW_LIBRARY 
+  Botletics_modem_LTE fona = Botletics_modem_LTE();
+#else
+  Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
+#endif
 
 #ifdef BMP
   #include "LPS35HW.h"
@@ -254,7 +264,8 @@ digitalWrite(PWRKEY, LOW);
   EEPROM.write(15, 0); 
   }  
   
-    
+powerOn();
+wakeUp();
 moduleSetup(); // Establishes first-time serial comm and prints IMEI
 checkIMEI();
 connectGPRS();
@@ -355,7 +366,7 @@ void loop() {
  
 
 // check if is time to send data online  
-if ( measureCount >= ((whenSend*2)+50) )  {  reset(6);  } // reset if more than 40 tries
+if ( measureCount >= 1000 )  {  reset(6);  } // reset if more than 40 tries
 if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset buttion is pressed and 3 measurements are made
   or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend ) // if wind avg exeeds cut off value and enough measurements are  made
   or (measureCount >= (whenSend*2))

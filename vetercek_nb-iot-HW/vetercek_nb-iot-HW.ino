@@ -32,12 +32,17 @@ const char* broker = "vetercek.com";
 int sea_level_m=5; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
-#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
+#define SIM_NEW_LIBRARY
 ///////////////////////////////////////////////////////////////////////////////////
 
-
+#ifdef SIM_NEW_LIBRARY 
+  #include "src/SIM/BotleticsSIM7000.h"
+#else
+  #include "src/Fona/Adafruit_FONA.h"
+#endif
 
 #define ONE_WIRE_BUS_1 4 //air
 #define ONE_WIRE_BUS_2 3 // water
@@ -99,7 +104,11 @@ HardwareSerial *fonaSS = &Serial;
 
 
 
-Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
+#ifdef SIM_NEW_LIBRARY 
+  Botletics_modem_LTE fona = Botletics_modem_LTE();
+#else
+  Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
+#endif
 
 #ifdef BMP
   #include "LPS35HW.h"
@@ -148,6 +157,7 @@ byte sleepBetween=2;
 int PDPcount=0; // first reset after 100s
 byte failedSend=0; // if send fail
 byte sonicError=0;
+byte sonicError2=0;
 byte UltrasonicAnemo=0;
 byte enableSolar=0;
 byte enableRain=0;
@@ -215,10 +225,12 @@ void setup() {
       }
 #endif   
 
-powerOn(0); 
-moduleSetup(); // Establishes first-time serial comm and prints IMEI
+
+powerOn(1); 
+moduleSetup(); // Establishes first-time serial comm and prints IMEI 
 checkIMEI();
 connectGPRS(); 
+
 
   if (resetReason==8 ) { //////////////////// reset reason detailed        
     if (EEPROM.read(15)>0 ) {
@@ -239,6 +251,9 @@ connectGPRS();
       }  
     else if (EEPROM.read(15)==6 ) { 
       resetReason=86; 
+    } 
+    else if (EEPROM.read(15)==7 ) { 
+      resetReason=87; 
     } 
     else if (EEPROM.read(15)==9 ) { 
       resetReason=89; 
@@ -303,7 +318,7 @@ void loop() {
   }
   
 
-    while (ultrasonic.read() != ',' and millis() - startedWaiting <= 10000) {  } 
+    while (ultrasonic.read() != ',' and millis() - startedWaiting <= 7000) {  } 
     UltrasonicAnemometer();
     #ifdef DEBUG
       DEBUGSERIAL.print(F("WKT "));
@@ -435,8 +450,8 @@ void reset(byte rr) {
   #endif  
   //simReset();
   //powerOn(1); 
-  fona.powerDown();
-  delay(3000);
+  //fona.powerDown();
+  //delay(3000);
   wdt_enable(WDTO_60MS);
   delay(100);
 }

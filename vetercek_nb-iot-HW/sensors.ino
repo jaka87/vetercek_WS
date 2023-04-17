@@ -49,7 +49,17 @@ void UltrasonicAnemometer() { //measure wind speed
               timergprs = 0;                                            
         }
         else { 
-          UZerror(3); 
+//          if (atof(wind)*19.4384449 < 40){ // new function to allow data that dont pass checkup, hopefuly to fix Lanterna station issue
+//              calDirection = atoi(dir) + vaneOffset;
+//              CalculateWindDirection();  // calculate wind direction from data
+//              windSpeed=atof(wind)*19.4384449;
+//              CalculateWindGust(windSpeed);
+//              CalculateWind();
+//              timergprs = 0;             
+//          }
+//          else{ 
+            UZerror(3); 
+          //}
           }        
       }
       else { 
@@ -71,18 +81,20 @@ int countBytes( const char * data )
 }
 
 void UZerror(byte where) { //ultrasonic error
-  if ( sonicError>0){
-      ultrasonic.end();
-      delay(200);
-      unsigned long startedWaiting = millis();
-      UZ_wake(startedWaiting);
-  }
+  //if ( sonicError>0){
+      //ultrasonic.end();
+      //delay(200);
+      //unsigned long startedWaiting = millis();
+      //UZ_wake(startedWaiting);
+      ultrasonicFlush();
+  //}
   sonicError++;
   #ifdef DEBUG
       DEBUGSERIAL.print(F("err UZ "));
       DEBUGSERIAL.println(where);
   #endif
 if ( sonicError >=7)  { reset(4);  }   // if more than x US errors 
+if ( sonicError2 >=7)  { reset(7);  }   // if more than x US errors 
 }
 
 void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
