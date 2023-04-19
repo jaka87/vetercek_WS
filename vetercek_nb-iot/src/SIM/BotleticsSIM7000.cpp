@@ -568,6 +568,7 @@ void Botletics_modem::setNetworkSettings(FStringPtr apn,
   this->apnpassword = password;
 
   if (_type >= SIM7000) sendCheckReplyQuoted(F("AT+CGDCONT=1,\"IP\","), apn, ok_reply, 10000);
+  if (_type >= SIM7000) sendCheckReplyQuoted(F("AT+CNCFG=0,1,"), apn, ok_reply, 10000);
 }
 
 
@@ -575,7 +576,7 @@ void Botletics_modem::setNetworkSettings(FStringPtr apn,
 boolean Botletics_modem::openWirelessConnection(bool onoff) {
   if (!onoff) { // Disconnect wireless
     if (_type == SIM7070) {
-      if (! sendCheckReply(F("AT+CNACT=0,0"), ok_reply)) return false;
+      sendCheckReply(F("AT+CNACT=0,0"), ok_reply);
     }
     else {
       if (! sendCheckReply(F("AT+CNACT=0"), ok_reply)) return false;
@@ -589,7 +590,8 @@ boolean Botletics_modem::openWirelessConnection(bool onoff) {
   }
   else {
     if (_type == SIM7070) {
-      if (! sendCheckReply(F("AT+CNACT=0,1"), ok_reply)) return false;
+      //sendCheckReply(F("AT+CNACT=0,1"), ok_reply);  // old
+       if (! sendCheckReply(F("AT+CNACT=0,1"), ok_reply)) return false;
     }
     else {
       if (! sendCheckReplyQuoted(F("AT+CNACT=1,"), apn, ok_reply)) return false;
@@ -599,7 +601,7 @@ boolean Botletics_modem::openWirelessConnection(bool onoff) {
     DEBUG_PRINT("\t<--- "); DEBUG_PRINTLN(replybuffer);
 
     if (_type == SIM7070 && strstr(replybuffer, ",ACTIVE") == NULL) return false; // +APP PDP: <pdpidx>,ACTIVE
-    else if (_type == SIM7000 && strstr(replybuffer, "PDP: ACTIVE") == NULL) return false; // +APP PDP: ACTIVE
+    else if (_type == SIM7000 && strstr(replybuffer, "PDP: ACTIVE") == NULL) return false; // +APP PDP: ACTIVE  
   }
 
   return true;
@@ -612,6 +614,7 @@ boolean Botletics_modem::wirelessConnStatus(void) {
   // +CNACT: <status>,<ip_addr>  (ex.SIM7000)
   // +CNACT: <pdpidx>,<status>,<ip_addr>  (ex.SIM7070)
   if(_type == SIM7070) {
+	      DEBUG_PRINT("\t<--- "); DEBUG_PRINTLN(replybuffer);
     if (strstr(replybuffer, "+CNACT: 0,1") == NULL) return false;
   } else {
     if (strstr(replybuffer, "+CNACT: 1") == NULL) return false;
@@ -625,9 +628,7 @@ int8_t Botletics_modem::GPRSPDP(void) {
 
   if (! sendParseReply(F("AT+CGDCONT?"), F("+CGDCONT: "), &state) )
     return -1;
-    
-   //if (! sendCheckReply(F("AT+CIFSR"), ok_reply, 5000)) //jaka
-   //return -1;     
+      
 
   return state;
 }
@@ -649,10 +650,6 @@ boolean Botletics_modem::UDPconnect(char *server, uint16_t port) {
 	  // manually read data set 1
 	  if (! sendCheckReply(F("AT+CIPRXGET=0"), ok_reply) ) return false;  //jaka
 
-	  // keep alvie
-	  //if (! sendCheckReply(F("AT+CIPTKA=1,7200,600,9"), ok_reply) ) return false;
-
-
 	  //DEBUG_PRINT(F("AT+CIPSTART=\"UDP\",\""));
 	  //DEBUG_PRINT(server);
 	  //DEBUG_PRINT(F("\",\""));
@@ -667,8 +664,33 @@ boolean Botletics_modem::UDPconnect(char *server, uint16_t port) {
 	  mySerial->println(F("\""));
 
 	  if (! expectReply(ok_reply)) return false;
-	  if (! expectReply(F("CONNECT OK"))) return false;  //if ALREADY CONNECT
+	  if (! expectReply(F("CONNECT OK"))) return false; 
 
+	  // looks like it was a success (?)
+	  return true;
+  }
+
+  else if (_type == SIM7070) {
+	  
+	  sendCheckReply(F("AT+CACLOSE=0"),  F("OK"), 3000);
+	  
+	  mySerial->print(F("AT+CAOPEN=0,0,\"UDP\",\""));
+	  mySerial->print(server);
+	  mySerial->print(F("\",\""));
+	  mySerial->print(port);
+	  mySerial->println(F("\""));
+
+	  DEBUG_PRINT(F("AT+CAOPEN=0,0,\"UDP\",\""));
+	  DEBUG_PRINT(server);
+	  DEBUG_PRINT(F("\",\""));
+	  DEBUG_PRINT(port);
+	  DEBUG_PRINTLN(F("\""));
+
+	  readline();
+
+	  DEBUG_PRINT(F("\t<-- ")); DEBUG_PRINTLN(replybuffer);
+	  if (strstr(replybuffer, "+CAOPEN: 0,0") == NULL) return false;
+	  
 	  // looks like it was a success (?)
 	  return true;
   }
@@ -682,14 +704,20 @@ boolean Botletics_modem::UDPclose(void) {
         return false;	
   return true;
   }
+
+  else if (_type == SIM7070) {
+      if (! sendCheckReply(F("AT+CACLOSE=0"),  F("OK"), 3000))
+        return false;
+  return true;
+  }
 }
 
 uint8_t Botletics_modem::UDPconnected(void) {
+	  byte res;
   if (_type == SIM7000) {	
 	  if (! sendCheckReply(F("AT+CIPSTATUS"), ok_reply, 200) ) return 99;
 	  readline(200);
 	  DEBUG_PRINT (F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
-	  byte res;
 
 	  if (strcmp(replybuffer, "STATE: IP INITIAL") == 0) { res=2;}
 	  else if (strcmp(replybuffer, "STATE: IP START") == 0) { res=3;}
@@ -708,14 +736,23 @@ uint8_t Botletics_modem::UDPconnected(void) {
 
 	  return res;
   }
+
+  else if (_type == SIM7070) {	
+  getReply(F("AT+CASTATE?"));
+	      DEBUG_PRINT("\t<--- "); DEBUG_PRINTLN(replybuffer);
+    if (strstr(replybuffer, "+CASTATE: 0,1") == NULL) return false;
+  }
 }
 
-boolean Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte response[10],uint8_t charr) {
+
+
+
+boolean Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte response[9],uint8_t charr) {
   if (_type == SIM7000) {	
 
 	  DEBUG_PRINT(F("AT+CIPSEND="));
 	  DEBUG_PRINTLN(len);
-	#ifdef ADAFRUIT_FONA_DEBUG
+	#ifdef BOTLETICS_MODEM_DEBUG
 	  for (uint16_t i=0; i<len; i++) {
 	  DEBUG_PRINT(F(" 0x"));
 	  DEBUG_PRINT(packet[i], HEX);
@@ -745,11 +782,12 @@ boolean Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
 			response[i]=0;
 			DEBUG_PRINTLN(0);		
 			}
-
-			else {	 
-			response[i]=replybuffer2[i];
-			DEBUG_PRINTLN(replybuffer2[i]);		
+			
+			else if (i>13) {	 	
+			response[i-13]=replybuffer2[i];
+			DEBUG_PRINTLN(replybuffer2[i]);	
 			}
+
 			
 
 		}
@@ -758,16 +796,65 @@ boolean Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
 
 	  else return false;
   }
-}
-uint16_t Botletics_modem::UDPavailable(void) {
-  uint16_t avail;
-  if (_type == SIM7000) {	
-	  if (! sendParseReply(F("AT+CIPRXGET=4"), F("+CIPRXGET: 4,"), &avail, ',', 0) ) return false;
-	  DEBUG_PRINT (avail); DEBUG_PRINTLN(F(" bytes available"));
-  }
-  return avail;
-}
+  
+  
+  else if (_type == SIM7070) {	
 
+	  DEBUG_PRINT(F("AT+CASEND=0,"));
+	  DEBUG_PRINTLN(len);
+	#ifdef BOTLETICS_MODEM_DEBUG
+	  for (uint16_t i=0; i<len; i++) {
+	  DEBUG_PRINT(F(" 0x"));
+	  DEBUG_PRINT(packet[i], HEX);
+	  }
+	#endif
+	  DEBUG_PRINTLN();
+
+
+	  mySerial->print(F("AT+CASEND=0,"));
+	  mySerial->println(len);
+	  
+	  readline();
+	  //DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer[0]);
+
+	  if (replybuffer[0] == '>') DEBUG_PRINTLN("ok");
+
+
+	  if (replybuffer[0] != '>') return false;
+	  mySerial->write(packet, len);
+
+	uint8_t sendD = readline(5000); // return SEND OK
+	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
+	if (strcmp(replybuffer, "OK") != 0) { return false;}
+
+	uint8_t sendD2 = readline(2000); // return SEND OK
+	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
+	if (strcmp(replybuffer, "+CADATAIND: 0") != 0) { return false;}
+	  
+	mySerial->println(F("AT+CARECV=0,25"));
+	uint8_t receveD = readline2(5000,charr); // RETURN DATA
+
+		DEBUG_PRINTLN("response :");   
+		  for (uint16_t i=0; i<charr;i++) {
+			 
+			//if (replybuffer2[i]==128) {	 
+			//response[i]=0;
+			//DEBUG_PRINTLN(0);		
+			//}
+
+			if (i>12) {	 
+			response[i-13]=replybuffer2[i];
+			DEBUG_PRINTLN(replybuffer2[i]);		
+			}
+
+		
+		}
+		//DEBUG_PRINTLN(replybuffer2[0]);
+	  if (response[0] > 0 and response[1] < 4) return true;
+
+	  else return false;
+  }    
+}
 
 
 /********* HELPERS *********************************************/

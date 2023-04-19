@@ -280,6 +280,8 @@ uint8_t Botletics_modem::getNetworkStatus(void) {
     if (! sendParseReply(F("AT+CREG?"), F("+CREG: "), &status, ',', 1)) return 0;
   }
 
+  DEBUG_PRINT (F("\t network status ")); DEBUG_PRINTLN(status);
+
   return status;
 }
 

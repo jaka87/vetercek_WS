@@ -26,7 +26,7 @@
  * set in the appropriate header.
  */
 
-//#define BOTLETICS_MODEM_DEBUG
+#define BOTLETICS_MODEM_DEBUG
 
 #include "includes/platform/Modem.h"
 
@@ -97,7 +97,6 @@ class Botletics_modem : public BotleticsStreamType {
   boolean UDPclose(void);
   uint8_t UDPconnected(void);
   boolean UDPsend(unsigned char *packet, uint8_t len, byte response[9],uint8_t charr);
-  uint16_t UDPavailable(void);
 
 
   // Helper functions to verify responses.

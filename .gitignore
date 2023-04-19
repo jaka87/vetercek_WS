@@ -11,6 +11,8 @@
 /vetercek_nb-iot/config.h
 !/vetercek_nb-iot-HW/
 !/vetercek_nb-iot-HW/*
+!/vetercek_SIM7070/
+!/vetercek_SIM7070/*
 !/3D prints/
 !/3D prints/*
 !.gitignore
