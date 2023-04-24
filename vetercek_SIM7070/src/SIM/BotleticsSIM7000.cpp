@@ -173,6 +173,10 @@ boolean Botletics_modem::setFunctionality(uint8_t option) {
   return sendCheckReply(F("AT+CFUN="), option, ok_reply);
 }
 
+boolean Botletics_modem::reset() {
+  return sendCheckReply(F("AT+CFUN=1,1"), ok_reply);
+}
+
 // 2  - Automatic
 // 13 - GSM only
 // 38 - LTE only
@@ -301,91 +305,6 @@ uint8_t Botletics_modem::getRSSI(void) {
 
 /********* GPRS **********************************************************/
 
-
-boolean Botletics_modem::enableGPRS_old() {
-	// DISCONNECT
-      // disconnect all sockets
-      sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 2000);
-      // close bearer
-      sendCheckReply(F("AT+SAPBR=0,1"), ok_reply, 1000);
-		
-		sendCheckReply(F("AT+CGATT=0"), ok_reply, 10000);
-
-	// CONNECT
-      // set bearer profile! connection type GPRS
-      if (! sendCheckReply(F("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\""), ok_reply, 10000))
-        return false;
-      // } // UNCOMMENT FOR LTE ONLY!
-
-      delay(200); // This seems to help the next line run the first time
-      
-      // set bearer profile access point name
-      if (apn) {
-        // Send command AT+SAPBR=3,1,"APN","<apn value>" where <apn value> is the configured APN value.
-        if (! sendCheckReplyQuoted(F("AT+SAPBR=3,1,\"APN\","), apn, ok_reply, 10000))
-          return false;
-
-          // send AT+CSTT,"apn","user","pass"
-          flushInput();
-
-          mySerial->print(F("AT+CSTT=\""));
-          mySerial->print(apn);
-          if (apnusername) {
-            mySerial->print("\",\"");
-            mySerial->print(apnusername);
-          }
-          if (apnpassword) {
-            mySerial->print("\",\"");
-            mySerial->print(apnpassword);
-          }
-          mySerial->println("\"");
-
-          DEBUG_PRINT(F("\t---> ")); DEBUG_PRINT(F("AT+CSTT=\""));
-          DEBUG_PRINT(apn);
-          
-          if (apnusername) {
-            DEBUG_PRINT("\",\"");
-            DEBUG_PRINT(apnusername); 
-          }
-          if (apnpassword) {
-            DEBUG_PRINT("\",\"");
-            DEBUG_PRINT(apnpassword); 
-          }
-          DEBUG_PRINTLN("\"");
-          
-          if (! expectReply(ok_reply)) return false;
-        // } // UNCOMMENT FOR LTE ONLY!
-      
-        // set username/password
-        if (apnusername) {
-          // Send command AT+SAPBR=3,1,"USER","<user>" where <user> is the configured APN username.
-          if (! sendCheckReplyQuoted(F("AT+SAPBR=3,1,\"USER\","), apnusername, ok_reply, 10000))
-            return false;
-        }
-        if (apnpassword) {
-          // Send command AT+SAPBR=3,1,"PWD","<password>" where <password> is the configured APN password.
-          if (! sendCheckReplyQuoted(F("AT+SAPBR=3,1,\"PWD\","), apnpassword, ok_reply, 10000))
-            return false;
-        }
-      }
-
-      // open bearer
-      if (! sendCheckReply(F("AT+SAPBR=1,1"), ok_reply, 30000))
-        return false;
-
-        // bring up wireless connection
-        if (! sendCheckReply(F("AT+CIICR"), ok_reply, 10000))
-          return false;
-        //if (! sendCheckReply(F("AT+CIFSR"), ok_reply, 10000)) //jaka - gets ip not ok status - parse reply
-          //return false;          
-          
-
-
- 
-  return true;
-}
-
- 
 
 boolean Botletics_modem::enableGPRS(boolean onoff) {
  
@@ -593,7 +512,6 @@ boolean Botletics_modem::openWirelessConnection(bool onoff) {
   }
   else {
     if (_type == SIM7070) {
-      //sendCheckReply(F("AT+CNACT=0,1"), ok_reply);  // old
        if (! sendCheckReply(F("AT+CNACT=0,1"), ok_reply)) return false;
     }
     else {
@@ -694,6 +612,7 @@ boolean Botletics_modem::UDPconnect(char *server, uint16_t port) {
 
 	  DEBUG_PRINT(F("\t<-- ")); DEBUG_PRINTLN(replybuffer);
 	  if (strstr(replybuffer, "+CAOPEN: 0,0") == NULL) return false;
+	  DEBUG_PRINT(F("\t<-- caopen ")); DEBUG_PRINTLN("OK");
 	  
 	  // looks like it was a success (?)
 	  return true;

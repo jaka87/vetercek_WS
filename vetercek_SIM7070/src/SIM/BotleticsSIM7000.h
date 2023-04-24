@@ -26,7 +26,7 @@
  * set in the appropriate header.
  */
 
-//#define BOTLETICS_MODEM_DEBUG
+#define BOTLETICS_MODEM_DEBUG
 
 #include "includes/platform/Modem.h"
 
@@ -63,6 +63,7 @@ class Botletics_modem : public BotleticsStreamType {
 
   // Functionality and operation mode settings
   boolean setFunctionality(uint8_t option); // AT+CFUN command
+  boolean reset(); // AT+CFUN command
   boolean enableSleepMode(bool onoff); // AT+CSCLK command
   boolean set_eDRX(uint8_t mode, uint8_t connType, char * eDRX_val); // AT+CEDRXS command
   boolean setNetLED(bool onoff, uint8_t mode = 0, uint16_t timer_on = 64, uint16_t timer_off = 3000); // AT+CNETLIGHT and AT+SLEDS commands
@@ -77,7 +78,6 @@ class Botletics_modem : public BotleticsStreamType {
 
   // GPRS handling
   boolean enableGPRS(boolean onoff);
-  boolean enableGPRS_old();
   int8_t GPRSstate(void);
   void setNetworkSettings(FStringPtr apn, FStringPtr username=0, FStringPtr password=0);
   int8_t getNetworkType(char *typeStringBuffer, size_t bufferLength);

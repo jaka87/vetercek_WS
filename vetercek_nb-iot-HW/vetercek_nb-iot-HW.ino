@@ -32,10 +32,10 @@ const char* broker = "vetercek.com";
 int sea_level_m=5; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
-//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
-#define SIM_NEW_LIBRARY
+//#define SIM_NEW_LIBRARY
 ///////////////////////////////////////////////////////////////////////////////////
 
 #ifdef SIM_NEW_LIBRARY 

@@ -31,7 +31,7 @@ int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
 int sea_level_m=5; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
-#define DEBUG // comment out if you want to turn off debugging
+//#define DEBUG // comment out if you want to turn off debugging
 //#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
@@ -205,7 +205,7 @@ void setup() {
   DEBUGSERIAL.println(resetReason);
 #endif
 
-  //Serial1.begin(9600); //for sim7070 debug
+  Serial1.begin(9600); //for sim7070 debug
 
 
   sensor_air.begin();
@@ -227,16 +227,9 @@ void setup() {
 
 
 powerOn(1); 
-digitalWrite(PWRKEY, LOW);
-delay(100);  
-digitalWrite(PWRKEY, HIGH);
-
-  
+//powerOn(0); 
 moduleSetup(); // Establishes first-time serial comm and prints IMEI 
 checkIMEI();
-//  fona.setFunctionality(0); // AT+CFUN=0
-//  delay(3000);
-//  fona.setFunctionality(1); // AT+CFUN=1
 connectGPRS(); 
 
 
@@ -453,13 +446,14 @@ void reset(byte rr) {
     }
   delay(20);
   #ifdef DEBUG
-    DEBUGSERIAL.print(F("err_r: "));
+    DEBUGSERIAL.print(F("rst: "));
     DEBUGSERIAL.println(rr);
   #endif  
   //simReset();
   //powerOn(1); 
-  //fona.powerDown();
-  //delay(3000);
+  
+  fona.powerDown();
+  delay(3000);
   wdt_enable(WDTO_60MS);
   delay(100);
 }
@@ -471,19 +465,29 @@ void powerOn(byte version) {
   if (version==0) { delay(100);  }
   else { delay(1500);  }
   digitalWrite(PWRKEY, HIGH);
-//  if (version==1) { 
-//    delay(3000);  
-//    digitalWrite(PWRKEY, LOW);
-//    delay(1200);
-//    digitalWrite(PWRKEY, HIGH);
-//    }
+  #ifdef DEBUG
+    DEBUGSERIAL.println("PWR");
+  #endif  
   
 }
 
-void simReset() {
-//  digitalWrite(PIN_A2, LOW);     
-//  delay(300);   
-//  digitalWrite(PIN_A2, HIGH);  
+void simReset() {  
+    fona.reset(); // AT+CFUN=0
+  #ifdef DEBUG
+    DEBUGSERIAL.println("SIM RST");
+  #endif 
+}
+
+void S7070Reset() {  
+  #ifdef DEBUG
+    DEBUGSERIAL.println("7070 RST");
+  #endif 
+  fona.powerDown();
+  delay(3000);
+  powerOn(1); 
+  //powerOn(0); 
+  moduleSetup(); // Establishes first-time serial comm and prints IMEI 
+  connectGPRS(); 
 }
 
 
