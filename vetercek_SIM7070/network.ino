@@ -1,6 +1,6 @@
 void moduleSetup() {
 Serial.begin(57600);
-delay(3000);
+delay(300);
 unsigned long startedWaiting = millis();
 while (!Serial and millis() - startedWaiting <= 4000) {
   delay(1000); // wait for serial port to connect. Needed for native USB
@@ -16,23 +16,30 @@ while (!fona.begin(Serial) and millis() - startedWaiting <= 5000) {
 }
 if(millis() - startedWaiting > 4900){ reset(0); }
 
-  fona.setPreferredMode(GSMstate); 
+  
+  if (GSMstate==52){ fona.setPreferredMode(51); fona.setNetwork(GSMnetwork1,9); delay(20000); } // manually select network
+  else if (GSMstate==53){ fona.setPreferredMode(51);  fona.setNetwork(GSMnetwork2,9);delay(20000);  } // manually select network
+  else { fona.setPreferredMode(GSMstate);  }
+  
   delay(3000);
   fona.setNetLED(true,3,64,5000);
   delay(100);
   fona.setNetworkSettings(F(APN)); // APN
   delay(100);
 
-//  if (GSMstate == 38) {
-//    fona.setPreferredLTEMode(2);   
-//    fona.setOperatingBand("NB-IOT",20); 
-//  }
+  if (GSMstate>13 ){
+    fona.set_eDRX(1, 5, "1001");
+    delay(100);
+  }
+
+  //if (GSMstate == 38 or GSMstate == 51) {
+    //fona.setPreferredLTEMode(2);   
+    //fona.setOperatingBand("NB-IOT",20); 
+    //fona.set_eDRX(1, 5, "1001");    
+  //}
 
   fona.enableSleepMode(true);
   delay(100);
-  if (GSMstate==38) {
-    fona.set_eDRX(1, 5, "1001");    
-  }
 }  
 
 byte netStatus() {
@@ -41,27 +48,13 @@ byte netStatus() {
 }
 
 
-void GSMerror(byte what) {      
-  if (what==1) {
+void GSMerror() {      
     #ifdef DEBUG    
       DEBUGSERIAL.println(F("gerr1"));   
     #endif 
-      simReset();
-      moduleSetup();
-  }
-  else {
-    #ifdef DEBUG    
-      DEBUGSERIAL.println(F("gerr0"));   
-    #endif     
-    fona.reset(); // AT+CFUN=0
-       
-  }
-
-  delay(5000);     
-  if (what<3) {
-    moduleSetup();          
-    connectGPRS();  
-  }      
+    bool checkAT = fona.checkAT();
+    if (fona.checkAT()) { simReset(); }
+    else { reset(7); }
 }
 
 
@@ -98,7 +91,7 @@ bool checkServer() {
   do {
       checkServernum=checkServernum+1;
       conn=fona.UDPconnect("vetercek.com",6789);
-      delay(6000);
+      if (checkServernum>1 and conn== false)  { delay(2500*checkServernum); }
      #ifdef DEBUG
         DEBUGSERIAL.print(F("vet "));
         DEBUGSERIAL.println(conn);
@@ -263,6 +256,8 @@ void PostData() {
   else if (response[8] == 102 ) { GSMstate=2; moduleSetup(); } // temporarry change network - auto
   else if (response[8] == 113 ) { GSMstate=13; moduleSetup(); } // temporarry change network - 2G
   else if (response[8] == 138 ) { GSMstate=38; moduleSetup(); } // temporarry change network - nb-iot
+  else if (response[8] == 52 ) { GSMstate=52; simReset(); moduleSetup(); } // temporarry change network - nb-iot
+  else if (response[8] == 53 ) { GSMstate=53; simReset(); moduleSetup(); } // temporarry change network - nb-iot
   else if (response[8] == 2 or response[8]==13 or response[8]==38) { // if new settings for network prefference
     EEPROM.write(9, response[8]);   // write new data to EEPROM
     reset(3); 
@@ -319,7 +314,7 @@ void PostData() {
       #ifdef DEBUG
         DEBUGSERIAL.println(F("failsend"));
       #endif        
-        GSMerror(1);
+        GSMerror();
       }      
    } 
   

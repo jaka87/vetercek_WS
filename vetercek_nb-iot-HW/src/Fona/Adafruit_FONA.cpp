@@ -196,6 +196,14 @@ boolean Adafruit_FONA_LTE::setOperatingBand(const char * mode, uint8_t band) {
   return sendCheckReply(cmdBuff, ok_reply);
 }
 
+boolean Adafruit_FONA_LTE::setNetwork(uint16_t net, uint8_t band) {
+  char cmdBuff[24];
+
+  sprintf(cmdBuff, "AT+COPS=1,2,\"%i\",%i",net,band);
+
+  return sendCheckReply(cmdBuff, ok_reply, 10000);
+}
+
 // Sleep mode reduces power consumption significantly while remaining registered to the network
 // NOTE: USB port must be disconnected before this will take effect
 boolean Adafruit_FONA::enableSleepMode(bool onoff) {
@@ -530,10 +538,10 @@ boolean Adafruit_FONA::UDPsend(unsigned char *packet, uint8_t len, byte response
 
   mySerial->write(packet, len);
 
-uint8_t sendD = readline(5000); // return SEND OK
+uint8_t sendD = readline(8000); // return SEND OK
   DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 if (strcmp(replybuffer, "SEND OK") != 0) { return false;}
-uint8_t receveD = readline2(5000,charr); // RETURN DATA
+uint8_t receveD = readline2(8000,charr); // RETURN DATA
 
 
 	DEBUG_PRINTLN("response :");   

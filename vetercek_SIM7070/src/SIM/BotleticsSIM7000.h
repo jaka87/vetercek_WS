@@ -109,14 +109,13 @@ class Botletics_modem : public BotleticsStreamType {
  protected:
   int8_t _rstpin;
   uint8_t _type;
+  int8_t _type2;
 
   char replybuffer[255];
   byte replybuffer2[24];
   FStringPtr apn;
   FStringPtr apnusername;
   FStringPtr apnpassword;
-  boolean httpsredirect;
-  FStringPtr useragent;
   FStringPtr ok_reply;
 
   // HTTP helpers
@@ -171,6 +170,7 @@ class Botletics_modem_LTE : public Botletics_modem {
   boolean setPreferredMode(uint8_t mode);
   boolean setPreferredLTEMode(uint8_t mode);
   boolean setOperatingBand(const char * mode, uint8_t band);
+  boolean setNetwork(uint16_t net, uint8_t band);
 
 
 };

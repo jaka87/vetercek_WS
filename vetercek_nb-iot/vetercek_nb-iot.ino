@@ -21,7 +21,7 @@ const char* broker = "vetercek.com";
 #define PCBVER5 // 4,5,6
 //#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
-#define SIM_NEW_LIBRARY
+//#define SIM_NEW_LIBRARY
 ///////////////////////////////////////////////////////////////////////////////////
 
 #ifdef SIM_NEW_LIBRARY 

@@ -31,8 +31,6 @@ Botletics_modem::Botletics_modem(int8_t rst)
   apnusername = 0;
   apnpassword = 0;
   mySerial = 0;
-  httpsredirect = false;
-  useragent = F("botletics");
   ok_reply = F("OK");
 }
 
@@ -73,7 +71,8 @@ boolean Botletics_modem::begin(Stream &port) {
     timeout-=500;
   }
 
-  if (timeout <= 0) {
+  if (timeout <= 0) {  
+	  
 #ifdef BOTLETICS_MODEM_DEBUG
     DEBUG_PRINTLN(F("Timeout: No response to AT... last ditch attempt."));
 #endif
@@ -84,6 +83,7 @@ boolean Botletics_modem::begin(Stream &port) {
     sendCheckReply(F("AT"), ok_reply);
     delay(100);
   }
+  
 
   // turn off Echo!
   sendCheckReply(F("ATE0"), ok_reply);
@@ -116,6 +116,12 @@ boolean Botletics_modem::begin(Stream &port) {
     _type = SIM7000;
   } else if (prog_char_strstr(replybuffer, (prog_char *)F("SIM7070")) != 0) {
     _type = SIM7070;
+		 if (prog_char_strstr(replybuffer, (prog_char *)F("1951B08SIM7070")) != 0) {
+		 _type2 = 1;
+		 }
+		 else if (prog_char_strstr(replybuffer, (prog_char *)F("1951B10SIM7070")) != 0) {
+		 _type2 = 2;
+		 }
 }
 
 
@@ -204,6 +210,13 @@ boolean Botletics_modem_LTE::setOperatingBand(const char * mode, uint8_t band) {
 
   return sendCheckReply(cmdBuff, ok_reply);
 }
+
+boolean Botletics_modem_LTE::setNetwork(uint16_t net, uint8_t band) {
+  char cmdBuff[24];
+  sprintf(cmdBuff, "AT+COPS=1,2,\"%i\",%i",net,band);
+  return sendCheckReply(cmdBuff, ok_reply, 15000);
+
+   }
 
 // Sleep mode reduces power consumption significantly while remaining registered to the network
 // NOTE: USB port must be disconnected before this will take effect
@@ -692,10 +705,10 @@ boolean Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
 
 	  mySerial->write(packet, len);
 
-	uint8_t sendD = readline(5000); // return SEND OK
+	uint8_t sendD = readline(6000); // return SEND OK
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 	if (strcmp(replybuffer, "SEND OK") != 0) { return false;}
-	uint8_t receveD = readline2(5000,charr); // RETURN DATA
+	uint8_t receveD = readline2(6000,charr); // RETURN DATA
 
 
 		DEBUG_PRINTLN("response :");   
@@ -746,31 +759,29 @@ boolean Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
 	  if (replybuffer[0] != '>') return false;
 	  mySerial->write(packet, len);
 
-	uint8_t sendD = readline(5000); // return SEND OK
+	uint8_t sendD = readline(2000); // return SEND OK
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 	if (strcmp(replybuffer, "OK") != 0) { return false;}
 
-	uint8_t sendD2 = readline(2000); // return SEND OK
+	uint8_t sendD2 = readline(7000); // return SEND OK
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 	if (strcmp(replybuffer, "+CADATAIND: 0") != 0) { return false;}
+
+		 if (_type2 == 2) { // different firmware version
+			uint8_t sendD3 = readline(2000); // buffer full
+			DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
+		 }
+
 	  
 	mySerial->println(F("AT+CARECV=0,25"));
-	uint8_t receveD = readline2(5000,charr); // RETURN DATA
+	uint8_t receveD = readline2(8000,charr); // RETURN DATA
 
 		DEBUG_PRINTLN("response :");   
 		  for (uint16_t i=0; i<charr;i++) {
-			 
-			//if (replybuffer2[i]==128) {	 
-			//response[i]=0;
-			//DEBUG_PRINTLN(0);		
-			//}
-
 			if (i>12) {	 
-			response[i-13]=replybuffer2[i];
 			DEBUG_PRINTLN(replybuffer2[i]);		
+			response[i-13]=replybuffer2[i];
 			}
-
-		
 		}
 		//DEBUG_PRINTLN(replybuffer2[0]);
 	  if (response[0] > 0 and response[1] < 4) return true;

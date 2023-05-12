@@ -21,7 +21,10 @@ if(millis() - startedWaiting > 19900){ reset(0); }
   fona.setNetworkSettings(F(APN)); // APN
   delay(100);
 
-  fona.setPreferredMode(GSMstate); 
+  if (GSMstate==52){ fona.setPreferredMode(51); fona.setNetwork(GSMnetwork1,9); delay(20000); } // manually select network
+  else if (GSMstate==53){ fona.setPreferredMode(51);  fona.setNetwork(GSMnetwork2,9); delay(20000); } // manually select network
+  else { fona.setPreferredMode(GSMstate);  }
+  
 //  if (GSMstate == 38) {
 //    fona.setPreferredLTEMode(2);   
 //    fona.setOperatingBand("NB-IOT",20); 
@@ -30,8 +33,9 @@ if(millis() - startedWaiting > 19900){ reset(0); }
   //fona.setOperatingBand("NB-IOT",20); // AT&T uses band 12
   fona.enableSleepMode(true);
   delay(100);
-  if (GSMstate==38) {
-    fona.set_eDRX(1, 5, "1001");    
+  if (GSMstate>13 ){
+    fona.set_eDRX(1, 5, "1001");
+    delay(100);
   }
 }  
 
@@ -308,6 +312,8 @@ void PostData() {
   else if (response[8] == 102 ) { GSMstate=2; moduleSetup(); } // temporarry change network - auto
   else if (response[8] == 113 ) { GSMstate=13; moduleSetup(); } // temporarry change network - 2G
   else if (response[8] == 138 ) { GSMstate=38; moduleSetup(); } // temporarry change network - nb-iot
+  else if (response[8] == 52 ) { GSMstate=52; moduleSetup(); } // temporarry change network - nb-iot
+  else if (response[8] == 53 ) { GSMstate=53; moduleSetup(); } // temporarry change network - nb-iot
   else if (response[8] == 2 or response[8]==13 or response[8]==38) { // if new settings for network prefference
     EEPROM.write(9, response[8]);   // write new data to EEPROM
     reset(3); 
