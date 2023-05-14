@@ -24,7 +24,10 @@ int resetReason = MCUSR;
 
 //////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
 #define APN "iot.1nce.net"
-byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
+int GSMnetwork1= 29340; // A1 SLOVENIA
+int GSMnetwork2= 21910; // A1 HR
+int GSMnetwork3= 29341; // telekom 2g HR
+byte GSMstate=51; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
@@ -32,7 +35,7 @@ const char* broker = "vetercek.com";
 int sea_level_m=5; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
-//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
 #define SIM_NEW_LIBRARY
@@ -89,6 +92,7 @@ DallasTemperature sensor_water(&oneWire_out);
 // 84 - X sonic errors in UZ function
 // 85 - UDPclose
 // 86 - gsm NC
+// 87 - can't get response data from server
 // 88 - other
 // 89 - no GSM serial connection
 
@@ -203,9 +207,9 @@ void setup() {
   delay(20);
   DEBUGSERIAL.println(F("S"));
   DEBUGSERIAL.println(resetReason);
+  Serial1.begin(9600); //for sim7070 debug
 #endif
 
-  Serial1.begin(9600); //for sim7070 debug
 
 
   sensor_air.begin();
@@ -215,6 +219,7 @@ void setup() {
   if (EEPROM.read(9)==13) { GSMstate=13; }
   else if (EEPROM.read(9)==2) { GSMstate=2; }
   else if (EEPROM.read(9)==38) {GSMstate=38; } //#define NBIOT
+  else if (EEPROM.read(9)==51) {GSMstate=51; } //#define NBIOT or 2G
   if (EEPROM.read(14)==10) { stopSleepChange=3; } // UZ sleep on/off
 
 #ifdef BMP
@@ -227,7 +232,7 @@ void setup() {
 
 
 powerOn(1); 
-//powerOn(0); 
+if (resetReason<8 ) { delay(1500); powerOn(0); }
 moduleSetup(); // Establishes first-time serial comm and prints IMEI 
 checkIMEI();
 connectGPRS(); 
@@ -441,19 +446,19 @@ void CheckTimerGPRS() { // if unable to send data in 200s
 }
 
 void reset(byte rr) {
+  delay(100);
     if (rr > 0 ) {
       EEPROM.write(15, rr);
     }
-  delay(20);
+  delay(100);
   #ifdef DEBUG
     DEBUGSERIAL.print(F("rst: "));
     DEBUGSERIAL.println(rr);
   #endif  
   //simReset();
-  //powerOn(1); 
-  
+  //powerOn(2); 
   fona.powerDown();
-  delay(3000);
+  delay(5000);
   wdt_enable(WDTO_60MS);
   delay(100);
 }
@@ -463,16 +468,16 @@ void reset(byte rr) {
 void powerOn(byte version) {
   digitalWrite(PWRKEY, LOW);
   if (version==0) { delay(100);  }
+  else if (version==2) { delay(5000);  }
   else { delay(1500);  }
   digitalWrite(PWRKEY, HIGH);
   #ifdef DEBUG
     DEBUGSERIAL.println("PWR");
   #endif  
-  
 }
 
 void simReset() {  
-    fona.reset(); // AT+CFUN=0
+    fona.reset(); // AT+CFUN=1,1
   #ifdef DEBUG
     DEBUGSERIAL.println("SIM RST");
   #endif 
@@ -484,8 +489,8 @@ void S7070Reset() {
   #endif 
   fona.powerDown();
   delay(3000);
-  powerOn(1); 
-  //powerOn(0); 
+  powerOn(1);  
+  //powerOn(2); 
   moduleSetup(); // Establishes first-time serial comm and prints IMEI 
   connectGPRS(); 
 }

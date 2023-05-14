@@ -24,7 +24,10 @@ int resetReason = MCUSR;
 
 //////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
 #define APN "iot.1nce.net"
-byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
+int GSMnetwork1= 29340; // A1 SLOVENIA
+int GSMnetwork2= 21910; // A1 HR
+int GSMnetwork3= 29341; // telekom 2g HR
+byte GSMstate=51; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
@@ -205,7 +208,6 @@ void setup() {
   DEBUGSERIAL.println(resetReason);
 #endif
 
-  //Serial1.begin(9600); //for sim7070 debug
 
 
   sensor_air.begin();
@@ -215,6 +217,7 @@ void setup() {
   if (EEPROM.read(9)==13) { GSMstate=13; }
   else if (EEPROM.read(9)==2) { GSMstate=2; }
   else if (EEPROM.read(9)==38) {GSMstate=38; } //#define NBIOT
+  else if (EEPROM.read(9)==51) {GSMstate=51; } //#define NBIOT
   if (EEPROM.read(14)==10) { stopSleepChange=3; } // UZ sleep on/off
 
 #ifdef BMP
@@ -227,6 +230,8 @@ void setup() {
 
 
 powerOn(1); 
+delay(1500);
+powerOn(0); 
 moduleSetup(); // Establishes first-time serial comm and prints IMEI 
 checkIMEI();
 connectGPRS(); 
@@ -298,7 +303,8 @@ void loop() {
   unsigned long startedWaiting = millis();
   ///UZ_wake(startedWaiting);
   while(ultrasonic.available() < 2 and millis() - startedWaiting <= 50) {
-    delay(5);
+    delay(5);  //Serial1.begin(9600); //for sim7070 debug
+
   }
 
   if (ultrasonic.available() < 2 ) { // sleep while receiving data and anemometer sleep time 3s or more
@@ -449,9 +455,9 @@ void reset(byte rr) {
     DEBUGSERIAL.println(rr);
   #endif  
   //simReset();
-  //powerOn(1); 
-  //fona.powerDown();
-  //delay(3000);
+  //powerOn(2); 
+  fona.powerDown();
+  delay(5000);
   wdt_enable(WDTO_60MS);
   delay(100);
 }
@@ -461,15 +467,12 @@ void reset(byte rr) {
 void powerOn(byte version) {
   digitalWrite(PWRKEY, LOW);
   if (version==0) { delay(100);  }
-  else { delay(1200);  }
+  else if (version==2) { delay(5000);  }
+  else { delay(1500);  }
   digitalWrite(PWRKEY, HIGH);
-  if (version==1) { 
-    delay(3000);  
-    digitalWrite(PWRKEY, LOW);
-    delay(1200);
-    digitalWrite(PWRKEY, HIGH);
-    }
-  
+  #ifdef DEBUG
+    DEBUGSERIAL.println("PWR");
+  #endif  
 }
 
 void simReset() {

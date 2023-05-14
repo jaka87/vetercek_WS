@@ -20,10 +20,7 @@ if(millis() - startedWaiting > 19900){ reset(0); }
   delay(100);
   fona.setNetworkSettings(F(APN)); // APN
   delay(100);
-
-  if (GSMstate==52){ fona.setPreferredMode(51); fona.setNetwork(GSMnetwork1,9); delay(20000); } // manually select network
-  else if (GSMstate==53){ fona.setPreferredMode(51);  fona.setNetwork(GSMnetwork2,9); delay(20000); } // manually select network
-  else { fona.setPreferredMode(GSMstate);  }
+  fona.setPreferredMode(GSMstate);
   
 //  if (GSMstate == 38) {
 //    fona.setPreferredLTEMode(2);   
@@ -38,6 +35,16 @@ if(millis() - startedWaiting > 19900){ reset(0); }
     delay(100);
   }
 }  
+
+void changeNetwork() {
+  fona.setPreferredMode(51);
+  if (GSMstate==52){ fona.setNetwork(GSMnetwork1,9); } 
+  else if (GSMstate==53){ fona.setNetwork(GSMnetwork2,9); } 
+  else if (GSMstate==54){ fona.setNetwork(GSMnetwork3,0); } 
+  EEPROM.write(9, 51);
+  delay(5000);
+  connectGPRS();
+}
 
 byte netStatus() {
   byte n = fona.getNetworkStatus();
@@ -312,8 +319,9 @@ void PostData() {
   else if (response[8] == 102 ) { GSMstate=2; moduleSetup(); } // temporarry change network - auto
   else if (response[8] == 113 ) { GSMstate=13; moduleSetup(); } // temporarry change network - 2G
   else if (response[8] == 138 ) { GSMstate=38; moduleSetup(); } // temporarry change network - nb-iot
-  else if (response[8] == 52 ) { GSMstate=52; moduleSetup(); } // temporarry change network - nb-iot
-  else if (response[8] == 53 ) { GSMstate=53; moduleSetup(); } // temporarry change network - nb-iot
+  else if (response[8] == 52 ) { GSMstate=52; changeNetwork(); } // temporarry change network - nb-iot
+  else if (response[8] == 53 ) { GSMstate=53; changeNetwork(); } // temporarry change network - nb-iot
+  else if (response[8] == 54 ) { GSMstate=54; changeNetwork(); } // temporarry change network - nb-iot
   else if (response[8] == 2 or response[8]==13 or response[8]==38) { // if new settings for network prefference
     EEPROM.write(9, response[8]);   // write new data to EEPROM
     reset(3); 
