@@ -38,7 +38,7 @@ void UltrasonicAnemometer() { //measure wind speed
           timergprs = 0;                                            
     }
 
-        else if ( sonicError >= 3)  { reset(4);  }   // if more than x US errors     
+        else if ( sonicError >= 5)  { reset(4);  }   // if more than x US errors     
         else { 
           sonicError++; 
          #ifdef DEBUG 
@@ -67,23 +67,22 @@ int countBytes( const char * data )
 
 
 void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
+  while (ultrasonic.available() <2) {  delay(10); } 
   unsigned long startedWaiting = millis();   
   char buffer[70];
 
-#ifdef DEBUG
-    Serial.println(F("UZzzz"));
-    delay(20);
-#endif
+  #ifdef DEBUG
+      Serial.println(F("UZzzz"));
+      delay(20);
+  #endif
 
-  //byte trow_away;
-  //trow_away=(ultrasonic.read());
-  //while (ultrasonic.read() != ':') {  }
+  byte trow_away;
+  trow_away=(ultrasonic.read());
   int size = ultrasonic.readBytesUntil('\n', buffer, 70);
   buffer[size]='\0'; 
 
   while (strstr (buffer,"IdleSec") == NULL && millis() - startedWaiting <= 20000) {
     trow_away=(ultrasonic.read());
-    //while (ultrasonic.read() != ':') {  }
     size = ultrasonic.readBytesUntil('\n', buffer, 70); 
     buffer[size]='\0';   
     if (sleepT==1) { ultrasonic.write(">PwrIdleCfg:1,1\r\n"); }
@@ -95,8 +94,7 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
     else if (sleepT==7) { ultrasonic.write(">PwrIdleCfg:1,7\r\n"); }
     else if (sleepT==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }  
     else if (sleepT==0) { ultrasonic.write(">PwrIdleCfg:0,1\r\n"); }
-    delay(300);
-     
+    delay(100);
     }
 
     if(millis() - startedWaiting < 19900){ ultrasonic.write(">SaveConfig\r\n"); }
@@ -113,11 +111,12 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
     else { 
      stopSleepChange++;
      #ifdef DEBUG 
-      Serial.println(F("sleepc err")); 
+      Serial.println(F("err sleepc")); 
      #endif       
       }
 }
 #endif 
+
 
 #ifndef UZ_Anemometer
   void Anemometer() { //measure wind speed

@@ -38,7 +38,7 @@ int sea_level_m=5; // enter elevation for your location for pressure calculation
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
-//#define SIM_NEW_LIBRARY
+#define SIM_NEW_LIBRARY
 ///////////////////////////////////////////////////////////////////////////////////
 
 #ifdef SIM_NEW_LIBRARY 
@@ -92,6 +92,7 @@ DallasTemperature sensor_water(&oneWire_out);
 // 84 - X sonic errors in UZ function
 // 85 - UDPclose
 // 86 - gsm NC
+// 87 - can't get response data from server
 // 88 - other
 // 89 - no GSM serial connection
 
@@ -206,6 +207,7 @@ void setup() {
   delay(20);
   DEBUGSERIAL.println(F("S"));
   DEBUGSERIAL.println(resetReason);
+  Serial1.begin(9600); //for sim7070 debug
 #endif
 
 
@@ -217,7 +219,7 @@ void setup() {
   if (EEPROM.read(9)==13) { GSMstate=13; }
   else if (EEPROM.read(9)==2) { GSMstate=2; }
   else if (EEPROM.read(9)==38) {GSMstate=38; } //#define NBIOT
-  else if (EEPROM.read(9)==51) {GSMstate=51; } //#define NBIOT
+  else if (EEPROM.read(9)==51) {GSMstate=51; } //#define NBIOT or 2G
   if (EEPROM.read(14)==10) { stopSleepChange=3; } // UZ sleep on/off
 
 #ifdef BMP
@@ -230,11 +232,11 @@ void setup() {
 
 
 powerOn(1); 
-delay(1500);
-powerOn(0); 
+if (resetReason<8 ) { delay(1500); powerOn(0); }
 moduleSetup(); // Establishes first-time serial comm and prints IMEI 
 checkIMEI();
 connectGPRS(); 
+
 
 
   if (resetReason==8 ) { //////////////////// reset reason detailed        
@@ -271,9 +273,8 @@ connectGPRS();
   } 
 
 
- 
-
   beforeSend();
+
 
 #ifdef UZ_Anemometer
   unsigned long startedWaiting = millis();
@@ -303,8 +304,7 @@ void loop() {
   unsigned long startedWaiting = millis();
   ///UZ_wake(startedWaiting);
   while(ultrasonic.available() < 2 and millis() - startedWaiting <= 50) {
-    delay(5);  //Serial1.begin(9600); //for sim7070 debug
-
+    delay(5);
   }
 
   if (ultrasonic.available() < 2 ) { // sleep while receiving data and anemometer sleep time 3s or more
@@ -446,12 +446,13 @@ void CheckTimerGPRS() { // if unable to send data in 200s
 }
 
 void reset(byte rr) {
+  delay(100);
     if (rr > 0 ) {
       EEPROM.write(15, rr);
     }
-  delay(20);
+  delay(100);
   #ifdef DEBUG
-    DEBUGSERIAL.print(F("err_r: "));
+    DEBUGSERIAL.print(F("rst: "));
     DEBUGSERIAL.println(rr);
   #endif  
   //simReset();
@@ -475,10 +476,23 @@ void powerOn(byte version) {
   #endif  
 }
 
-void simReset() {
-  digitalWrite(PIN_A2, LOW);     
-  delay(300);   
-  digitalWrite(PIN_A2, HIGH);  
+void simReset() {  
+    fona.reset(); // AT+CFUN=1,1
+  #ifdef DEBUG
+    DEBUGSERIAL.println("SIM RST");
+  #endif 
+}
+
+void S7070Reset() {  
+  #ifdef DEBUG
+    DEBUGSERIAL.println("7070 RST");
+  #endif 
+  fona.powerDown();
+  delay(3000);
+  powerOn(1);  
+  //powerOn(2); 
+  moduleSetup(); // Establishes first-time serial comm and prints IMEI 
+  connectGPRS(); 
 }
 
 

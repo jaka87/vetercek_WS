@@ -76,7 +76,7 @@ void moduleSetup() {
   }
   delay(200);
   //fona.enablePSM(true, "00100001", "00100011");
-  delay(200);
+  //delay(200);
 }  
 
 
@@ -116,7 +116,12 @@ byte runState=0;
     }
 
 
+#ifdef SIM_NEW_LIBRARY 
+  fona.enableGPRS(false);
+  if (fona.enableGPRS(true)) {
+#else
   if (fona.enableGPRS()) {
+#endif
   #ifdef DEBUG  
     Serial.println(F("GPRS"));
   #endif 

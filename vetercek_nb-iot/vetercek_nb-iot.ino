@@ -6,7 +6,6 @@
 #include "src/OneWire/OneWire.h" //tmp sensor
 #include "src/DS18B20/DallasTemperature.h"
 #include "src/TimerOne/TimerOne.h"
-#include "src/Fona/Adafruit_FONA.h"
 #include <EEPROM.h>
 
 
@@ -22,7 +21,14 @@ const char* broker = "vetercek.com";
 #define PCBVER5 // 4,5,6
 //#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
+//#define SIM_NEW_LIBRARY
 ///////////////////////////////////////////////////////////////////////////////////
+
+#ifdef SIM_NEW_LIBRARY 
+  #include "src/SIM/BotleticsSIM7000.h"
+#else
+  #include "src/Fona/Adafruit_FONA.h"
+#endif
 
 #define ONE_WIRE_BUS_1 4 //air
 #define ONE_WIRE_BUS_2 3 // water
@@ -108,7 +114,11 @@ DallasTemperature sensor_water(&oneWire_out);
   #endif
 #endif
 
-Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
+#ifdef SIM_NEW_LIBRARY 
+  Botletics_modem_LTE fona = Botletics_modem_LTE();
+#else
+  Adafruit_FONA_LTE fona = Adafruit_FONA_LTE();
+#endif
 
 #ifdef BMP
   #include "LPS35HW.h"
@@ -214,19 +224,6 @@ digitalWrite(PWRKEY, LOW);
   if (EEPROM.read(14)==10) { stopSleepChange=3; } // UZ sleep on/off
 
 
-#ifdef UZ_Anemometer
-  unsigned long startedWaiting = millis();
-  UZ_wake(startedWaiting);
-  if (millis() - startedWaiting <= 9900 ) {
-    UltrasonicAnemo=1;
-    windDelay=1000;
-    ultrasonicFlush();
-  }
-   #ifdef DEBUG
-    Serial.println("UZ start");
-  delay(50);
-  #endif   
-#endif
 
 #ifndef UZ_Anemometer and ifdef PCBVER5
   PCICR |= B00000100;      //Bit2 = 1 -> "PCIE2" enabeled (PCINT16 to PCINT23)
@@ -267,15 +264,27 @@ digitalWrite(PWRKEY, LOW);
   EEPROM.write(15, 0); 
   }  
   
-    
+powerOn();
+wakeUp();
 moduleSetup(); // Establishes first-time serial comm and prints IMEI
 checkIMEI();
 connectGPRS();
+SendData();
 
 
 #ifdef UZ_Anemometer
-  SendData();
-#endif 
+  unsigned long startedWaiting = millis();
+  UZ_wake(startedWaiting);
+  if (millis() - startedWaiting <= 9900 ) {
+    UltrasonicAnemo=1;
+    windDelay=1000;
+    ultrasonicFlush();
+  }
+   #ifdef DEBUG
+    Serial.println("UZ start");
+  delay(50);
+  #endif   
+#endif
 }
 
 void loop() {
@@ -357,7 +366,7 @@ void loop() {
  
 
 // check if is time to send data online  
-if ( (wind_speed >= (cutoffWind*10) and measureCount >= (whenSend+20) ) or (measureCount >= ((whenSend*2)+20)) )  {  reset(6);  } // reset if more than 40 tries
+if ( measureCount >= 1000 )  {  reset(6);  } // reset if more than 40 tries
 if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset buttion is pressed and 3 measurements are made
   or (wind_speed >= (cutoffWind*10) and measureCount >= whenSend ) // if wind avg exeeds cut off value and enough measurements are  made
   or (measureCount >= (whenSend*2))
