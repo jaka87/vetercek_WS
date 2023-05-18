@@ -230,9 +230,6 @@ void setup() {
       }
 #endif   
 
-
-powerOn(1); 
-if (resetReason<8 ) { delay(1500); powerOn(0); }
 moduleSetup(); // Establishes first-time serial comm and prints IMEI 
 checkIMEI();
 connectGPRS(); 
@@ -455,26 +452,13 @@ void reset(byte rr) {
     DEBUGSERIAL.print(F("rst: "));
     DEBUGSERIAL.println(rr);
   #endif  
-  //simReset();
-  //powerOn(2); 
-  fona.powerDown();
-  delay(5000);
+  digitalWrite(PWRKEY, LOW);
+  delay(3500); 
   wdt_enable(WDTO_60MS);
   delay(100);
 }
 
 
-// Power on the module
-void powerOn(byte version) {
-  digitalWrite(PWRKEY, LOW);
-  if (version==0) { delay(100);  }
-  else if (version==2) { delay(5000);  }
-  else { delay(1500);  }
-  digitalWrite(PWRKEY, HIGH);
-  #ifdef DEBUG
-    DEBUGSERIAL.println("PWR");
-  #endif  
-}
 
 void simReset() {  
     fona.reset(); // AT+CFUN=1,1
@@ -487,10 +471,9 @@ void S7070Reset() {
   #ifdef DEBUG
     DEBUGSERIAL.println("7070 RST");
   #endif 
-  fona.powerDown();
-  delay(3000);
-  powerOn(1);  
-  //powerOn(2); 
+  digitalWrite(PWRKEY, LOW); 
+  delay(3500); 
+  digitalWrite(PWRKEY, HIGH);
   moduleSetup(); // Establishes first-time serial comm and prints IMEI 
   connectGPRS(); 
 }

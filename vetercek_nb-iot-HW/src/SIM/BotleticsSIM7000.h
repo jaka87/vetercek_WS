@@ -26,7 +26,7 @@
  * set in the appropriate header.
  */
 
-#define BOTLETICS_MODEM_DEBUG
+//#define BOTLETICS_MODEM_DEBUG
 
 #include "includes/platform/Modem.h"
 
@@ -57,12 +57,12 @@ class Botletics_modem : public BotleticsStreamType {
 
 
   // Power, battery, and ADC
-  void powerOn(uint8_t BOTLETICS_PWRKEY);
   boolean powerDown(void);
   boolean getBattVoltage(uint16_t *v);
 
   // Functionality and operation mode settings
   boolean setFunctionality(uint8_t option); // AT+CFUN command
+  boolean reset(); // AT+CFUN command
   boolean enableSleepMode(bool onoff); // AT+CSCLK command
   boolean set_eDRX(uint8_t mode, uint8_t connType, char * eDRX_val); // AT+CEDRXS command
   boolean setNetLED(bool onoff, uint8_t mode = 0, uint16_t timer_on = 64, uint16_t timer_off = 3000); // AT+CNETLIGHT and AT+SLEDS commands
@@ -77,7 +77,6 @@ class Botletics_modem : public BotleticsStreamType {
 
   // GPRS handling
   boolean enableGPRS(boolean onoff);
-  boolean enableGPRS_old();
   int8_t GPRSstate(void);
   void setNetworkSettings(FStringPtr apn, FStringPtr username=0, FStringPtr password=0);
   int8_t getNetworkType(char *typeStringBuffer, size_t bufferLength);
@@ -109,14 +108,13 @@ class Botletics_modem : public BotleticsStreamType {
  protected:
   int8_t _rstpin;
   uint8_t _type;
+  int8_t _type2;
 
   char replybuffer[255];
   byte replybuffer2[24];
   FStringPtr apn;
   FStringPtr apnusername;
   FStringPtr apnpassword;
-  boolean httpsredirect;
-  FStringPtr useragent;
   FStringPtr ok_reply;
 
   // HTTP helpers
@@ -171,6 +169,7 @@ class Botletics_modem_LTE : public Botletics_modem {
   boolean setPreferredMode(uint8_t mode);
   boolean setPreferredLTEMode(uint8_t mode);
   boolean setOperatingBand(const char * mode, uint8_t band);
+  boolean setNetwork(uint16_t net, uint8_t band);
 
 
 };

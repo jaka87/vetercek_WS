@@ -57,7 +57,6 @@ class Botletics_modem : public BotleticsStreamType {
 
 
   // Power, battery, and ADC
-  void powerOn(uint8_t BOTLETICS_PWRKEY);
   boolean powerDown(void);
   boolean getBattVoltage(uint16_t *v);
 

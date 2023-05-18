@@ -206,6 +206,7 @@ void setup() {
   delay(20);
   DEBUGSERIAL.println(F("S"));
   DEBUGSERIAL.println(resetReason);
+  //Serial1.begin(9600); //for sim7000 debug
 #endif
 
 
@@ -229,9 +230,10 @@ void setup() {
 #endif   
 
 
-powerOn(1); 
-delay(1500);
-powerOn(0); 
+//powerOn(1); 
+//if (resetReason==8 ) { powerOn(1);}
+//delay(150);
+//powerOn(1); 
 moduleSetup(); // Establishes first-time serial comm and prints IMEI 
 checkIMEI();
 connectGPRS(); 
@@ -454,26 +456,13 @@ void reset(byte rr) {
     DEBUGSERIAL.print(F("err_r: "));
     DEBUGSERIAL.println(rr);
   #endif  
-  //simReset();
-  //powerOn(2); 
-  fona.powerDown();
-  delay(5000);
+  digitalWrite(PWRKEY, LOW);
+  delay(3500);  
   wdt_enable(WDTO_60MS);
   delay(100);
 }
 
 
-// Power on the module
-void powerOn(byte version) {
-  digitalWrite(PWRKEY, LOW);
-  if (version==0) { delay(100);  }
-  else if (version==2) { delay(5000);  }
-  else { delay(1500);  }
-  digitalWrite(PWRKEY, HIGH);
-  #ifdef DEBUG
-    DEBUGSERIAL.println("PWR");
-  #endif  
-}
 
 void simReset() {
   digitalWrite(PIN_A2, LOW);     

@@ -139,18 +139,6 @@ boolean Botletics_modem::getBattVoltage(uint16_t *v) {
     return sendParseReply(F("AT+CBC"), F("+CBC: "), v, ',', 2);
 }
 
-
-
-/* powers on the module */
-void Botletics_modem::powerOn(uint8_t BOTLETICS_PWRKEY) {
-  pinMode(BOTLETICS_PWRKEY, OUTPUT);
-  digitalWrite(BOTLETICS_PWRKEY, LOW);
-
-  // See spec sheets for your particular module
-    delay(1100); // At least 1s
-  digitalWrite(BOTLETICS_PWRKEY, HIGH);
-}
-
 /* powers down the SIM module */
 boolean Botletics_modem::powerDown(void) {
 
@@ -331,6 +319,7 @@ boolean Botletics_modem::enableGPRS(boolean onoff) {
     if (onoff) {
       // disconnect all sockets
       sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 20000);
+      //sendCheckReply(F("AT+SAPBR=0,1"), ok_reply, 1000);
 
 
       if (! sendCheckReply(F("AT+CGATT=1"), ok_reply, 10000))

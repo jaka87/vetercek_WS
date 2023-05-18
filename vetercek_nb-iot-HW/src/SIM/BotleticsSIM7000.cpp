@@ -31,8 +31,6 @@ Botletics_modem::Botletics_modem(int8_t rst)
   apnusername = 0;
   apnpassword = 0;
   mySerial = 0;
-  httpsredirect = false;
-  useragent = F("botletics");
   ok_reply = F("OK");
 }
 
@@ -73,7 +71,8 @@ boolean Botletics_modem::begin(Stream &port) {
     timeout-=500;
   }
 
-  if (timeout <= 0) {
+  if (timeout <= 0) {  
+	  
 #ifdef BOTLETICS_MODEM_DEBUG
     DEBUG_PRINTLN(F("Timeout: No response to AT... last ditch attempt."));
 #endif
@@ -84,6 +83,7 @@ boolean Botletics_modem::begin(Stream &port) {
     sendCheckReply(F("AT"), ok_reply);
     delay(100);
   }
+  
 
   // turn off Echo!
   sendCheckReply(F("ATE0"), ok_reply);
@@ -116,6 +116,12 @@ boolean Botletics_modem::begin(Stream &port) {
     _type = SIM7000;
   } else if (prog_char_strstr(replybuffer, (prog_char *)F("SIM7070")) != 0) {
     _type = SIM7070;
+		 if (prog_char_strstr(replybuffer, (prog_char *)F("1951B08SIM7070")) != 0) {
+		 _type2 = 1;
+		 }
+		 else if (prog_char_strstr(replybuffer, (prog_char *)F("1951B10SIM7070")) != 0) {
+		 _type2 = 2;
+		 }
 }
 
 
@@ -131,18 +137,6 @@ boolean Botletics_modem::begin(Stream &port) {
 boolean Botletics_modem::getBattVoltage(uint16_t *v) {
 
     return sendParseReply(F("AT+CBC"), F("+CBC: "), v, ',', 2);
-}
-
-
-
-/* powers on the module */
-void Botletics_modem::powerOn(uint8_t BOTLETICS_PWRKEY) {
-  pinMode(BOTLETICS_PWRKEY, OUTPUT);
-  digitalWrite(BOTLETICS_PWRKEY, LOW);
-
-  // See spec sheets for your particular module
-    delay(1100); // At least 1s
-  digitalWrite(BOTLETICS_PWRKEY, HIGH);
 }
 
 /* powers down the SIM module */
@@ -173,6 +167,10 @@ boolean Botletics_modem::setFunctionality(uint8_t option) {
   return sendCheckReply(F("AT+CFUN="), option, ok_reply);
 }
 
+boolean Botletics_modem::reset() {
+  return sendCheckReply(F("AT+CFUN=1,1"), ok_reply);
+}
+
 // 2  - Automatic
 // 13 - GSM only
 // 38 - LTE only
@@ -200,6 +198,13 @@ boolean Botletics_modem_LTE::setOperatingBand(const char * mode, uint8_t band) {
 
   return sendCheckReply(cmdBuff, ok_reply);
 }
+
+boolean Botletics_modem_LTE::setNetwork(uint16_t net, uint8_t band) {
+  char cmdBuff[24];
+  sprintf(cmdBuff, "AT+COPS=1,2,\"%i\",%i",net,band);
+  return sendCheckReply(cmdBuff, ok_reply, 15000);
+
+   }
 
 // Sleep mode reduces power consumption significantly while remaining registered to the network
 // NOTE: USB port must be disconnected before this will take effect
@@ -280,6 +285,8 @@ uint8_t Botletics_modem::getNetworkStatus(void) {
     if (! sendParseReply(F("AT+CREG?"), F("+CREG: "), &status, ',', 1)) return 0;
   }
 
+  DEBUG_PRINT (F("\t network status ")); DEBUG_PRINTLN(status);
+
   return status;
 }
 
@@ -300,91 +307,6 @@ uint8_t Botletics_modem::getRSSI(void) {
 /********* GPRS **********************************************************/
 
 
-boolean Botletics_modem::enableGPRS_old() {
-	// DISCONNECT
-      // disconnect all sockets
-      sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 2000);
-      // close bearer
-      sendCheckReply(F("AT+SAPBR=0,1"), ok_reply, 1000);
-		
-		sendCheckReply(F("AT+CGATT=0"), ok_reply, 10000);
-
-	// CONNECT
-      // set bearer profile! connection type GPRS
-      if (! sendCheckReply(F("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\""), ok_reply, 10000))
-        return false;
-      // } // UNCOMMENT FOR LTE ONLY!
-
-      delay(200); // This seems to help the next line run the first time
-      
-      // set bearer profile access point name
-      if (apn) {
-        // Send command AT+SAPBR=3,1,"APN","<apn value>" where <apn value> is the configured APN value.
-        if (! sendCheckReplyQuoted(F("AT+SAPBR=3,1,\"APN\","), apn, ok_reply, 10000))
-          return false;
-
-          // send AT+CSTT,"apn","user","pass"
-          flushInput();
-
-          mySerial->print(F("AT+CSTT=\""));
-          mySerial->print(apn);
-          if (apnusername) {
-            mySerial->print("\",\"");
-            mySerial->print(apnusername);
-          }
-          if (apnpassword) {
-            mySerial->print("\",\"");
-            mySerial->print(apnpassword);
-          }
-          mySerial->println("\"");
-
-          DEBUG_PRINT(F("\t---> ")); DEBUG_PRINT(F("AT+CSTT=\""));
-          DEBUG_PRINT(apn);
-          
-          if (apnusername) {
-            DEBUG_PRINT("\",\"");
-            DEBUG_PRINT(apnusername); 
-          }
-          if (apnpassword) {
-            DEBUG_PRINT("\",\"");
-            DEBUG_PRINT(apnpassword); 
-          }
-          DEBUG_PRINTLN("\"");
-          
-          if (! expectReply(ok_reply)) return false;
-        // } // UNCOMMENT FOR LTE ONLY!
-      
-        // set username/password
-        if (apnusername) {
-          // Send command AT+SAPBR=3,1,"USER","<user>" where <user> is the configured APN username.
-          if (! sendCheckReplyQuoted(F("AT+SAPBR=3,1,\"USER\","), apnusername, ok_reply, 10000))
-            return false;
-        }
-        if (apnpassword) {
-          // Send command AT+SAPBR=3,1,"PWD","<password>" where <password> is the configured APN password.
-          if (! sendCheckReplyQuoted(F("AT+SAPBR=3,1,\"PWD\","), apnpassword, ok_reply, 10000))
-            return false;
-        }
-      }
-
-      // open bearer
-      if (! sendCheckReply(F("AT+SAPBR=1,1"), ok_reply, 30000))
-        return false;
-
-        // bring up wireless connection
-        if (! sendCheckReply(F("AT+CIICR"), ok_reply, 10000))
-          return false;
-        //if (! sendCheckReply(F("AT+CIFSR"), ok_reply, 10000)) //jaka - gets ip not ok status - parse reply
-          //return false;          
-          
-
-
- 
-  return true;
-}
-
- 
-
 boolean Botletics_modem::enableGPRS(boolean onoff) {
  
   if (_type == SIM7070) {
@@ -397,6 +319,7 @@ boolean Botletics_modem::enableGPRS(boolean onoff) {
     if (onoff) {
       // disconnect all sockets
       sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 20000);
+      //sendCheckReply(F("AT+SAPBR=0,1"), ok_reply, 1000);
 
 
       if (! sendCheckReply(F("AT+CGATT=1"), ok_reply, 10000))
@@ -591,7 +514,6 @@ boolean Botletics_modem::openWirelessConnection(bool onoff) {
   }
   else {
     if (_type == SIM7070) {
-      //sendCheckReply(F("AT+CNACT=0,1"), ok_reply);  // old
        if (! sendCheckReply(F("AT+CNACT=0,1"), ok_reply)) return false;
     }
     else {
@@ -692,6 +614,7 @@ boolean Botletics_modem::UDPconnect(char *server, uint16_t port) {
 
 	  DEBUG_PRINT(F("\t<-- ")); DEBUG_PRINTLN(replybuffer);
 	  if (strstr(replybuffer, "+CAOPEN: 0,0") == NULL) return false;
+	  DEBUG_PRINT(F("\t<-- caopen ")); DEBUG_PRINTLN("OK");
 	  
 	  // looks like it was a success (?)
 	  return true;
@@ -771,10 +694,10 @@ boolean Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
 
 	  mySerial->write(packet, len);
 
-	uint8_t sendD = readline(5000); // return SEND OK
+	uint8_t sendD = readline(6000); // return SEND OK
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 	if (strcmp(replybuffer, "SEND OK") != 0) { return false;}
-	uint8_t receveD = readline2(5000,charr); // RETURN DATA
+	uint8_t receveD = readline2(6000,charr); // RETURN DATA
 
 
 		DEBUG_PRINTLN("response :");   
@@ -825,31 +748,29 @@ boolean Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
 	  if (replybuffer[0] != '>') return false;
 	  mySerial->write(packet, len);
 
-	uint8_t sendD = readline(5000); // return SEND OK
+	uint8_t sendD = readline(2000); // return SEND OK
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 	if (strcmp(replybuffer, "OK") != 0) { return false;}
 
-	uint8_t sendD2 = readline(2000); // return SEND OK
+	uint8_t sendD2 = readline(7000); // return SEND OK
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 	if (strcmp(replybuffer, "+CADATAIND: 0") != 0) { return false;}
+
+		 if (_type2 == 2) { // different firmware version
+			uint8_t sendD3 = readline(2000); // buffer full
+			DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
+		 }
+
 	  
 	mySerial->println(F("AT+CARECV=0,25"));
-	uint8_t receveD = readline2(5000,charr); // RETURN DATA
+	uint8_t receveD = readline2(8000,charr); // RETURN DATA
 
 		DEBUG_PRINTLN("response :");   
 		  for (uint16_t i=0; i<charr;i++) {
-			 
-			//if (replybuffer2[i]==128) {	 
-			//response[i]=0;
-			//DEBUG_PRINTLN(0);		
-			//}
-
 			if (i>12) {	 
-			response[i-13]=replybuffer2[i];
 			DEBUG_PRINTLN(replybuffer2[i]);		
+			response[i-13]=replybuffer2[i];
 			}
-
-		
 		}
 		//DEBUG_PRINTLN(replybuffer2[0]);
 	  if (response[0] > 0 and response[1] < 4) return true;
