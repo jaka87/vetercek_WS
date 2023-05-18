@@ -81,10 +81,10 @@ boolean Adafruit_FONA::begin(Stream &port) {
     DEBUG_PRINTLN(F("No response, last attempt"));
 #endif
   //pinMode(10, OUTPUT);
-  digitalWrite(10, LOW);
-  delay(1200); // For SIM7000 
-  digitalWrite(10, HIGH);
-  delay(1000);    
+  //digitalWrite(10, LOW);
+  //delay(1200); // For SIM7000 
+  //digitalWrite(10, HIGH);
+  //delay(1000);    
     
     sendCheckReply(F("AT"), ok_reply);
     delay(100);
@@ -538,10 +538,10 @@ boolean Adafruit_FONA::UDPsend(unsigned char *packet, uint8_t len, byte response
 
   mySerial->write(packet, len);
 
-uint8_t sendD = readline(8000); // return SEND OK
+uint8_t sendD = readline(5000); // return SEND OK
   DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 if (strcmp(replybuffer, "SEND OK") != 0) { return false;}
-uint8_t receveD = readline2(8000,charr); // RETURN DATA
+uint8_t receveD = readline2(5000,charr); // RETURN DATA
 
 
 	DEBUG_PRINTLN("response :");   
