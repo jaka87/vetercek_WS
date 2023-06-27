@@ -471,8 +471,8 @@ boolean Adafruit_FONA::UDPconnect(char *server, uint16_t port) {
   mySerial->print(port);
   mySerial->println(F("\""));
 
-  if (! expectReply(ok_reply)) return false;
-  if (! expectReply(F("CONNECT OK"))) return false;  //if ALREADY CONNECT
+  if (! expectReply(ok_reply,5000)) return false;
+  if (! expectReply(F("CONNECT OK"),5000)) return false;  //if ALREADY CONNECT
 
   // looks like it was a success (?)
   return true;

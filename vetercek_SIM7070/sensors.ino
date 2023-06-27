@@ -2,7 +2,9 @@
 void UltrasonicAnemometer() { //measure wind speed
     char buffer[70];
     char hexbuffer[5];
+    char hexbuffer2[5]; // new anemometer with aditional 0 in string
     int sum;
+    int sum2; // new anemometer with aditional 0 in string
     unsigned long startedWaiting = millis();
              
       while(ultrasonic.available() < 63 and millis() - startedWaiting <= 10000) { //10s
@@ -25,22 +27,25 @@ void UltrasonicAnemometer() { //measure wind speed
       char *wind = strtok(NULL, ",/");
       char* check = strtok(NULL, ",/");
 
-//       #ifdef DEBUG 
-//       delay(20);
-//        DEBUGSERIAL.println(dir); 
-//        DEBUGSERIAL.println(wind); 
-//        DEBUGSERIAL.println(check); 
-//       delay(70);
-//       #endif 
+       #ifdef DEBUG 
+       delay(20);
+        DEBUGSERIAL.println(dir); 
+        DEBUGSERIAL.println(wind); 
+        DEBUGSERIAL.println(check); 
+       delay(70);
+       #endif 
 
       if( check!=NULL and wind!=NULL and dir!=NULL)  {    
         sum+=countBytes(dir);
         sum+=countBytes(wind);
         sum+=2605;
-        sum=-(sum % 256);    
+        sum2=sum+48;
+        sum=-(sum % 256);   
+        sum2=-(sum2 % 256);   
         sprintf(hexbuffer,"%02X", sum);
+        sprintf(hexbuffer2,"%02X", sum2); // new anemometer with aditional 0 in string
     
-        if( check[0] ==hexbuffer[2] and check[1] ==hexbuffer[3] )  {  
+        if( (check[0] ==hexbuffer[2] and check[1] ==hexbuffer[3]) or (check[0] ==hexbuffer2[2] and check[1] ==hexbuffer2[3]) )  {  
               calDirection = atoi(dir) + vaneOffset;
               CalculateWindDirection();  // calculate wind direction from data
               windSpeed=atof(wind)*19.4384449;
@@ -339,6 +344,21 @@ void GetTmpNow() {
 void BeforePostCalculations() {
   DominantDirection();                          // wind direction
   GetAvgWInd();                                 // avg wind
+
+  if (enableSolar==1){
+    int curr = 0;  // measure solar cell current
+    volatile unsigned currCount = 0;
+    while (currCount < 10) {
+          curr += ((analogRead(A0)*3.98)/1000/1.15)*940; //2.2k resistor
+          currCount++;
+          delay(20);
+      }
+    SolarCurrent=(curr/currCount)/5;  // calculate average solar current // divide with 5 so it can be send as byte
+    } 
+    // solar and battery and signal
+    sig=fona.getRSSI(); 
+    battLevel = readVcc(); // Get voltage %   
+    // end
 }
 
 // Read the module's power supply voltage

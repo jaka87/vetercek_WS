@@ -1,6 +1,6 @@
 void moduleSetup() {
 Serial.begin(57600);
-delay(10000);
+//delay(10000);
 unsigned long startedWaiting = millis();
 while (!Serial and millis() - startedWaiting <= 10000) {
   delay(1000); // wait for serial port to connect. Needed for native USB

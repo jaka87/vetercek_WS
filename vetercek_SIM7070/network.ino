@@ -1,26 +1,26 @@
 void moduleSetup() {
 Serial.begin(57600);
-delay(300);
-unsigned long startedWaiting = millis();
-while (!Serial and millis() - startedWaiting <= 4000) {
-  delay(1000); // wait for serial port to connect. Needed for native USB
-}
-if(millis() - startedWaiting > 3900){ reset(8); }
 
-startedWaiting = millis();
-while (!fona.begin(Serial) and millis() - startedWaiting <= 5000) {
-  delay(1000);
-  #ifdef DEBUG
-    DEBUGSERIAL.println(F("NoF"));
-  #endif 
-}
-if(millis() - startedWaiting > 4900){ reset(0); }
+bool zagnano=fona.begin(Serial);
 
+
+  if (!zagnano ){
+    reset(9);
+  }
+
+    
   fona.enableSleepMode(true);
   delay(100);
   fona.setPreferredMode(GSMstate);
   delay(3000);
   fona.setNetLED(true,3,64,5000);
+  delay(100);
+  bool cops1=fona.setCOPS(2); //de-register
+  bool cops2=fona.setCOPS(0); //auto
+    #ifdef DEBUG    
+      DEBUGSERIAL.println(cops1);   
+      DEBUGSERIAL.println(cops2);   
+    #endif 
   delay(100);
   fona.setNetworkSettings(F(APN)); // APN
   delay(100);
@@ -45,11 +45,18 @@ void changeNetwork() {
   if (GSMstate==52){ fona.setNetwork(GSMnetwork1,9); } 
   else if (GSMstate==53){ fona.setNetwork(GSMnetwork2,9); } 
   else if (GSMstate==54){ fona.setNetwork(GSMnetwork3,0); } 
-  EEPROM.write(9, 51);
+  //EEPROM.write(9, 51);
   delay(5000);
   connectGPRS();
 }
 
+void changeNetwork_id(int network, byte technology) {
+  fona.setPreferredMode(51);
+ fona.setNetwork(network,technology); 
+  //EEPROM.write(9, 51);
+  delay(5000);
+  connectGPRS();
+}
 
 byte netStatus() {
   byte n = fona.getNetworkStatus();
@@ -64,6 +71,7 @@ void GSMerror() {
     bool checkAT = fona.checkAT();
     if (fona.checkAT()) { simReset(); }
     else { reset(7); }
+
 }
 
 
@@ -73,19 +81,37 @@ unsigned long startTime=millis();
 
   do {
     GSMstatus=netStatus();
-    if (GSMstatus==0 or GSMstatus==3 or millis() - startTime >= 60000) {
+    if ((GSMstatus==0) and millis() - startTime >= 10000) {
         #ifdef DEBUG
           DEBUGSERIAL.println(F("NTWRK fail"));
+          DEBUGSERIAL.println(GSMstatus);
         #endif
-        fona.reset();
-        moduleSetup();
+        simReset();       
+        startTime=millis(); 
+    }
+    else if (GSMstatus==3) {
+        #ifdef DEBUG
+          DEBUGSERIAL.println(F("forbidden"));
+        #endif
+        fona.setPreferredMode(13);   
+        startTime=millis(); 
+    }
+    else if (GSMstatus==2 and millis() - startTime >= 60000) {
+        #ifdef DEBUG
+          DEBUGSERIAL.println(F("NTWRK fail"));
+          DEBUGSERIAL.println(GSMstatus);
+        #endif
+        fona.setFunctionality(0); // AT+CFUN=0
+        delay(3000);
+        fona.setFunctionality(1); // AT+CFUN=1     
         startTime=millis(); 
     }
     else {
       #ifdef DEBUG
-        DEBUGSERIAL.println(F("Src"));
+        DEBUGSERIAL.print(F("Src "));
+        DEBUGSERIAL.println(GSMstatus);
       #endif     
-       delay(700);            
+       delay(1000);            
      }
   } 
   while (GSMstatus !=5 and GSMstatus !=1 );
@@ -100,21 +126,26 @@ bool checkServer() {
   do {
       checkServernum=checkServernum+1;
       conn=fona.UDPconnect("vetercek.com",6789);
-      if (checkServernum>1 and conn== false)  { delay(2500*checkServernum); }
+        // solar and battery and signal
+        sig=fona.getRSSI(); 
+        battLevel = readVcc(); // Get voltage %   
+        // end
+      if (checkServernum>1 and conn== false)  { delay( 2000*checkServernum); }
      #ifdef DEBUG
         DEBUGSERIAL.print(F("vet "));
         DEBUGSERIAL.println(conn);
      #endif   
-     if (checkServernum>3)  {
+     if (checkServernum==3)  {
         #ifdef DEBUG
           DEBUGSERIAL.println("SRVR fail");
         #endif 
-        S7070Reset();
+        //S7070Reset();
+        simReset();
      }
   } 
-  while (conn == false and checkServernum < 6);
+  while (conn == false and checkServernum < 7);
   
-  if (checkServernum>5 )  {
+  if (checkServernum>6 )  {
     #ifdef DEBUG
     DEBUGSERIAL.println(F("srvr fail 5"));
     #endif
@@ -144,17 +175,13 @@ void connectGPRS() {
         #ifdef DEBUG
           DEBUGSERIAL.println("GPRS fail 3");
         #endif 
-      fona.reset();
-      moduleSetup();
-      checkNetwork();
+      //S7070Reset();
+      //checkNetwork();
+      simReset();
      }
-    #ifdef SIM_NEW_LIBRARY 
       GPRS=fona.enableGPRS(false);
       delay(3000);
       GPRS=fona.enableGPRS(true);
-    #else
-      GPRS=fona.enableGPRS();
-    #endif
     
     #ifdef DEBUG
       DEBUGSERIAL.print(F("GPRS "));
@@ -166,23 +193,7 @@ void connectGPRS() {
 
 
 
-void PostData() {        
-  //if (millis() - updateBattery >= 40000 or updateBattery == 0) {  // send data about battery and signal every x
-   // updateBattery=millis();
-    sig=fona.getRSSI(); 
-    battLevel = readVcc(); // Get voltage %   
-
-  if (enableSolar==1){
-    int curr = 0;  // measure solar cell current
-    volatile unsigned currCount = 0;
-    while (currCount < 10) {
-          curr += ((analogRead(A0)*3.98)/1000/1.15)*940; //2.2k resistor
-          currCount++;
-          delay(20);
-      }
-    SolarCurrent=(curr/currCount)/5;  // calculate average solar current // divide with 5 so it can be send as byte
-    }    
- //}
+void PostData() {           
 
   data[8]=windDir/100;
   data[9]=windDir%100;
@@ -235,13 +246,9 @@ void PostData() {
   #endif 
 
 
-  byte response[10];  
-  #ifdef SIM_NEW_LIBRARY 
-    if ( fona.UDPsend(data,sizeof(data),response,22)) {
-  #else
-    if ( fona.UDPsend(data,sizeof(data),response,9)) {
-  #endif
-
+  byte response[13];  
+    if ( fona.UDPsend(data,sizeof(data),response,26)) {
+      
   if (response[1] ==1 ) {  
     vaneOffset=(response[2]*100)+response[3];    // if byte is positive value
   } 
@@ -273,6 +280,28 @@ void PostData() {
     reset(3); 
     }
 
+  else if (response[8] == 99) { // connect to custom network
+    int lastbyte = response[11];
+    int firstpart;
+    int secondpart;
+    if (lastbyte <10) {
+      secondpart=lastbyte;
+      firstpart=0;
+    }
+    else {
+      secondpart = lastbyte%10; 
+      firstpart  = (lastbyte/10)%10;
+    }
+    int networkid=(response[9]*1000)+(response[10]*10)+firstpart;
+     #ifdef DEBUG
+      DEBUGSERIAL.println(F("custom"));
+      DEBUGSERIAL.println(networkid);
+      DEBUGSERIAL.println(secondpart);
+     #endif
+     if(response[9]!=0 and response[10]!=0 and response[11]!=0){
+        changeNetwork_id(networkid,secondpart);
+     }
+    }
    
   onOffTmp=response[5];
   cutoffWind=response[6];
@@ -354,9 +383,7 @@ void AfterPost() {
 
 // send data to server
 void SendData() {
-  BeforePostCalculations();
-  //checkNetwork();
-  //checkGPRS();
+  BeforePostCalculations();    
   checkServer();
   PostData();
 }

@@ -27,7 +27,7 @@ int resetReason = MCUSR;
 int GSMnetwork1= 29340; // A1 SLOVENIA
 int GSMnetwork2= 21910; // A1 HR
 int GSMnetwork3= 29341; // telekom 2g HR
-byte GSMstate=51; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
+byte GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
@@ -179,19 +179,19 @@ void setup() {
   Timer1.initialize(1000000UL);         // initialize timer1, and set a 1 second period
   Timer1.attachInterrupt(CheckTimerGPRS);  // attaches checkTimer() as a timer overflow interrupt
 
+  pinMode(PWRKEY, OUTPUT);
+  digitalWrite(PWRKEY, LOW);
   pinMode(13, OUTPUT);     // this part is used when you bypass bootloader to signal when board is starting...
   digitalWrite(13, HIGH);   // turn the LED on
-  delay(1000);              // wait
+  delay(500);              // wait
   digitalWrite(13, LOW);    // turn the LED
-  delay(100);
+  delay(50);
   pinMode(pwrAir, OUTPUT);      // sets the digital pin as output
   pinMode(pwrWater, OUTPUT);      // sets the digital pin as output
   digitalWrite(pwrAir, HIGH);   // turn on power
   digitalWrite(pwrWater, HIGH);   // turn on power  
   pinMode(DTR, OUTPUT);
   digitalWrite(DTR, LOW); 
-  pinMode(PWRKEY, OUTPUT);
-  digitalWrite(PWRKEY, HIGH);
   pinMode(PIN_A2, OUTPUT);
   digitalWrite(PIN_A2, HIGH);   
   
@@ -230,10 +230,8 @@ void setup() {
 #endif   
 
 
-//powerOn(1); 
-//if (resetReason==8 ) { powerOn(1);}
-//delay(150);
-//powerOn(1); 
+delay(4000);  
+digitalWrite(PWRKEY, HIGH);
 moduleSetup(); // Establishes first-time serial comm and prints IMEI 
 checkIMEI();
 connectGPRS(); 
@@ -457,7 +455,7 @@ void reset(byte rr) {
     DEBUGSERIAL.println(rr);
   #endif  
   digitalWrite(PWRKEY, LOW);
-  delay(3500);  
+  delay(4000);  
   wdt_enable(WDTO_60MS);
   delay(100);
 }

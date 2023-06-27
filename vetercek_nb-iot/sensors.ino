@@ -2,7 +2,9 @@
 void UltrasonicAnemometer() { //measure wind speed
     char buffer[70];
     char hexbuffer[5];
+    char hexbuffer2[5]; // new anemometer with aditional 0 in string
     int sum;
+    int sum2; // new anemometer with aditional 0 in string
 
     //byte trow_away;
     //trow_away=(ultrasonic.read());
@@ -23,13 +25,16 @@ void UltrasonicAnemometer() { //measure wind speed
     char *wind = strtok(NULL, ",/");
     char* check = strtok(NULL, ",/");
 
-      sum+=countBytes(dir);
-      sum+=countBytes(wind);
-      sum+=2605;
-      sum=-(sum % 256);    
-      sprintf(hexbuffer,"%02X", sum);
+        sum+=countBytes(dir);
+        sum+=countBytes(wind);
+        sum+=2605;
+        sum2=sum+48;
+        sum=-(sum % 256);   
+        sum2=-(sum2 % 256);   
+        sprintf(hexbuffer,"%02X", sum);
+        sprintf(hexbuffer2,"%02X", sum2); // new anemometer with aditional 0 in string
 
-    if( check[0] ==hexbuffer[2] and check[1] ==hexbuffer[3] )  {  
+        if( (check[0] ==hexbuffer[2] and check[1] ==hexbuffer[3]) or (check[0] ==hexbuffer2[2] and check[1] ==hexbuffer2[3]) )  {  
           calDirection = atoi(dir) + vaneOffset;
           CalculateWindDirection();  // calculate wind direction from data
           windSpeed=atof(wind)*19.4384449;
