@@ -3,15 +3,9 @@ This project was created in order to provide cheap alternative to expensive auto
 
 
 ## Connecting options
-+ [nb iot](vetercek_nb-iot) - stable, maintained (also has 2G fallback - that's why I abandoned 2G version)
-+ [GSM 2G](vetercek_2G)  - stable, but not maintained anymore
-+ [WIFI](vetercek_wifi) - working but probably not production ready (currently I have no plans to improve it)
++ [latest version with 7070 chip](vetercek_SIM7070) 
++ [old 7000 chip](vetercek_nb-iot-HW) 
 
-
-### RJ11 PCB socket
-[RJ11 ](https://www.ebay.com/itm/10pcs-set-RJ11-RJ12-6P6C-Computer-Internet-Network-PCB-Jack-Socket-ATAU/272983583460?ssPageName=STRK%3AMEBIDX%3AIT&_trksid=p2057872.m2749.l2649) - there are few different variants with different pin number. This is the correct one.
-Also aveliable as part number [5523](http://en.glgnet.biz/productsdetail/productId=97.html). Connection should look like this on PCB  
-![RJ11](vetercek_2G/img/rj11.png)  
 
 ### Field test
 2.6.2019 we manage to set up our first weather station located in Sv. Ivan, Croatia. It was quite the challenge since the station is located in the sea about 30-40m from the shore.  

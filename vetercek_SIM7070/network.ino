@@ -275,7 +275,7 @@ void PostData() {
   else if (response[8] == 52 ) { GSMstate=52; changeNetwork(); } // temporarry change network - nb-iot
   else if (response[8] == 53 ) { GSMstate=53; changeNetwork(); } // temporarry change network - nb-iot
   else if (response[8] == 54 ) { GSMstate=54; changeNetwork(); } // temporarry change network - nb-iot
-  else if (response[8] == 2 or response[8]==13 or response[8]==38) { // if new settings for network prefference
+  else if (response[8] == 2 or response[8]==13 or response[8]==38 or response[8]==51) { // if new settings for network prefference
     EEPROM.write(9, response[8]);   // write new data to EEPROM
     reset(3); 
     }

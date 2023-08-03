@@ -15,7 +15,6 @@
 //#include "src/DS18B20/DS18B20.h"
 #include "src/DS18B20/DallasTemperature.h"
 #include "src/TimerOne/TimerOne.h"
-#include "src/bmp/ErriezBMX280.h"
 #include <avr/interrupt.h>
 #include "src/SIM/BotleticsSIM7000.h"
 #include <EEPROM.h>
