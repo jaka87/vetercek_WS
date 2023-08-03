@@ -6,13 +6,7 @@ This project was created in order to provide cheap alternative to expensive auto
 + [latest version with 7070 chip](vetercek_SIM7070) 
 + [old 7000 chip](vetercek_nb-iot-HW) 
 
-
-### Field test
-2.6.2019 we manage to set up our first weather station located in Sv. Ivan, Croatia. It was quite the challenge since the station is located in the sea about 30-40m from the shore.  
-![station location](vetercek_2G/img/st1.jpg)  
   
-11.1.2020 we manage to set up new improved version of the station to lighthouse in Isola.  
-![izola](vetercek_2G/img/svetilnik.jpg)  
 
 ## License
 This project is released under
