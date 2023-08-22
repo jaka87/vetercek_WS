@@ -23,19 +23,18 @@ int resetReason = MCUSR;
 
 //////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
 #define APN "iot.1nce.net"
-int GSMnetwork1= 29340; // A1 SLOVENIA
-int GSMnetwork2= 21901; // HT HR
-int GSMnetwork3= 29341; // telekom 2g
 byte GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
-int sea_level_m=5; // enter elevation for your location for pressure calculation
+int sea_level_m=558; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
-//#define BMP // comment out if you want to turn off pressure sensor and save space
+#define BMP // comment out if you want to turn off pressure sensor and save space
+#define HUMIDITY // comment out if you want to turn off humidity sensor
+//#define BME // comment out if you want to turn off pressure and humidity sensor
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
 ///////////////////////////////////////////////////////////////////////////////////
 
@@ -110,6 +109,18 @@ Botletics_modem_LTE fona = Botletics_modem_LTE();
   LPS35HW lps(address);
 #endif
 
+#ifdef HUMIDITY
+  #include <Wire.h>
+//#include "SHTSensor.h"
+#include "src/HUM/SHTSensor.h"
+SHTSensor sht;
+#endif
+
+#ifdef BME
+  #include "src/BME/Zanshin_BME680.h"
+  BME680_Class BME680;  ///< Create an instance of the BME680 class
+#endif
+
 //////////////////////////////////    RATHER DON'T CHANGE
 unsigned int pwrAir = PWRAIR; // power for air sensor
 unsigned int pwrWater = PWRWATER; // power for water sensor
@@ -156,7 +167,9 @@ byte UltrasonicAnemo=0;
 byte enableSolar=0;
 byte enableRain=0;
 byte enableBmp=0;
+byte enableHum=0;
 int pressure=0;
+byte humidity=0;
 byte changeSleep=0;
 byte batteryState=0; // 0 normal; 1 low battery; 2 very low battery
 byte stopSleepChange=0; //on
@@ -218,7 +231,26 @@ void setup() {
       lps.setLowPower(true);
       lps.setOutputRate(LPS35HW::OutputRate_OneShot);   
       }
-#endif   
+#endif  
+ 
+#ifdef HUMIDITY
+    Wire.begin();
+  if ((EEPROM.read(16)==255 or EEPROM.read(16)==1) and sht.init()) {  
+    enableHum=1; 
+    sht.setAccuracy(SHTSensor::SHT_ACCURACY_MEDIUM); // only supported by SHT3x
+      }
+#endif 
+
+#ifdef BME
+  enableBmp=1; 
+  if ((EEPROM.read(13)==255 or EEPROM.read(13)==1) ) {  
+  BME680.begin(I2C_STANDARD_MODE);
+  BME680.setOversampling(TemperatureSensor, Oversample16);  // Use enumerated type values
+  BME680.setOversampling(HumiditySensor, Oversample16);     // Use enumerated type values
+  BME680.setOversampling(PressureSensor, Oversample16);     // Use enumerated type values
+  }
+#endif 
+
 
 delay(7000);
 moduleSetup(); // Establishes first-time serial comm and prints IMEI 

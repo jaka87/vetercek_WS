@@ -40,15 +40,6 @@ bool zagnano=fona.begin(Serial);
 }  
 
 
-void changeNetwork() {
-  fona.setPreferredMode(51);
-  if (GSMstate==52){ fona.setNetwork(GSMnetwork1,9); } 
-  else if (GSMstate==53){ fona.setNetwork(GSMnetwork2,9); } 
-  else if (GSMstate==54){ fona.setNetwork(GSMnetwork3,0); } 
-  //EEPROM.write(9, 51);
-  delay(5000);
-  connectGPRS();
-}
 
 void changeNetwork_id(int network, byte technology) {
   fona.setPreferredMode(51);
@@ -236,15 +227,17 @@ void PostData() {
     data[19]=abs(int(water*100))%100;
   } 
 
-  #ifdef BMP
-    if (enableBmp==1) { // if send pressure value
-      data[25]=pressure/100;
-      data[26]=pressure%100;
-    } 
-  #else
-  data[25]=sonicError;    
-  #endif 
+      if (enableBmp==1) { // if send pressure value
+        data[25]=pressure/100;
+        data[26]=pressure%100;
+      } 
+      else { 
+        data[25]=sonicError;    
+      } 
 
+      if (enableHum==1) { // if send humidity value
+        data[27]=humidity;
+      } 
 
   byte response[13];  
     if ( fona.UDPsend(data,sizeof(data),response,26)) {
@@ -269,12 +262,11 @@ void PostData() {
   else if (response[8]==131) { EEPROM.write(13, 1); reset(3); } 
   else if (response[8]==40) { EEPROM.write(14, 10); stopSleepChange=3; }  // UZ sleep on / off
   else if (response[8]==41) { EEPROM.write(14, 11); stopSleepChange=0; } 
+  else if (response[8]==160) { EEPROM.write(16, 1); enableHum=1; }  // humidity on off
+  else if (response[8]==161) { EEPROM.write(16, 0); enableHum=0; } 
   else if (response[8] == 102 ) { GSMstate=2; moduleSetup(); } // temporarry change network - auto
   else if (response[8] == 113 ) { GSMstate=13; moduleSetup(); } // temporarry change network - 2G
   else if (response[8] == 138 ) { GSMstate=38; moduleSetup(); } // temporarry change network - nb-iot
-  else if (response[8] == 52 ) { GSMstate=52; changeNetwork(); } // temporarry change network - nb-iot
-  else if (response[8] == 53 ) { GSMstate=53; changeNetwork(); } // temporarry change network - nb-iot
-  else if (response[8] == 54 ) { GSMstate=54; changeNetwork(); } // temporarry change network - nb-iot
   else if (response[8] == 2 or response[8]==13 or response[8]==38 or response[8]==51) { // if new settings for network prefference
     EEPROM.write(9, response[8]);   // write new data to EEPROM
     reset(3); 
@@ -376,6 +368,7 @@ void AfterPost() {
     sonicError=0;
     rainCount=0;
     pressure=0;
+    humidity=0;
     memset(windGust, 0, sizeof(windGust)); // empty direction array
 }
 

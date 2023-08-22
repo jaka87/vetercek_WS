@@ -311,6 +311,28 @@ void GetPressure() {
 }
 #endif
 
+#ifdef BME
+void GetPressure() {
+
+  static int32_t  temp2, humi, abs_pressure;  // BME readings
+  BME680.getSensorData(temp2, humi, abs_pressure);  // Get readings
+
+    humidity=humi / 1000;
+    pressure=((abs_pressure/100) / pow(1.0 - 0.0065 * sea_level_m / ((temp2/100)  + 273.15), 5.255))*10;  // ICAO formula
+   
+}
+#endif
+
+#ifdef HUMIDITY
+void GetHumidity() {
+  if (sht.readSample()) {
+    humidity=sht.getHumidity();
+  }
+}
+
+#endif
+
+
 void GetTmpNow() {
   if (onOffTmp == 1) {
     GetAir();                               // air
@@ -337,7 +359,22 @@ void GetTmpNow() {
       GetPressure();
       delay(20);
     }
-  #endif   
+  #endif 
+
+  #ifdef HUMIDITY
+    if (enableHum == 1) {
+      GetHumidity();
+      delay(20);
+    }
+  #endif 
+  
+  #ifdef BME
+    if (enableBmp == 1) {
+      GetPressure();
+      delay(20);
+    }
+  #endif 
+   
 }
 
 
