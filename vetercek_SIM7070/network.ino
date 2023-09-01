@@ -15,17 +15,17 @@ bool zagnano=fona.begin(Serial);
   delay(3000);
   fona.setNetLED(true,3,64,5000);
   delay(100);
-  bool cops1=fona.setCOPS(2); //de-register
-  bool cops2=fona.setCOPS(0); //auto
-    #ifdef DEBUG    
-      DEBUGSERIAL.println(cops1);   
-      DEBUGSERIAL.println(cops2);   
-    #endif 
-  delay(100);
+//  bool cops1=fona.setCOPS(2); //de-register
+//  bool cops2=fona.setCOPS(0); //auto
+//    #ifdef DEBUG    
+//      DEBUGSERIAL.println(cops1);   
+//      DEBUGSERIAL.println(cops2);   
+//    #endif 
+//  delay(100);
   fona.setNetworkSettings(F(APN)); // APN
   delay(100);
 
-  if (GSMstate>13 ){
+  if (GSMstate!=13){
     fona.set_eDRX(1, 5, "1001");
     delay(100);
   }
@@ -42,7 +42,7 @@ bool zagnano=fona.begin(Serial);
 
 
 void changeNetwork_id(int network, byte technology) {
-  fona.setPreferredMode(51);
+  //fona.setPreferredMode(51);
  fona.setNetwork(network,technology); 
   //EEPROM.write(9, 51);
   delay(5000);
@@ -69,7 +69,7 @@ void GSMerror() {
 bool checkNetwork() {  
 byte GSMstatus=99;
 unsigned long startTime=millis();  
-
+byte zero_network=0;
   do {
     GSMstatus=netStatus();
     if ((GSMstatus==0) and millis() - startTime >= 10000) {
@@ -149,13 +149,13 @@ bool checkServer() {
 void connectGPRS() {
   bool GPRS=false;
   byte checkGPRSnum=0;
-  int8_t info=fona.getNetworkInfo();  // check if connected to network, else try 2G
-  if ((info <1 or info > 10) and GSMstate==2)  {
-   #ifdef DEBUG
-      DEBUGSERIAL.println(F("n2g"));
-   #endif 
-    fona.setPreferredMode(13);   
-  }
+//  int8_t info=fona.getNetworkInfo();  // check if connected to network, else try 2G
+//  if ((info <1 or info > 10) and GSMstate==2)  {
+//   #ifdef DEBUG
+//      DEBUGSERIAL.println(F("n2g"));
+//   #endif 
+//    fona.setPreferredMode(13);   
+//  }
   
   checkNetwork();
   unsigned long startTime=millis();    
@@ -185,6 +185,7 @@ void connectGPRS() {
 
 
 void PostData() {           
+  bool GPRS=false;
 
   data[8]=windDir/100;
   data[9]=windDir%100;
@@ -272,10 +273,28 @@ void PostData() {
     reset(3); 
     }
 
-  else if (response[8] == 99) { // connect to custom network
-    int lastbyte = response[11];
-    int firstpart;
-    int secondpart;
+  else if (response[8] == 99 or response[8] == 97 or  response[8] == 98) { // connect to custom network
+      if (response[8] == 97){
+        EEPROM.write(20, response[9]);
+        EEPROM.write(21, response[10]);
+        EEPROM.write(22, response[11]);
+   #ifdef DEBUG                                 
+    DEBUGSERIAL.println("network1");
+  #endif
+      }
+      else if (response[8] == 98){
+        EEPROM.write(23, response[9]);
+        EEPROM.write(24, response[10]);
+        EEPROM.write(25, response[11]);
+   #ifdef DEBUG                                 
+    DEBUGSERIAL.println("network2");
+  #endif        
+      }
+
+    else {
+    byte lastbyte = response[11];
+    byte firstpart;
+    byte secondpart;
     if (lastbyte <10) {
       secondpart=lastbyte;
       firstpart=0;
@@ -292,7 +311,8 @@ void PostData() {
      #endif
      if(response[9]!=0 and response[10]!=0 and response[11]!=0){
         changeNetwork_id(networkid,secondpart);
-     }
+      }
+     } 
     }
    
   onOffTmp=response[5];
@@ -339,9 +359,12 @@ void PostData() {
    else {  //if cannot send data to vetercek.com
      fona.UDPclose();
      failedSend=failedSend+1;
-     delay(3000);
-      
-      if (failedSend > 2 ) {
+     //delay(3000);
+      GPRS=fona.enableGPRS(false);
+      delay(1000);
+      GPRS=fona.enableGPRS(true);
+            
+      if (failedSend > 2 or GPRS==false) {
       #ifdef DEBUG
         DEBUGSERIAL.println(F("failsend"));
       #endif        

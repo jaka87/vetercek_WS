@@ -11,9 +11,7 @@
 #include <avr/wdt.h> //watchdog
 #include "src/LowPower/LowPower.h" //sleep library
 #include <math.h> // wind speed calculations
-#include "src/OneWire/OneWire.h" //tmp sensor
 //#include "src/DS18B20/DS18B20.h"
-#include "src/DS18B20/DallasTemperature.h"
 #include "src/TimerOne/TimerOne.h"
 #include <avr/interrupt.h>
 #include "src/SIM/BotleticsSIM7000.h"
@@ -28,14 +26,18 @@ byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
 const char* broker = "vetercek.com";
-int sea_level_m=558; // enter elevation for your location for pressure calculation
+int sea_level_m=0; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
-#define BMP // comment out if you want to turn off pressure sensor and save space
+//#define BMP // comment out if you want to turn off pressure sensor and save space
 #define HUMIDITY // comment out if you want to turn off humidity sensor
+//#define TMPDS18B20 // comment out if you want to turn off humidity sensor
 //#define BME // comment out if you want to turn off pressure and humidity sensor
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
+#define NETWORK_OPERATORS 2
+  // 1. Slovenia
+  // 2. Croatia
 ///////////////////////////////////////////////////////////////////////////////////
 
 
@@ -56,15 +58,14 @@ int sea_level_m=558; // enter elevation for your location for pressure calculati
 byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 0,0,0 }; // data
 
 
-//OneWire oneWire_in(ONE_WIRE_BUS_1);   //tmp
-//DS18B20 sensor_air(&oneWire_in);
-//OneWire oneWire_out(ONE_WIRE_BUS_2);
-//DS18B20 sensor_water(&oneWire_out);
-OneWire oneWire_in(ONE_WIRE_BUS_1);   //tmp
-DallasTemperature sensor_air(&oneWire_in);
-OneWire oneWire_out(ONE_WIRE_BUS_2);
-DallasTemperature sensor_water(&oneWire_out);
-
+#ifdef TMPDS18B20
+  #include "src/OneWire/OneWire.h" //tmp sensor
+  #include "src/DS18B20/DallasTemperature.h"
+  OneWire oneWire_in(ONE_WIRE_BUS_1);   //tmp
+  DallasTemperature sensor_air(&oneWire_in);
+  OneWire oneWire_out(ONE_WIRE_BUS_2);
+  DallasTemperature sensor_water(&oneWire_out);
+#endif
 //////////////////////////////////    EEPROM DATA
 // 1-8 IMEI
 // 9   2G/nb-iot
@@ -110,10 +111,10 @@ Botletics_modem_LTE fona = Botletics_modem_LTE();
 #endif
 
 #ifdef HUMIDITY
-  #include <Wire.h>
-//#include "SHTSensor.h"
-#include "src/HUM/SHTSensor.h"
-SHTSensor sht;
+  #include "Wire.h"
+  #include "SHT31.h"
+  #define SHT31_ADDRESS   0x44
+  SHT31 sht;
 #endif
 
 #ifdef BME
@@ -175,6 +176,24 @@ byte batteryState=0; // 0 normal; 1 low battery; 2 very low battery
 byte stopSleepChange=0; //on
 volatile byte countWake = 0;
 
+#if NETWORK_OPERATORS == 1
+  int network1=29340;
+  int network2=29341;
+  byte net_ver1=9;
+  byte net_ver2=0;
+#elif NETWORK_OPERATORS == 2
+  int network1=21902;
+  int network2=21910;
+  byte net_ver1=0;
+  byte net_ver2=0;
+#else
+  int network1=0;
+  int network2=0;
+  byte net_ver1=0;
+  byte net_ver2=0;
+#endif
+
+
 
 void setup() {
   MCUSR = 0; // clear reset flags
@@ -214,11 +233,14 @@ void setup() {
 #endif
 
 
-
+#ifdef TMPDS18B20
   sensor_air.begin();
+#endif
   if (EEPROM.read(11)==255 or EEPROM.read(11)==1) {  enableSolar=1; }   
   if (EEPROM.read(10)==0) { attachInterrupt(digitalPinToInterrupt(3), rain_count, FALLING); enableRain=1;} // rain counts
-  else { sensor_water.begin(); } // water temperature
+  #ifdef TMPDS18B20
+    else { sensor_water.begin(); } // water temperature
+  #endif
   if (EEPROM.read(9)==13) { GSMstate=13; }
   else if (EEPROM.read(9)==2) { GSMstate=2; }
   else if (EEPROM.read(9)==38) {GSMstate=38; } //#define NBIOT
@@ -232,14 +254,9 @@ void setup() {
       lps.setOutputRate(LPS35HW::OutputRate_OneShot);   
       }
 #endif  
- 
-#ifdef HUMIDITY
-    Wire.begin();
-  if ((EEPROM.read(16)==255 or EEPROM.read(16)==1) and sht.init()) {  
-    enableHum=1; 
-    sht.setAccuracy(SHTSensor::SHT_ACCURACY_MEDIUM); // only supported by SHT3x
-      }
-#endif 
+
+
+
 
 #ifdef BME
   enableBmp=1; 
@@ -251,13 +268,27 @@ void setup() {
   }
 #endif 
 
+#ifdef HUMIDITY
+  Wire.begin();
+  sht.begin(SHT31_ADDRESS);
+  Wire.setClock(100000);
+  uint16_t stat = sht.readStatus();
 
-delay(7000);
-moduleSetup(); // Establishes first-time serial comm and prints IMEI 
-checkIMEI();
-connectGPRS(); 
+    if ( sht.isConnected() ){
+      enableHum=1;
+    }
+#endif 
+//GetHumidity();
+//GetPressure();
 
 
+  if (EEPROM.read(20)>0 and EEPROM.read(20)<250) {  
+    readEEPROMnetwork(20,21,22);
+ }   
+  if (EEPROM.read(23)>0 and EEPROM.read(23)<250) {  
+    readEEPROMnetwork(23,24,25);
+ }   
+ 
 
   if (resetReason==8 ) { //////////////////// reset reason detailed        
     if (EEPROM.read(15)>0 ) {
@@ -291,6 +322,29 @@ connectGPRS();
     EEPROM.write(15, 0); 
     } 
   } 
+
+delay(7000);
+moduleSetup(); // Establishes first-time serial comm and prints IMEI 
+checkIMEI();
+//if ((resetReason==82 or resetReason==85 or resetReason==86) and network2>0  and EEPROM.read(26)!= 1) { 
+if (network1>0  and EEPROM.read(26)!= 1) { 
+  EEPROM.write(26,1); 
+  changeNetwork_id(network1,net_ver1);
+    #ifdef DEBUG                                 
+    DEBUGSERIAL.println("network1: ");
+    DEBUGSERIAL.println(network1);
+
+  #endif
+  } 
+else if (network2>0) { 
+  EEPROM.write(26,2); 
+  changeNetwork_id(network2,net_ver2);
+    #ifdef DEBUG                                 
+    DEBUGSERIAL.println("network2: ");
+    DEBUGSERIAL.println(network2);
+  #endif
+  } 
+//connectGPRS(); 
 
 
   beforeSend();
@@ -428,7 +482,7 @@ void beforeSend() {
 //      #ifdef UZ_Anemometer
 //        ultrasonic.end();
 //      #endif
-      GetTmpNow();
+        GetTmpNow();
       digitalWrite(DTR, LOW);  //wake up  
       delay(10);
       bool checkAT = fona.checkAT();
@@ -518,4 +572,27 @@ void UZ_wake(unsigned long startedWaiting) {
 
 ISR(USART1_START_vect){
 countWake++;
+}
+
+void readEEPROMnetwork(byte ee1,byte ee2, byte ee3) {
+    byte lastbyte = EEPROM.read(ee3);
+    byte firstpart;
+    byte secondpart;
+    if (lastbyte <10) {
+      secondpart=lastbyte;
+      firstpart=0;
+    }
+    else {
+      secondpart = lastbyte%10; 
+      firstpart  = (lastbyte/10)%10;
+    }
+    if (ee1==20) {
+    network1=(EEPROM.read(ee1)*1000)+(EEPROM.read(ee2)*10)+firstpart;
+    net_ver1=secondpart;
+    }
+    if (ee1==23) {
+    network2=(EEPROM.read(ee1)*1000)+(EEPROM.read(ee2)*10)+firstpart;
+    net_ver2=secondpart;
+    }
+
 }

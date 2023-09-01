@@ -255,6 +255,7 @@ if ((currentMillis2 - contactBounceTime2) > 500 ) { // debounce the switch conta
   }
 }
 
+#ifdef TMPDS18B20
 void GetAir() {
   unsigned long startedWaiting = millis();    
 #ifdef TMP_POWER_ONOFF
@@ -293,7 +294,7 @@ void GetWater() {
     DEBUGSERIAL.println(water);
 #endif
 }
-
+#endif
 
 #ifdef BMP
 void GetPressure() {
@@ -318,22 +319,41 @@ void GetPressure() {
   BME680.getSensorData(temp2, humi, abs_pressure);  // Get readings
 
     humidity=humi / 1000;
+    temp=temp2/100;
     pressure=((abs_pressure/100) / pow(1.0 - 0.0065 * sea_level_m / ((temp2/100)  + 273.15), 5.255))*10;  // ICAO formula
+
+       #ifdef DEBUG 
+       delay(20);
+        DEBUGSERIAL.println("hum "); 
+        DEBUGSERIAL.println(pressure); 
+        DEBUGSERIAL.println(humidity); 
+       delay(20);
+       #endif 
    
 }
 #endif
 
 #ifdef HUMIDITY
-void GetHumidity() {
-  if (sht.readSample()) {
-    humidity=sht.getHumidity();
+  void GetHumidity() {
+
+    if ( sht.isConnected() ){
+  sht.read();         // default = true/fast       slow = false
+  temp=sht.getTemperature();
+  humidity=sht.getHumidity();
+    
+     #ifdef DEBUG
+      DEBUGSERIAL.print(F("hum: "));
+      DEBUGSERIAL.println(humidity);
+    #endif 
+        
+    }
+  
   }
-}
 
 #endif
 
-
 void GetTmpNow() {
+#ifdef TMPDS18B20
   if (onOffTmp == 1) {
     GetAir();                               // air
     data[18]=99;
@@ -353,6 +373,7 @@ void GetTmpNow() {
     }          
     delay(20);
   }
+#endif 
 
   #ifdef BMP
     if (enableBmp == 1) {
