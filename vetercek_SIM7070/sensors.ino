@@ -335,19 +335,24 @@ void GetPressure() {
 
 #ifdef HUMIDITY
   void GetHumidity() {
-
+  #if HUMIDITY == 31    
     if ( sht.isConnected() ){
-  sht.read();         // default = true/fast       slow = false
-  temp=sht.getTemperature();
-  humidity=sht.getHumidity();
-    
+      sht.read();         // default = true/fast       slow = false
+      temp=sht.getTemperature();
+      humidity=sht.getHumidity();
+  #else
+    if (sht.measure() != SHT4X_STATUS_OK) {
+     if (sht.TcrcOK) {temp=sht.TtoDegC();} 
+     if (sht.RHcrcOK) { humidity=sht.RHtoPercent();} 
+  #endif 
+   
+
+ 
      #ifdef DEBUG
       DEBUGSERIAL.print(F("hum: "));
       DEBUGSERIAL.println(humidity);
     #endif 
-        
     }
-  
   }
 
 #endif

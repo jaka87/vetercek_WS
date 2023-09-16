@@ -45,7 +45,7 @@ void changeNetwork_id(int network, byte technology) {
   //fona.setPreferredMode(51);
  fona.setNetwork(network,technology); 
   //EEPROM.write(9, 51);
-  delay(5000);
+  delay(7000);
   connectGPRS();
 }
 
@@ -128,19 +128,23 @@ bool checkServer() {
      #endif   
      if (checkServernum==3)  {
         #ifdef DEBUG
-          DEBUGSERIAL.println("SRVR fail");
+          DEBUGSERIAL.println("SRVR fail 3x");
         #endif 
+      conn=fona.enableGPRS(false);
+      delay(3000);
+      conn=fona.enableGPRS(true);
         //S7070Reset();
-        simReset();
+        //simReset();
      }
   } 
-  while (conn == false and checkServernum < 7);
+  while (conn == false and checkServernum < 6);
   
   if (checkServernum>6 )  {
     #ifdef DEBUG
     DEBUGSERIAL.println(F("srvr fail 5"));
     #endif
-    reset(5);
+    //reset(5);
+    simReset();
   }    
 }
 
@@ -185,7 +189,7 @@ void connectGPRS() {
 
 
 void PostData() {           
-  bool GPRS=false;
+  bool GPRS=true;
 
   data[8]=windDir/100;
   data[9]=windDir%100;
@@ -359,17 +363,30 @@ void PostData() {
    else {  //if cannot send data to vetercek.com
      fona.UDPclose();
      failedSend=failedSend+1;
-     //delay(3000);
-      GPRS=fona.enableGPRS(false);
-      delay(1000);
-      GPRS=fona.enableGPRS(true);
-            
-      if (failedSend > 2 or GPRS==false) {
-      #ifdef DEBUG
-        DEBUGSERIAL.println(F("failsend"));
-      #endif        
-        GSMerror();
-      }      
+     
+      if (failedSend ==3 or GPRS==false) {
+        #ifdef DEBUG
+          DEBUGSERIAL.println(F("failsend3"));
+        #endif        
+          GSMerror();
+          SendData(1);
+      }   
+      else if (failedSend == 2) {   
+        #ifdef DEBUG
+          DEBUGSERIAL.println(F("failsend2"));
+        #endif          
+        GPRS=fona.enableGPRS(false);
+        delay(1000);
+        GPRS=fona.enableGPRS(true);
+        SendData(1); 
+      } 
+      else if (failedSend == 1) {    
+        #ifdef DEBUG
+          DEBUGSERIAL.println(F("failsend1"));
+        #endif         
+        SendData(1); 
+      } 
+         
    } 
   
 }
@@ -398,8 +415,8 @@ void AfterPost() {
 
 
 // send data to server
-void SendData() {
-  BeforePostCalculations();    
+void SendData(byte var) {
+  if (var==0){  BeforePostCalculations(); }
   checkServer();
   PostData();
 }

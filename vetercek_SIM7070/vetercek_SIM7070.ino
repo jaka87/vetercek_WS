@@ -31,13 +31,17 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 //#define DEBUG // comment out if you want to turn off debugging
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
-#define HUMIDITY // comment out if you want to turn off humidity sensor
+#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
 //#define TMPDS18B20 // comment out if you want to turn off humidity sensor
 //#define BME // comment out if you want to turn off pressure and humidity sensor
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
 #define NETWORK_OPERATORS 2
   // 1. Slovenia
   // 2. Croatia
+  // 3. Italy
+  // 4. Hungary
+  // 5. Austria
+  // 6. Germany 
 ///////////////////////////////////////////////////////////////////////////////////
 
 
@@ -112,9 +116,14 @@ Botletics_modem_LTE fona = Botletics_modem_LTE();
 
 #ifdef HUMIDITY
   #include "Wire.h"
-  #include "SHT31.h"
-  #define SHT31_ADDRESS   0x44
-  SHT31 sht;
+  #if HUMIDITY == 31
+    #include "src/HUM/SHT31.h"
+    #define SHT_ADDRESS   0x44
+    SHT31 sht;    
+  #else
+    #include "src/HUM/SHT4x.h"
+    SHT4x sht;
+  #endif
 #endif
 
 #ifdef BME
@@ -182,8 +191,28 @@ volatile byte countWake = 0;
   byte net_ver1=9;
   byte net_ver2=0;
 #elif NETWORK_OPERATORS == 2
-  int network1=21902;
+  int network1=21901;
   int network2=21910;
+  byte net_ver1=0;
+  byte net_ver2=0;
+#elif NETWORK_OPERATORS == 3
+  int network1=22210;
+  int network2=22288;
+  byte net_ver1=0;
+  byte net_ver2=0;
+#elif NETWORK_OPERATORS == 4
+  int network1=21630;
+  int network2=21670;
+  byte net_ver1=0;
+  byte net_ver2=0;
+#elif NETWORK_OPERATORS == 5
+  int network1=23201;
+  int network2=23203;
+  byte net_ver1=0;
+  byte net_ver2=0;
+#elif NETWORK_OPERATORS == 6
+  int network1=26201;
+  int network2=26202;
   byte net_ver1=0;
   byte net_ver2=0;
 #else
@@ -269,14 +298,23 @@ void setup() {
 #endif 
 
 #ifdef HUMIDITY
-  Wire.begin();
-  sht.begin(SHT31_ADDRESS);
-  Wire.setClock(100000);
-  uint16_t stat = sht.readStatus();
-
-    if ( sht.isConnected() ){
-      enableHum=1;
-    }
+  #if HUMIDITY == 31
+    Wire.begin();
+    sht.begin(SHT_ADDRESS);
+    Wire.setClock(100000);
+    uint16_t stat = sht.readStatus();
+  
+      if ( sht.isConnected() ){
+        enableHum=1;
+      }
+  #else
+    Wire.begin();
+    sht.setChipType(SHT4X_CHIPTYPE_A);
+    sht.setMode(SHT4X_CMD_MEAS_HI_PREC);
+  if (sht.checkSerial() == SHT4X_STATUS_OK) {
+    enableHum=1;
+  }
+  #endif 
 #endif 
 //GetHumidity();
 //GetPressure();
@@ -326,7 +364,7 @@ void setup() {
 delay(7000);
 moduleSetup(); // Establishes first-time serial comm and prints IMEI 
 checkIMEI();
-//if ((resetReason==82 or resetReason==85 or resetReason==86) and network2>0  and EEPROM.read(26)!= 1) { 
+//if ((resetReason==82 or resetReason==85 or resetReason==86) and network1>0  and EEPROM.read(26)!= 1) { 
 if (network1>0  and EEPROM.read(26)!= 1) { 
   EEPROM.write(26,1); 
   changeNetwork_id(network1,net_ver1);
@@ -486,8 +524,8 @@ void beforeSend() {
       digitalWrite(DTR, LOW);  //wake up  
       delay(10);
       bool checkAT = fona.checkAT();
-        if (fona.checkAT()) { SendData(); }
-        else {moduleSetup(); SendData(); }
+        if (fona.checkAT()) { SendData(0); }
+        else {moduleSetup(); SendData(0); }
       digitalWrite(DTR, HIGH);  //sleep  
       delay(50);
 
