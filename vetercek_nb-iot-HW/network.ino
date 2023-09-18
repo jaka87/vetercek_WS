@@ -287,7 +287,10 @@ void PostData() {
   #else
   data[25]=sonicError;    
   #endif 
-
+  
+  if (enableHum==1) { // if send humidity value
+    data[27]=humidity;
+  } 
 
   byte response[10];  
   #ifdef SIM_NEW_LIBRARY 
@@ -316,6 +319,8 @@ void PostData() {
   else if (response[8]==131) { EEPROM.write(13, 1); reset(3); } 
   else if (response[8]==40) { EEPROM.write(14, 10); stopSleepChange=3; }  // UZ sleep on / off
   else if (response[8]==41) { EEPROM.write(14, 11); stopSleepChange=0; } 
+  else if (response[8]==160) { EEPROM.write(16, 1); enableHum=1; }  // humidity on off
+  else if (response[8]==161) { EEPROM.write(16, 0); enableHum=0; } 
   else if (response[8] == 102 ) { GSMstate=2; moduleSetup(); } // temporarry change network - auto
   else if (response[8] == 113 ) { GSMstate=13; moduleSetup(); } // temporarry change network - 2G
   else if (response[8] == 138 ) { GSMstate=38; moduleSetup(); } // temporarry change network - nb-iot
@@ -369,17 +374,31 @@ void PostData() {
   AfterPost(); 
    } 
 
-   else {  //if cannot send data to vetercek.com
+ else {  //if cannot send data to vetercek.com
      fona.UDPclose();
      failedSend=failedSend+1;
-     delay(3000);
-      
-      if (failedSend > 2 ) {
-      #ifdef DEBUG
-        DEBUGSERIAL.println(F("errRC4"));
-      #endif        
-        GSMerror(1);
-      }      
+     
+      if (failedSend ==3) {
+        #ifdef DEBUG
+          DEBUGSERIAL.println(F("failsend3"));
+        #endif        
+          GSMerror(1);
+          SendData(1);
+      }   
+      else if (failedSend == 2) {   
+        #ifdef DEBUG
+          DEBUGSERIAL.println(F("failsend2"));
+        #endif          
+        fona.enableGPRS();
+        SendData(1); 
+      } 
+      else if (failedSend == 1) {    
+        #ifdef DEBUG
+          DEBUGSERIAL.println(F("failsend1"));
+        #endif         
+        SendData(1); 
+      } 
+         
    } 
   
 }
@@ -401,14 +420,15 @@ void AfterPost() {
     sonicError=0;
     rainCount=0;
     pressure=0;
+    humidity=0;    
     memset(windGust, 0, sizeof(windGust)); // empty direction array
 }
 
 
 
 // send data to server
-void SendData() {
-  BeforePostCalculations();
+void SendData(byte var) {
+  if (var==0){  BeforePostCalculations(); }
   checkNetwork();
   checkGPRS();
   checkServer();

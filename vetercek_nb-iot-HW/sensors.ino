@@ -7,9 +7,7 @@ void UltrasonicAnemometer() { //measure wind speed
     int sum2; // new anemometer with aditional 0 in string
     unsigned long startedWaiting = millis();
              
-      while(ultrasonic.available() < 63 and millis() - startedWaiting <= 10000) { //10s
-        delay(10);
-      }  
+
       int size = ultrasonic.readBytesUntil('\r\n', buffer, 70);
       buffer[size]='\0'; 
 
@@ -54,17 +52,7 @@ void UltrasonicAnemometer() { //measure wind speed
               timergprs = 0;                                            
         }
         else { 
-//          if (atof(wind)*19.4384449 < 40){ // new function to allow data that dont pass checkup, hopefuly to fix Lanterna station issue
-//              calDirection = atoi(dir) + vaneOffset;
-//              CalculateWindDirection();  // calculate wind direction from data
-//              windSpeed=atof(wind)*19.4384449;
-//              CalculateWindGust(windSpeed);
-//              CalculateWind();
-//              timergprs = 0;             
-//          }
-//          else{ 
             UZerror(3); 
-          //}
           }        
       }
       else { 
@@ -86,13 +74,7 @@ int countBytes( const char * data )
 }
 
 void UZerror(byte where) { //ultrasonic error
-  //if ( sonicError>0){
-      //ultrasonic.end();
-      //delay(200);
-      //unsigned long startedWaiting = millis();
-      //UZ_wake(startedWaiting);
       ultrasonicFlush();
-  //}
   sonicError++;
   #ifdef DEBUG
       DEBUGSERIAL.print(F("err UZ "));
@@ -103,41 +85,31 @@ if ( sonicError2 >=7)  { reset(7);  }   // if more than x US errors
 }
 
 void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
-  while (ultrasonic.available() <2) {  delay(10); } 
-  unsigned long startedWaiting = millis();   
-  char buffer[70];
+  char buffer[20];
+  char buffer2[80];
+  byte slponoff=1;
+  
+  if (sleepT==0){slponoff=0;}
+  sprintf(buffer, ">PwrIdleCfg:%d,%d\r\n", slponoff,sleepT);  
 
-  #ifdef DEBUG
-      DEBUGSERIAL.println(F("UZzzz"));
-      delay(20);
-  #endif
+  ultrasonicFlush();
+    while (ultrasonic.available() <2) {  
+      delay(5);
+      }  
+  ultrasonic.write(buffer);   
+  ultrasonic.write(">SaveConfig\r\n");
 
-  byte trow_away;
-  trow_away=(ultrasonic.read());
-  int size = ultrasonic.readBytesUntil('\n', buffer, 70);
-  buffer[size]='\0'; 
+  unsigned long startedWaiting = millis(); 
+  while (strstr (buffer2,"IdleSec") == NULL and millis() - startedWaiting > 10000) {
+    int size = ultrasonic.readBytesUntil('\n', buffer2, 80);
+    delay(50);
+  }
 
-  while (strstr (buffer,"IdleSec") == NULL && millis() - startedWaiting <= 20000) {
-    trow_away=(ultrasonic.read());
-    size = ultrasonic.readBytesUntil('\n', buffer, 70); 
-    buffer[size]='\0';   
-    if (sleepT==1) { ultrasonic.write(">PwrIdleCfg:1,1\r\n"); }
-    else if (sleepT==2) { ultrasonic.write(">PwrIdleCfg:1,2\r\n"); }
-    else if (sleepT==3) { ultrasonic.write(">PwrIdleCfg:1,3\r\n"); }
-    else if (sleepT==4) { ultrasonic.write(">PwrIdleCfg:1,4\r\n"); }
-    else if (sleepT==5) { ultrasonic.write(">PwrIdleCfg:1,5\r\n"); }
-    else if (sleepT==6) { ultrasonic.write(">PwrIdleCfg:1,6\r\n"); }
-    else if (sleepT==7) { ultrasonic.write(">PwrIdleCfg:1,7\r\n"); }
-    else if (sleepT==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }  
-    else if (sleepT==0) { ultrasonic.write(">PwrIdleCfg:0,1\r\n"); }
-    delay(100);
-    }
-
-    if(millis() - startedWaiting < 19900){ ultrasonic.write(">SaveConfig\r\n"); }
-    if(millis() - startedWaiting < 19900){ 
+    if(millis() - startedWaiting < 10000){ 
       sleepBetween=sleepT;
       changeSleep=0;
       stopSleepChange=0;
+      ultrasonicFlush();
      #ifdef DEBUG 
       DEBUGSERIAL.print(F("sleepcok ")); 
       DEBUGSERIAL.println(sleepT); 
@@ -149,7 +121,7 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
      #ifdef DEBUG 
       DEBUGSERIAL.println(F("err sleepc")); 
      #endif       
-      }
+      } 
 }
 #endif 
 
@@ -254,7 +226,7 @@ if ((currentMillis2 - contactBounceTime2) > 500 ) { // debounce the switch conta
     rainCount++;
   }
 }
-
+#ifdef TMPDS18B20
 void GetAir() {
   unsigned long startedWaiting = millis();    
 #ifdef TMP_POWER_ONOFF
@@ -293,7 +265,7 @@ void GetWater() {
     DEBUGSERIAL.println(water);
 #endif
 }
-
+#endif
 
 #ifdef BMP
 void GetPressure() {
@@ -312,6 +284,7 @@ void GetPressure() {
 #endif
 
 void GetTmpNow() {
+#ifdef TMPDS18B20
   if (onOffTmp == 1) {
     GetAir();                               // air
     data[18]=99;
@@ -331,6 +304,7 @@ void GetTmpNow() {
     }          
     delay(20);
   }
+#endif 
 
   #ifdef BMP
     if (enableBmp == 1) {
@@ -338,8 +312,40 @@ void GetTmpNow() {
       delay(20);
     }
   #endif   
+
+  #ifdef HUMIDITY
+    if (enableHum == 1) {
+      GetHumidity();
+      delay(20);
+    }
+  #endif 
+  
 }
 
+
+#ifdef HUMIDITY
+  void GetHumidity() {
+  #if HUMIDITY == 31    
+    if ( sht.isConnected() ){
+      sht.read();         // default = true/fast       slow = false
+      temp=sht.getTemperature();
+      humidity=sht.getHumidity();
+  #else
+    if (sht.measure() != SHT4X_STATUS_OK) {
+     if (sht.TcrcOK) {temp=sht.TtoDegC();} 
+     if (sht.RHcrcOK) { humidity=sht.RHtoPercent();} 
+  #endif 
+   
+
+ 
+     #ifdef DEBUG
+      DEBUGSERIAL.print(F("hum: "));
+      DEBUGSERIAL.println(humidity);
+    #endif 
+    }
+  }
+
+#endif
 
 void BeforePostCalculations() {
   DominantDirection();                          // wind direction

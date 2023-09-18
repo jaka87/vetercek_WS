@@ -31,11 +31,11 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 //#define DEBUG // comment out if you want to turn off debugging
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
-#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
-//#define TMPDS18B20 // comment out if you want to turn off humidity sensor
+//#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
+#define TMPDS18B20 // comment out if you want to turn off humidity sensor
 //#define BME // comment out if you want to turn off pressure and humidity sensor
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
-#define NETWORK_OPERATORS 2
+#define NETWORK_OPERATORS 1
   // 1. Slovenia
   // 2. Croatia
   // 3. Italy
@@ -387,19 +387,30 @@ else if (network2>0) {
 
   beforeSend();
 
-
 #ifdef UZ_Anemometer
+   #ifdef DEBUG
+    DEBUGSERIAL.println(F("startUZ"));
+    delay(50);
+  #endif 
   unsigned long startedWaiting = millis();
   UZ_wake(startedWaiting);
-  if (millis() - startedWaiting <= 9900 ) {
+  if (millis() - startedWaiting <= (45000) ) {
     UltrasonicAnemo=1;
     windDelay=1000;
     ultrasonicFlush();
-  }
    #ifdef DEBUG
     DEBUGSERIAL.println(F("UZ"));
     delay(50);
-  #endif   
+  #endif  
+  }
+  else {
+  #ifdef DEBUG
+    DEBUGSERIAL.println(F("UZ fail"));
+    delay(50);
+  #endif  
+    reset(7); // reset board if UZ not aveliable
+  }
+ 
   LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
 #endif 
 }
@@ -407,41 +418,26 @@ else if (network2>0) {
 void loop() {
      
 #ifdef UZ_Anemometer
-  DISABLE_UART_START_FRAME_INTERRUPT;
-    //UZ_wake(startedWaiting);
-    #ifdef DEBUG
-      DEBUGSERIAL.println(F("wk"));
-    #endif 
-
+  DISABLE_UART_START_FRAME_INTERRUPT;    
   unsigned long startedWaiting = millis();
-  ///UZ_wake(startedWaiting);
-  while(ultrasonic.available() < 2 and millis() - startedWaiting <= 50) {
-    delay(5);
-  }
 
+  while(ultrasonic.available() < 2 and millis() - startedWaiting <= 50) {  delay(10); }
   if (ultrasonic.available() < 2 ) { // sleep while receiving data and anemometer sleep time 3s or more
-//    #ifdef DEBUG
-//      DEBUGSERIAL.println("slp");
-//    #endif
         LowPower.idle(SLEEP_2S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
-        //wdt_disable();
   }
-
-  else { // sleep while receiving data and anemometer sleep time 2s or less
-//    #ifdef DEBUG
-//      DEBUGSERIAL.println("slp2");
-//    #endif    
-        LowPower.idle(SLEEP_250MS, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
-        //wdt_disable();
+  else { // sleep while receiving data and anemometer sleep time 2s or less 
+        LowPower.idle(SLEEP_120MS, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
   }
-  
 
     while (ultrasonic.read() != ',' and millis() - startedWaiting <= 7000) {  } 
+    delay(80);
+  
+  if (ultrasonic.available()>61){  
     UltrasonicAnemometer();
-    #ifdef DEBUG
-      DEBUGSERIAL.print(F("WKT "));
-      DEBUGSERIAL.println(millis()-startedWaiting);
-    #endif
+    } 
+  else {  
+  ultrasonicFlush();
+  } 
 
                     
 #else 
@@ -502,10 +498,10 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
 
 #ifdef UZ_Anemometer
   else if ( UltrasonicAnemo==1 ){ // go to sleep
-      #ifdef DEBUG
-      DEBUGSERIAL.print(F("wc "));
-      DEBUGSERIAL.println(countWake);
-    #endif   
+//      #ifdef DEBUG
+//      DEBUGSERIAL.print(F("wc "));
+//      DEBUGSERIAL.println(countWake);
+//    #endif   
     ENABLE_UART_START_FRAME_INTERRUPT;
     countWake=0;
     LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
@@ -531,7 +527,6 @@ void beforeSend() {
 
       #ifdef UZ_Anemometer
 //        unsigned long startedWaiting = millis();
-//        UZ_wake(startedWaiting);
         if (UltrasonicAnemo==1){
             if ( changeSleep== 1 and stopSleepChange<3) { //change of sleep time
           ultrasonicFlush();   
@@ -599,7 +594,7 @@ void S7070Reset() {
 
 #ifdef UZ_Anemometer
 void UZ_wake(unsigned long startedWaiting) {
-  while (!ultrasonic.available() && millis() - startedWaiting <= 10000) {  // if US not aveliable start it
+  while (!ultrasonic.available() && millis() - startedWaiting <= (45000)) {  // if US not aveliable start it
     ultrasonic.begin(9600);
     delay(800);
     }      

@@ -6,10 +6,7 @@ void UltrasonicAnemometer() { //measure wind speed
     int sum;
     int sum2; // new anemometer with aditional 0 in string
     unsigned long startedWaiting = millis();
-             
-      while(ultrasonic.available() < 63 and millis() - startedWaiting <= 10000) { //10s
-        delay(10);
-      }  
+              
       int size = ultrasonic.readBytesUntil('\r\n', buffer, 70);
       buffer[size]='\0'; 
 
@@ -27,13 +24,13 @@ void UltrasonicAnemometer() { //measure wind speed
       char *wind = strtok(NULL, ",/");
       char* check = strtok(NULL, ",/");
 
-       #ifdef DEBUG 
-       delay(20);
-        DEBUGSERIAL.println(dir); 
-        DEBUGSERIAL.println(wind); 
-        DEBUGSERIAL.println(check); 
-       delay(70);
-       #endif 
+//       #ifdef DEBUG 
+//       delay(20);
+//        DEBUGSERIAL.println(dir); 
+//        DEBUGSERIAL.println(wind); 
+//        DEBUGSERIAL.println(check); 
+//       delay(70);
+//       #endif 
 
       if( check!=NULL and wind!=NULL and dir!=NULL)  {    
         sum+=countBytes(dir);
@@ -86,13 +83,7 @@ int countBytes( const char * data )
 }
 
 void UZerror(byte where) { //ultrasonic error
-  //if ( sonicError>0){
-      //ultrasonic.end();
-      //delay(200);
-      //unsigned long startedWaiting = millis();
-      //UZ_wake(startedWaiting);
       ultrasonicFlush();
-  //}
   sonicError++;
   #ifdef DEBUG
       DEBUGSERIAL.print(F("err UZ "));
@@ -103,41 +94,31 @@ if ( sonicError2 >=7)  { reset(7);  }   // if more than x US errors
 }
 
 void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
-  while (ultrasonic.available() <2) {  delay(10); } 
-  unsigned long startedWaiting = millis();   
-  char buffer[70];
+  char buffer[20];
+  char buffer2[80];
+  byte slponoff=1;
+  
+  if (sleepT==0){slponoff=0;}
+  sprintf(buffer, ">PwrIdleCfg:%d,%d\r\n", slponoff,sleepT);  
 
-  #ifdef DEBUG
-      DEBUGSERIAL.println(F("UZzzz"));
-      delay(20);
-  #endif
+  ultrasonicFlush();
+    while (ultrasonic.available() <2) {  
+      delay(5);
+      }  
+  ultrasonic.write(buffer);   
+  ultrasonic.write(">SaveConfig\r\n");
 
-  byte trow_away;
-  trow_away=(ultrasonic.read());
-  int size = ultrasonic.readBytesUntil('\n', buffer, 70);
-  buffer[size]='\0'; 
+  unsigned long startedWaiting = millis(); 
+  while (strstr (buffer2,"IdleSec") == NULL and millis() - startedWaiting > 10000) {
+    int size = ultrasonic.readBytesUntil('\n', buffer2, 80);
+    delay(50);
+  }
 
-  while (strstr (buffer,"IdleSec") == NULL && millis() - startedWaiting <= 20000) {
-    trow_away=(ultrasonic.read());
-    size = ultrasonic.readBytesUntil('\n', buffer, 70); 
-    buffer[size]='\0';   
-    if (sleepT==1) { ultrasonic.write(">PwrIdleCfg:1,1\r\n"); }
-    else if (sleepT==2) { ultrasonic.write(">PwrIdleCfg:1,2\r\n"); }
-    else if (sleepT==3) { ultrasonic.write(">PwrIdleCfg:1,3\r\n"); }
-    else if (sleepT==4) { ultrasonic.write(">PwrIdleCfg:1,4\r\n"); }
-    else if (sleepT==5) { ultrasonic.write(">PwrIdleCfg:1,5\r\n"); }
-    else if (sleepT==6) { ultrasonic.write(">PwrIdleCfg:1,6\r\n"); }
-    else if (sleepT==7) { ultrasonic.write(">PwrIdleCfg:1,7\r\n"); }
-    else if (sleepT==8) { ultrasonic.write(">PwrIdleCfg:1,8\r\n"); }  
-    else if (sleepT==0) { ultrasonic.write(">PwrIdleCfg:0,1\r\n"); }
-    delay(100);
-    }
-
-    if(millis() - startedWaiting < 19900){ ultrasonic.write(">SaveConfig\r\n"); }
-    if(millis() - startedWaiting < 19900){ 
+    if(millis() - startedWaiting < 10000){ 
       sleepBetween=sleepT;
       changeSleep=0;
       stopSleepChange=0;
+      ultrasonicFlush();
      #ifdef DEBUG 
       DEBUGSERIAL.print(F("sleepcok ")); 
       DEBUGSERIAL.println(sleepT); 
@@ -149,7 +130,7 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
      #ifdef DEBUG 
       DEBUGSERIAL.println(F("err sleepc")); 
      #endif       
-      }
+      } 
 }
 #endif 
 
