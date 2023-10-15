@@ -4,8 +4,9 @@
 // hardware serial buffer 128b 
 
 //ultrasonic anemometer To active ASCI.
-//>UartPro:2\r\n
+//>UartPro:2\r\n or 0
 //>SaveConfig\r\n
+//>ComMode:0\r\n 0 232/1 485
 
 
 #include <avr/wdt.h> //watchdog
@@ -35,7 +36,7 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 #define TMPDS18B20 // comment out if you want to turn off humidity sensor
 //#define BME // comment out if you want to turn off pressure and humidity sensor
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
-#define NETWORK_OPERATORS 1
+#define NETWORK_OPERATORS 2
   // 1. Slovenia
   // 2. Croatia
   // 3. Italy
@@ -430,7 +431,7 @@ void loop() {
   }
 
     while (ultrasonic.read() != ',' and millis() - startedWaiting <= 7000) {  } 
-    delay(80);
+    delay(90);
   
   if (ultrasonic.available()>61){  
     UltrasonicAnemometer();

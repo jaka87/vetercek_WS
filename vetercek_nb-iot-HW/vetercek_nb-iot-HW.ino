@@ -35,7 +35,7 @@ const char* broker = "vetercek.com";
 int sea_level_m=5; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
-#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 #define TMPDS18B20 // comment out if you want to turn off humidity sensor
@@ -353,7 +353,7 @@ void loop() {
   }
 
     while (ultrasonic.read() != ',' and millis() - startedWaiting <= 7000) {  } 
-    delay(80);
+    delay(90);
   
   if (ultrasonic.available()>61){  
     UltrasonicAnemometer();

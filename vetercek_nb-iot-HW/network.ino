@@ -48,6 +48,9 @@ void changeNetwork() {
 
 byte netStatus() {
   byte n = fona.getNetworkStatus();
+          #ifdef DEBUG
+          DEBUGSERIAL.println(n);
+        #endif
   return n;
 }
 

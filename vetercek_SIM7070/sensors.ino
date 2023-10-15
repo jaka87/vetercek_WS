@@ -101,24 +101,35 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
   if (sleepT==0){slponoff=0;}
   sprintf(buffer, ">PwrIdleCfg:%d,%d\r\n", slponoff,sleepT);  
 
-  ultrasonicFlush();
-    while (ultrasonic.available() <2) {  
-      delay(5);
-      }  
-  ultrasonic.write(buffer);   
-  ultrasonic.write(">SaveConfig\r\n");
+while (ultrasonic.available() <2) {  delay(10); } 
+  unsigned long startedWaiting = millis();   
+  #ifdef DEBUG
+      DEBUGSERIAL.println(F("UZzzz"));
+      delay(20);
+  #endif
 
-  unsigned long startedWaiting = millis(); 
-  while (strstr (buffer2,"IdleSec") == NULL and millis() - startedWaiting > 10000) {
-    int size = ultrasonic.readBytesUntil('\n', buffer2, 80);
-    delay(50);
-  }
+  byte trow_away;
+  trow_away=(ultrasonic.read());
+  int size = ultrasonic.readBytesUntil('\n', buffer2, 70);
+  buffer[size]='\0'; 
 
-    if(millis() - startedWaiting < 10000){ 
+  while (strstr (buffer2,"IdleSec") == NULL && millis() - startedWaiting <= 20000) {
+    trow_away=(ultrasonic.read());
+    size = ultrasonic.readBytesUntil('\n', buffer2, 70); 
+    buffer2[size]='\0';   
+    ultrasonic.write(buffer);  
+    delay(100);
+     #ifdef DEBUG 
+      DEBUGSERIAL.println(F("slptry")); 
+      delay(10);
+     #endif 
+    }
+
+    if(millis() - startedWaiting < 19900){ ultrasonic.write(">SaveConfig\r\n"); }
+    if(millis() - startedWaiting < 19900){ 
       sleepBetween=sleepT;
       changeSleep=0;
       stopSleepChange=0;
-      ultrasonicFlush();
      #ifdef DEBUG 
       DEBUGSERIAL.print(F("sleepcok ")); 
       DEBUGSERIAL.println(sleepT); 
@@ -130,7 +141,37 @@ void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
      #ifdef DEBUG 
       DEBUGSERIAL.println(F("err sleepc")); 
      #endif       
-      } 
+      }
+//  ultrasonicFlush();
+//    while (ultrasonic.available() <2) {  
+//      delay(5);
+//      }  
+//  ultrasonic.write(buffer);   
+//  ultrasonic.write(">SaveConfig\r\n");
+//
+//  unsigned long startedWaiting = millis(); 
+//  while (strstr (buffer2,"IdleSec") == NULL and millis() - startedWaiting > 10000) {
+//    int size = ultrasonic.readBytesUntil('\n', buffer2, 80);
+//    delay(50);
+//  }
+//
+//    if(millis() - startedWaiting < 10000){ 
+//      sleepBetween=sleepT;
+//      changeSleep=0;
+//      stopSleepChange=0;
+//      ultrasonicFlush();
+//     #ifdef DEBUG 
+//      DEBUGSERIAL.print(F("sleepcok ")); 
+//      DEBUGSERIAL.println(sleepT); 
+//      delay(10);
+//     #endif 
+//      }
+//    else { 
+//     stopSleepChange++;
+//     #ifdef DEBUG 
+//      DEBUGSERIAL.println(F("err sleepc")); 
+//     #endif       
+//      } 
 }
 #endif 
 
@@ -316,18 +357,23 @@ void GetPressure() {
 
 #ifdef HUMIDITY
   void GetHumidity() {
+      #ifdef DEBUG 
+      DEBUGSERIAL.println(F("hum start")); 
+     #endif 
   #if HUMIDITY == 31    
     if ( sht.isConnected() ){
       sht.read();         // default = true/fast       slow = false
       temp=sht.getTemperature();
       humidity=sht.getHumidity();
   #else
-    if (sht.measure() != SHT4X_STATUS_OK) {
+    if (sht.measure() == SHT4X_STATUS_OK) {
      if (sht.TcrcOK) {temp=sht.TtoDegC();} 
      if (sht.RHcrcOK) { humidity=sht.RHtoPercent();} 
   #endif 
    
-
+      #ifdef DEBUG 
+      DEBUGSERIAL.println(F("hum stop")); 
+     #endif 
  
      #ifdef DEBUG
       DEBUGSERIAL.print(F("hum: "));
@@ -415,6 +461,14 @@ else {
   battLevel=0;
 }
 
+//  int curr = 0;
+//  volatile unsigned currCount = 0;
+//    while (currCount < 10) {
+//          curr += analogRead(A1)*3.8;
+//          currCount++;
+//          delay(10);
+//      }
+//  battLevel=(curr/currCount)/20;
 return battLevel;
 }
 
