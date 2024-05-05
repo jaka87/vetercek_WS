@@ -4,7 +4,7 @@
 // hardware serial buffer 128b 
 
 //ultrasonic anemometer To active ASCI.
-//>UartPro:2\r\n or 0
+//>UartPro:0\r\n or 0
 //>SaveConfig\r\n
 //>ComMode:0\r\n 0 232/1 485
 
@@ -32,11 +32,11 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 //#define DEBUG // comment out if you want to turn off debugging
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
-//#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
-#define TMPDS18B20 // comment out if you want to turn off humidity sensor
+#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
+//#define TMPDS18B20 // comment out if you want to turn off humidity sensor
 //#define BME // comment out if you want to turn off pressure and humidity sensor
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
-#define NETWORK_OPERATORS 2
+#define NETWORK_OPERATORS 1
   // 1. Slovenia
   // 2. Croatia
   // 3. Italy
@@ -192,7 +192,7 @@ volatile byte countWake = 0;
   byte net_ver1=9;
   byte net_ver2=0;
 #elif NETWORK_OPERATORS == 2
-  int network1=21901;
+  int network1=21902;
   int network2=21910;
   byte net_ver1=0;
   byte net_ver2=0;
@@ -364,7 +364,9 @@ void setup() {
 
 delay(7000);
 moduleSetup(); // Establishes first-time serial comm and prints IMEI 
-checkIMEI();
+bool checkAT = fona.checkAT();
+delay(50);
+if (fona.checkAT()) { checkIMEI(); }
 //if ((resetReason==82 or resetReason==85 or resetReason==86) and network1>0  and EEPROM.read(26)!= 1) { 
 if (network1>0  and EEPROM.read(26)!= 1) { 
   EEPROM.write(26,1); 
@@ -395,7 +397,7 @@ else if (network2>0) {
   #endif 
   unsigned long startedWaiting = millis();
   UZ_wake(startedWaiting);
-  if (millis() - startedWaiting <= (45000) ) {
+  if (millis() - startedWaiting <= (65000) ) {
     UltrasonicAnemo=1;
     windDelay=1000;
     ultrasonicFlush();
@@ -519,15 +521,20 @@ void beforeSend() {
 //      #endif
         GetTmpNow();
       digitalWrite(DTR, LOW);  //wake up  
-      delay(10);
+      delay(50);
       bool checkAT = fona.checkAT();
+      delay(50);
+     #ifdef DEBUG
+    DEBUGSERIAL.println(F("CHECK AT"));
+    DEBUGSERIAL.println(checkAT);
+    delay(50);
+  #endif 
         if (fona.checkAT()) { SendData(0); }
         else {moduleSetup(); SendData(0); }
       digitalWrite(DTR, HIGH);  //sleep  
       delay(50);
 
       #ifdef UZ_Anemometer
-//        unsigned long startedWaiting = millis();
         if (UltrasonicAnemo==1){
             if ( changeSleep== 1 and stopSleepChange<3) { //change of sleep time
           ultrasonicFlush();   
@@ -595,9 +602,9 @@ void S7070Reset() {
 
 #ifdef UZ_Anemometer
 void UZ_wake(unsigned long startedWaiting) {
-  while (!ultrasonic.available() && millis() - startedWaiting <= (45000)) {  // if US not aveliable start it
+  while (!ultrasonic.available() && millis() - startedWaiting <= (65000)) {  // if US not aveliable start it
     ultrasonic.begin(9600);
-    delay(800);
+    delay(5000);
     }      
 }
 #endif  

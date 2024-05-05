@@ -204,6 +204,13 @@ boolean Adafruit_FONA_LTE::setNetwork(uint16_t net, uint8_t band) {
   return sendCheckReply(cmdBuff, ok_reply, 10000);
 }
 
+boolean Adafruit_FONA_LTE::setCOPS( uint8_t band) {
+  char cmdBuff[24];
+  sprintf(cmdBuff, "AT+COPS=%i",band);
+  return sendCheckReply(cmdBuff, ok_reply, 3500);
+   }
+
+
 // Sleep mode reduces power consumption significantly while remaining registered to the network
 // NOTE: USB port must be disconnected before this will take effect
 boolean Adafruit_FONA::enableSleepMode(bool onoff) {

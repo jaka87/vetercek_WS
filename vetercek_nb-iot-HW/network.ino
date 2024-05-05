@@ -39,7 +39,7 @@ if(millis() - startedWaiting > 19900){ reset(0); }
 void changeNetwork() {
   fona.setPreferredMode(51);
   if (GSMstate==52){ fona.setNetwork(GSMnetwork1,9); } 
-  else if (GSMstate==53){ fona.setNetwork(GSMnetwork2,9); } 
+  else if (GSMstate==53){ fona.setNetwork(GSMnetwork2,0); } 
   else if (GSMstate==54){ fona.setNetwork(GSMnetwork3,0); } 
   EEPROM.write(9, 51);
   delay(5000);
@@ -62,6 +62,8 @@ void GSMerror(byte what) {
     #endif 
       simReset();
       moduleSetup();
+      connectGPRS();  
+
   }
   else {
     #ifdef DEBUG    
@@ -70,25 +72,34 @@ void GSMerror(byte what) {
     fona.setFunctionality(0); // AT+CFUN=0
     delay(3000);
     fona.setFunctionality(1); // AT+CFUN=1        
-  }
-
-  delay(5000);     
-  if (what<3) {
-    moduleSetup();          
-    connectGPRS();  
-  }      
+  }     
 }
 
 
 bool checkNetwork() {  
 byte GSMstatus=99;
 unsigned long startTime=millis();  
-
+byte before_reset=0;
   do {
     GSMstatus=netStatus();
-    if (GSMstatus==0 or GSMstatus==3) {
+    
+    if (before_reset==1 and (millis() - startTime > 20000)) {
+      reset(8);
+    }
+
+    else if ((GSMstatus==0 or GSMstatus==3) and (millis() - startTime) > 20000) {
+          bool cops1=fona.setCOPS(2); //de-register
+          bool cops2=fona.setCOPS(0); //auto 
+          before_reset=1;
+          startTime=millis(); 
+          #ifdef DEBUG
+            DEBUGSERIAL.println(F("dereg"));
+          #endif
+    }
+    
+    else if (GSMstatus==0 or GSMstatus==3) {
         #ifdef DEBUG
-          DEBUGSERIAL.println(F("nogps"));
+          DEBUGSERIAL.println(F("noGSM"));
         #endif
         GSMerror(0);
         delay(10*1000);        
@@ -187,12 +198,12 @@ bool checkServer() {
 void connectGPRS() {
   bool GPRS=false;
   int8_t info=fona.getNetworkInfo();  // check if connected to network, else try 2G
-  if ((info <1 or info > 10) and GSMstate==2)  {
-   #ifdef DEBUG
-      DEBUGSERIAL.println(F("n2g"));
-   #endif 
-    fona.setPreferredMode(13);   
-  }
+//  if ((info <1 or info > 10) and GSMstate==2)  {
+//   #ifdef DEBUG
+//      DEBUGSERIAL.println(F("n2g"));
+//   #endif 
+//    fona.setPreferredMode(13);   
+//  }
   
   checkNetwork();
   unsigned long startTime=millis();    
@@ -440,7 +451,7 @@ void SendData(byte var) {
 
 void checkIMEI() {
   char IMEI[15]; // Use this for device ID
-   if (EEPROM.read(0)==1) {  // read from EEPROM if data in it 
+   if (EEPROM.read(0)==1 and EEPROM.read(1)!=240) {  // read from EEPROM if data in it 
       for (int i = 0; i < 8; i++){
        data[i]=EEPROM.read(i+1);
        }

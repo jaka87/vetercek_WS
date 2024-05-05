@@ -85,12 +85,15 @@ if ( sonicError2 >=7)  { reset(7);  }   // if more than x US errors
 }
 
 void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
-  char buffer[20];
+  char buffer[35];
   char buffer2[80];
   byte slponoff=1;
   
   if (sleepT==0){slponoff=0;}
-  sprintf(buffer, ">PwrIdleCfg:%d,%d\r\n", slponoff,sleepT);  
+  //sprintf(buffer, ">PwrIdleCfg:%d,%d\r\n", slponoff,sleepT);  
+  sprintf(buffer, ">PwrIdleCfg:%d,%d\r\n>SaveConfig\r\n", slponoff,sleepT);  
+
+
 
 while (ultrasonic.available() <2) {  delay(10); } 
   unsigned long startedWaiting = millis();   

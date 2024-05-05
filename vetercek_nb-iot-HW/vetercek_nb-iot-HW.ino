@@ -26,7 +26,7 @@ int resetReason = MCUSR;
 #define APN "iot.1nce.net"
 int GSMnetwork1= 29340; // A1 SLOVENIA
 int GSMnetwork2= 21910; // A1 HR
-int GSMnetwork3= 29341; // telekom 2g HR
+int GSMnetwork3= 21902; // tele2 2g HR
 byte GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
@@ -35,10 +35,10 @@ const char* broker = "vetercek.com";
 int sea_level_m=5; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
-//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
-//#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
+#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
 //#define BMP // comment out if you want to turn off pressure sensor and save space
-#define TMPDS18B20 // comment out if you want to turn off humidity sensor
+//#define TMPDS18B20 // comment out if you want to turn off humidity sensor
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
 //#define SIM_NEW_LIBRARY
 ///////////////////////////////////////////////////////////////////////////////////
@@ -273,7 +273,8 @@ if (EEPROM.read(11)==255 or EEPROM.read(11)==1) {  enableSolar=1; }
 delay(4000);  
 digitalWrite(PWRKEY, HIGH);
 moduleSetup(); // Establishes first-time serial comm and prints IMEI 
-checkIMEI();
+bool checkAT = fona.checkAT();
+if (fona.checkAT()) { checkIMEI(); }
 connectGPRS(); 
 
 

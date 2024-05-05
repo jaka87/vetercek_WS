@@ -60,6 +60,7 @@ void GSMerror() {
       DEBUGSERIAL.println(F("gerr1"));   
     #endif 
     bool checkAT = fona.checkAT();
+    delay(50);
     if (fona.checkAT()) { simReset(); }
     else { reset(7); }
 
@@ -72,13 +73,32 @@ unsigned long startTime=millis();
 byte zero_network=0;
   do {
     GSMstatus=netStatus();
-    if ((GSMstatus==0) and millis() - startTime >= 10000) {
+//    if ((GSMstatus==0) and millis() - startTime >= 10000) {
+//        #ifdef DEBUG
+//          DEBUGSERIAL.println(F("NTWRK fail"));
+//          DEBUGSERIAL.println(GSMstatus);
+//        #endif
+//        simReset();       
+//        startTime=millis(); 
+//    }
+
+    if ((GSMstatus==0 or GSMstatus==3) and (millis() - startTime) > 20000) {
+          bool cops1=fona.setCOPS(2); //de-register
+          bool cops2=fona.setCOPS(0); //auto  
+          #ifdef DEBUG
+            DEBUGSERIAL.println(F("dereg"));
+          #endif
+          startTime=millis(); 
+    }
+    
+    else if (GSMstatus==0) {
         #ifdef DEBUG
-          DEBUGSERIAL.println(F("NTWRK fail"));
-          DEBUGSERIAL.println(GSMstatus);
+          DEBUGSERIAL.println(F("nogps"));
         #endif
-        simReset();       
-        startTime=millis(); 
+        fona.setFunctionality(0); // AT+CFUN=0
+        delay(3000);
+        fona.setFunctionality(1); // AT+CFUN=1
+        delay(10*1000);        
     }
     else if (GSMstatus==3) {
         #ifdef DEBUG
@@ -139,7 +159,7 @@ bool checkServer() {
   } 
   while (conn == false and checkServernum < 6);
   
-  if (checkServernum>6 )  {
+  if (checkServernum>5 )  {
     #ifdef DEBUG
     DEBUGSERIAL.println(F("srvr fail 5"));
     #endif
@@ -423,9 +443,12 @@ void SendData(byte var) {
 
 void checkIMEI() {
   char IMEI[15]; // Use this for device ID
-   if (EEPROM.read(0)==1) {  // read from EEPROM if data in it 
+   if (EEPROM.read(0)==1 and EEPROM.read(1)!=240) {  // read from EEPROM if data in it 
       for (int i = 0; i < 8; i++){
        data[i]=EEPROM.read(i+1);
+        #ifdef DEBUG                                 
+          DEBUGSERIAL.println(EEPROM.read(i+1));
+        #endif
        }
    }
    
