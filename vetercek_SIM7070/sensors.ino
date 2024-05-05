@@ -94,7 +94,7 @@ if ( sonicError2 >=7)  { reset(7);  }   // if more than x US errors
 }
 
 void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
-  char buffer[20];
+  char buffer[25];
   char buffer2[80];
   byte slponoff=1;
   
