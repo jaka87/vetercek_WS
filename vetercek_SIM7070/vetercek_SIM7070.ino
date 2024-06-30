@@ -33,7 +33,7 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 #define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
-//#define TMPDS18B20 // comment out if you want to turn off humidity sensor
+//#define TMPDS18B20 // comment out if you want to turn off temerature sensor
 //#define BME // comment out if you want to turn off pressure and humidity sensor
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
 #define NETWORK_OPERATORS 1
@@ -173,7 +173,6 @@ byte sleepBetween=2;
 int PDPcount=0; // first reset after 100s
 byte failedSend=0; // if send fail
 byte sonicError=0;
-byte sonicError2=0;
 byte UltrasonicAnemo=0;
 byte enableSolar=0;
 byte enableRain=0;
