@@ -26,10 +26,10 @@ byte GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 10; // interval after how many measurements data is send
-const char* broker = "vetercek.com";
 int sea_level_m=0; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
+#define LOCAL_WS // comment out if the station is global - shown on windgust.eu
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 #define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
@@ -45,7 +45,11 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
   // 6. Germany 
 ///////////////////////////////////////////////////////////////////////////////////
 
-
+#ifdef LOCAL_WS 
+  const char* broker = "vetercek.com";
+#else
+  const char* broker = "windgust.eu";
+#endif
 
 #define ONE_WIRE_BUS_1 4 //air
 #define ONE_WIRE_BUS_2 3 // water
@@ -246,6 +250,7 @@ void setup() {
   digitalWrite(PWRKEY, LOW);
   pinMode(PIN_A2, OUTPUT);
   digitalWrite(PIN_A2, HIGH);   
+  //adc_init();
   
   #ifdef UZ_Anemometer
     ENABLE_UART_START_FRAME_INTERRUPT;

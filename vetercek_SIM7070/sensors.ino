@@ -452,6 +452,40 @@ void BeforePostCalculations() {
     // end
 }
 
+//
+//void adc_init() {
+//  // Set the ADC reference to AVcc
+//  ADMUX = (1 << REFS0);
+//  // Set the ADC prescaler to 64 (assuming 8 MHz clock, gives 125 KHz ADC clock)
+//  //ADCSRA = (1 << ADPS2) | (1 << ADPS1);
+//  // Enable the ADC
+//  ADCSRA |= (1 << ADEN);
+//}
+//
+//uint16_t adc_read(uint8_t channel) {
+//  // Select the ADC channel
+//  ADMUX = (ADMUX & 0xF8) | (channel & 0x07);
+//  // Start the conversion
+//  ADCSRA |= (1 << ADSC);
+//  // Wait for the conversion to complete
+//  while (ADCSRA & (1 << ADSC));
+//  // Read the ADC value
+//  return ADC;
+//}
+//
+//int readVcc() {
+//  uint16_t adc_value=0;
+//  // Convert the ADC value to a voltage
+//  volatile unsigned currCount = 0;
+//    while (currCount < 10) {
+//      adc_value += adc_read(A1);
+//      currCount++;
+//      delay(10);       
+//  }
+//  return ((adc_value/currCount)*2);
+//}
+
+
 // Read the module's power supply voltage
 float readVcc() {
   // Read battery voltage
