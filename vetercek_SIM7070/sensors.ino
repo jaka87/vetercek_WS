@@ -447,8 +447,8 @@ void BeforePostCalculations() {
     SolarCurrent=(curr/currCount)/5;  // calculate average solar current // divide with 5 so it can be send as byte
     } 
     // solar and battery and signal
-    sig=fona.getRSSI(); 
-    battLevel = readVcc(); // Get voltage %   
+    //sig=fona.getRSSI(); 
+    //battLevel = readVcc(); // Get voltage %   
     // end
     
   GetTmpNow();    
