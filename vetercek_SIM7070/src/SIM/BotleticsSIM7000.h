@@ -26,7 +26,7 @@
  * set in the appropriate header.
  */
 
-//#define BOTLETICS_MODEM_DEBUG
+#define BOTLETICS_MODEM_DEBUG
 
 #include "includes/platform/Modem.h"
 
@@ -78,6 +78,7 @@ class Botletics_modem : public BotleticsStreamType {
   // GPRS handling
   boolean enableGPRS(boolean onoff);
   int8_t GPRSstate(void);
+  boolean checkPDP(void);
   void setNetworkSettings(FStringPtr apn, FStringPtr username=0, FStringPtr password=0);
   int8_t getNetworkType(char *typeStringBuffer, size_t bufferLength);
   int8_t getBearerStatus(void);
@@ -95,7 +96,7 @@ class Botletics_modem : public BotleticsStreamType {
   boolean UDPconnect(char *server, uint16_t port);
   boolean UDPclose(void);
   uint8_t UDPconnected(void);
-  boolean UDPsend(unsigned char *packet, uint8_t len, byte response[9],uint8_t charr);
+  uint8_t UDPsend(unsigned char *packet, uint8_t len, byte response[9],uint8_t charr);
 
 
   // Helper functions to verify responses.

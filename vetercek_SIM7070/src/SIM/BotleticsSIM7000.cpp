@@ -374,6 +374,22 @@ bool Botletics_modem::getNetworkInfoLong(void) {
   return true;
 }
 
+boolean Botletics_modem::checkPDP(void) {
+  if (! sendCheckReply(F("AT+CGACT?"), F("+CGACT: 1,1")) ) {
+     DEBUG_PRINTLN(F("PDP false")); 
+     return false;
+  }
+  
+  //getReply(F("AT+CGPADDR=?"));
+  // Format of response:
+  // +CNACT: <status>,<ip_addr>  (ex.SIM7000)
+  // +CNACT: <pdpidx>,<status>,<ip_addr>  (ex.SIM7070)
+	      DEBUG_PRINT("\t<--- "); DEBUG_PRINTLN(replybuffer);
+    //if (strstr(replybuffer, "+CNACT: 0,1") == NULL) return false;
+  
+  return true;
+}
+
 int8_t Botletics_modem::GPRSstate(void) {
   uint16_t state;
 
@@ -493,7 +509,7 @@ uint8_t Botletics_modem::UDPconnected(void) {
 
 
 
-boolean Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte response[12],uint8_t charr) {	
+uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte response[12],uint8_t charr) {	
 	  uint8_t howmany;
 	  DEBUG_PRINT(F("AT+CASEND=0,"));
 	  DEBUG_PRINTLN(len);
@@ -509,22 +525,22 @@ boolean Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
 	  mySerial->print(F("AT+CASEND=0,"));
 	  mySerial->println(len);
 	  
-	  readline();
+	  readline(1000);
 	  //DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer[0]);
 
-	  if (replybuffer[0] == '>') DEBUG_PRINTLN("ok");
+	  //if (replybuffer[0] == '>') DEBUG_PRINTLN("ok");
 
 
-	  if (replybuffer[0] != '>') return false;
+	  if (replybuffer[0] != '>') return 3;
 	  mySerial->write(packet, len);
 
 	uint8_t sendD = readline(2000); // return SEND OK
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
-	if (strcmp(replybuffer, "OK") != 0) { return false;}
+	if (strcmp(replybuffer, "OK") != 0) { return 4;}
 
 	uint8_t sendD2 = readline(4000); // return SEND OK
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
-	if (strcmp(replybuffer, "+CADATAIND: 0") != 0) { return false;}
+	if (strcmp(replybuffer, "+CADATAIND: 0") != 0) { return 5;}
 
 		 if (_type2 == 2) { // different firmware version
 			uint8_t sendD3 = readline(2000); // buffer full
@@ -542,20 +558,20 @@ boolean Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
 		howmany=12;
 	}
 		
-		DEBUG_PRINTLN("response :");   
+		//DEBUG_PRINTLN("response :");   
 		  for (uint16_t i=0; i<charr;i++) {
-			  		DEBUG_PRINT(i);		
-					DEBUG_PRINT(" - ");		
-					DEBUG_PRINTLN(replybuffer2[i]);	
+			  		//DEBUG_PRINT(i);		
+					//DEBUG_PRINT(" - ");		
+					//DEBUG_PRINTLN(replybuffer2[i]);	
 					
 			if (i>howmany) {	 	
 					response[i-(howmany+1)]=replybuffer2[i];
 				}
 		}
 		//DEBUG_PRINTLN(response[0]);
-	  if (response[0] > 0 and response[1] < 4) return true;
+	  if (response[0] > 0 and response[1] < 4) return 1;
 
-	  else return false;
+	  else return 6;
   
 }
 

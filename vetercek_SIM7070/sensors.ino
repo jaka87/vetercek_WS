@@ -12,13 +12,13 @@ void UltrasonicAnemometer() { //measure wind speed
 
       delay(20); // important in case of error
 
-       #ifdef DEBUG 
-       delay(20);
-        DEBUGSERIAL.print(size); 
-        DEBUGSERIAL.print(F(" buff ")); 
-        DEBUGSERIAL.println(buffer); 
-       delay(20);
-       #endif 
+//       #ifdef DEBUG 
+//       delay(20);
+//        DEBUGSERIAL.print(size); 
+//        DEBUGSERIAL.print(F(" buff ")); 
+//        DEBUGSERIAL.println(buffer); 
+//       delay(20);
+//       #endif 
           
       char *dir = strtok(buffer, ",/");
       char *wind = strtok(NULL, ",/");
@@ -358,9 +358,9 @@ void GetPressure() {
 
 #ifdef HUMIDITY
   void GetHumidity() {
-      #ifdef DEBUG 
-      DEBUGSERIAL.println(F("hum start")); 
-     #endif 
+//      #ifdef DEBUG 
+//      DEBUGSERIAL.println(F("hum start")); 
+//     #endif 
   #if HUMIDITY == 31    
     if ( sht.isConnected() ){
       sht.read();         // default = true/fast       slow = false
@@ -372,9 +372,9 @@ void GetPressure() {
      if (sht.RHcrcOK) { humidity=sht.RHtoPercent();} 
   #endif 
    
-      #ifdef DEBUG 
-      DEBUGSERIAL.println(F("hum stop")); 
-     #endif 
+//      #ifdef DEBUG 
+//      DEBUGSERIAL.println(F("hum stop")); 
+//     #endif 
  
      #ifdef DEBUG
       DEBUGSERIAL.print(F("hum: "));
@@ -450,6 +450,8 @@ void BeforePostCalculations() {
     sig=fona.getRSSI(); 
     battLevel = readVcc(); // Get voltage %   
     // end
+    
+  GetTmpNow();    
 }
 
 //

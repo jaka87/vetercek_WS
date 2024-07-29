@@ -22,17 +22,17 @@ int resetReason = MCUSR;
 
 //////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
 #define APN "iot.1nce.net"
-byte GSMstate=13; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 for automatic
+byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 (2g with nb-iot as backup) and 51 (nb-iot with 2g as backup)
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
-int whenSend = 10; // interval after how many measurements data is send
+int whenSend = 3; // interval after how many measurements data is send
 int sea_level_m=0; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
-//#define DEBUG // comment out if you want to turn off debugging
+#define DEBUG // comment out if you want to turn off debugging
 #define LOCAL_WS // comment out if the station is global - shown on windgust.eu
-#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
-#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
+//#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
 //#define TMPDS18B20 // comment out if you want to turn off temerature sensor
 //#define BME // comment out if you want to turn off pressure and humidity sensor
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
@@ -46,9 +46,9 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 ///////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LOCAL_WS 
-  const char* broker = "vetercek.com";
+  char* broker = "vetercek.com";
 #else
-  const char* broker = "windgust.eu";
+  char* broker = "windgust.eu";
 #endif
 
 #define ONE_WIRE_BUS_1 4 //air
@@ -93,11 +93,15 @@ byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 
 // 82 - unable to send data in 200s
 // 83 - manual remote reset 
 // 84 - X sonic errors in UZ function
-// 85 - UDPclose
-// 86 - gsm NC
-// 87 - can't get response data from server
+// 85 - cant connect
+// 86 - can't send data
+// 87 - uz NC
 // 88 - other
 // 89 - no GSM serial connection
+// 90 - no GSM connection
+// 91 - no GPRS connection
+// 92 - no access to server
+
 
 
 HardwareSerial *fonaSS = &Serial;
@@ -108,6 +112,7 @@ HardwareSerial *fonaSS = &Serial;
   #include <NeoSWSerial.h>
   NeoSWSerial DEBUGSERIAL( 5, 7 ); 
 #endif
+
 
 
 Botletics_modem_LTE fona = Botletics_modem_LTE();
@@ -263,8 +268,12 @@ void setup() {
   delay(20);
   DEBUGSERIAL.println(F("S"));
   DEBUGSERIAL.println(resetReason);
-  //Serial1.begin(9600); //for sim7070 debug
+  Serial1.begin(9600); //for sim7070 debug
 #endif
+
+
+//delay(3000);
+//Serial1.begin(9600); //for sim7000 debug
 
 
 #ifdef TMPDS18B20
@@ -359,6 +368,15 @@ void setup() {
     else if (EEPROM.read(15)==9 ) { 
       resetReason=89; 
     } 
+    else if (EEPROM.read(15)==10 ) { 
+      resetReason=90; 
+    } 
+    else if (EEPROM.read(15)==11 ) { 
+      resetReason=91; 
+    }       
+    else if (EEPROM.read(15)==12 ) { 
+      resetReason=92; 
+    }
       else { 
         resetReason=88; 
       }   
@@ -367,6 +385,9 @@ void setup() {
   } 
 
 delay(7000);
+#ifdef DEBUG
+  DEBUGSERIAL.println(F("MOD_ST"));
+#endif
 moduleSetup(); // Establishes first-time serial comm and prints IMEI 
 bool checkAT = fona.checkAT();
 delay(50);
@@ -376,7 +397,7 @@ if (network1>0  and EEPROM.read(26)!= 1) {
   EEPROM.write(26,1); 
   changeNetwork_id(network1,net_ver1);
     #ifdef DEBUG                                 
-    DEBUGSERIAL.println("network1: ");
+    DEBUGSERIAL.println("net1: ");
     DEBUGSERIAL.println(network1);
 
   #endif
@@ -385,14 +406,13 @@ else if (network2>0) {
   EEPROM.write(26,2); 
   changeNetwork_id(network2,net_ver2);
     #ifdef DEBUG                                 
-    DEBUGSERIAL.println("network2: ");
+    DEBUGSERIAL.println("net2: ");
     DEBUGSERIAL.println(network2);
   #endif
   } 
 //connectGPRS(); 
 
-
-  beforeSend();
+beforeSend();
 
 #ifdef UZ_Anemometer
    #ifdef DEBUG
@@ -467,16 +487,16 @@ void loop() {
 #endif  
 
 
-  #ifdef DEBUG                                 // debug data
-    DEBUGSERIAL.print(F(" d:"));
-    DEBUGSERIAL.print(calDirection);
-    DEBUGSERIAL.print(F(" s:"));
-    DEBUGSERIAL.print(windSpeed);
-    DEBUGSERIAL.print(F(" c:"));
-    DEBUGSERIAL.print(measureCount);
-    DEBUGSERIAL.print(F(" s:"));
-    DEBUGSERIAL.println(sonicError);
-  #endif
+//  #ifdef DEBUG                                 // debug data
+//    DEBUGSERIAL.print(F(" d:"));
+//    DEBUGSERIAL.print(calDirection);
+//    DEBUGSERIAL.print(F(" s:"));
+//    DEBUGSERIAL.print(windSpeed);
+//    DEBUGSERIAL.print(F(" c:"));
+//    DEBUGSERIAL.print(measureCount);
+//    DEBUGSERIAL.print(F(" s:"));
+//    DEBUGSERIAL.println(sonicError);
+//  #endif
 
   GetAvgWInd();                                 // avg wind
 
@@ -523,18 +543,18 @@ void beforeSend() {
 //      #ifdef UZ_Anemometer
 //        ultrasonic.end();
 //      #endif
-        GetTmpNow();
+        //GetTmpNow();
       digitalWrite(DTR, LOW);  //wake up  
       delay(50);
       bool checkAT = fona.checkAT();
       delay(50);
-     #ifdef DEBUG
-    DEBUGSERIAL.println(F("CHECK AT"));
-    DEBUGSERIAL.println(checkAT);
-    delay(50);
-  #endif 
-        if (fona.checkAT()) { SendData(0); }
-        else {moduleSetup(); SendData(0); }
+//     #ifdef DEBUG
+//    DEBUGSERIAL.println(F("CAT"));
+//    DEBUGSERIAL.println(checkAT);
+//    delay(50);
+//    #endif 
+        if (fona.checkAT()) { SendData(); }
+        else {moduleSetup(); SendData(); }
       digitalWrite(DTR, HIGH);  //sleep  
       delay(50);
 
@@ -566,8 +586,17 @@ void CheckTimerGPRS() { // if unable to send data in 200s
 
 void reset(byte rr) {
   delay(100);
-    if (rr > 0 ) {
-      EEPROM.write(15, rr);
+    if (rr > 0 ) { EEPROM.write(15, rr);}
+    
+    if (rr > 0 and rr!=3 and measureCount > 10) {
+      // Write data to EEPROM
+        #ifdef DEBUG
+          DEBUGSERIAL.println("EEPDATA");
+        #endif 
+      const int dataSize = sizeof(data) / sizeof(data[0]);
+      const int eepromStartAddress = 40;    
+      EEPROM.write(39, 1);
+      for (int i = 0; i < dataSize; i++) {EEPROM.write(eepromStartAddress + i, data[i]); }    
     }
   delay(100);
   #ifdef DEBUG
