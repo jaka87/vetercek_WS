@@ -1,5 +1,5 @@
 //bin/avrdude -C//etc/avrdude.conf -v -V -patmega328pb -cusbtiny -Uflash:w:/vetercek_nb-iot-HW.ino.hex:i lfuse:w:0xEF:m efuse:w:0xFF:m hfuse:w:DA:m lock:w:0xFF:m 
-// 57600 max baud rate
+// 57600 max baud rate = AT+IPR=57600
 // before uploading skech burn bootloader
 // hardware serial buffer 128b 
 
@@ -28,9 +28,9 @@ int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 3; // interval after how many measurements data is send
 int sea_level_m=0; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
-#define DEBUG // comment out if you want to turn off debugging
+//#define DEBUG // comment out if you want to turn off debugging
 #define LOCAL_WS // comment out if the station is global - shown on windgust.eu
-//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 #define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
 //#define TMPDS18B20 // comment out if you want to turn off temerature sensor
@@ -268,7 +268,7 @@ void setup() {
   delay(20);
   DEBUGSERIAL.println(F("S"));
   DEBUGSERIAL.println(resetReason);
-  Serial1.begin(9600); //for sim7070 debug
+  //Serial1.begin(9600); //for sim7070 AT commands debug
 #endif
 
 
@@ -377,6 +377,10 @@ void setup() {
     else if (EEPROM.read(15)==12 ) { 
       resetReason=92; 
     }
+    else if (EEPROM.read(15)==13 ) { 
+      resetReason=93; 
+    }
+    
       else { 
         resetReason=88; 
       }   
@@ -395,20 +399,19 @@ if (fona.checkAT()) { checkIMEI(); }
 //if ((resetReason==82 or resetReason==85 or resetReason==86) and network1>0  and EEPROM.read(26)!= 1) { 
 if (network1>0  and EEPROM.read(26)!= 1) { 
   EEPROM.write(26,1); 
-  changeNetwork_id(network1,net_ver1);
     #ifdef DEBUG                                 
     DEBUGSERIAL.println("net1: ");
     DEBUGSERIAL.println(network1);
-
-  #endif
+  #endif  
+  changeNetwork_id(network1,net_ver1);
   } 
 else if (network2>0) { 
   EEPROM.write(26,2); 
-  changeNetwork_id(network2,net_ver2);
     #ifdef DEBUG                                 
     DEBUGSERIAL.println("net2: ");
     DEBUGSERIAL.println(network2);
   #endif
+  changeNetwork_id(network2,net_ver2);
   } 
 //connectGPRS(); 
 
@@ -588,7 +591,7 @@ void reset(byte rr) {
   delay(100);
     if (rr > 0 ) { EEPROM.write(15, rr);}
     
-    if (rr > 0 and rr!=3 and measureCount > 10) {
+    if (rr > 0 and rr!=3 and measureCount > 5) {
       // Write data to EEPROM
         #ifdef DEBUG
           DEBUGSERIAL.println("EEPDATA");

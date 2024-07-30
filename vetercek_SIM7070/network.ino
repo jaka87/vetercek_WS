@@ -15,13 +15,6 @@ bool zagnano=fona.begin(Serial);
   delay(3000);
   fona.setNetLED(true,3,64,5000);
   delay(100);
-//  bool cops1=fona.setCOPS(2); //de-register
-//  bool cops2=fona.setCOPS(0); //auto
-//    #ifdef DEBUG    
-//      DEBUGSERIAL.println(cops1);   
-//      DEBUGSERIAL.println(cops2);   
-//    #endif 
-//  delay(100);
   fona.setNetworkSettings(F(APN)); // APN
   delay(100);
 
@@ -64,7 +57,7 @@ void GSMerror() {
     bool checkAT = fona.checkAT();
     delay(50);
     if (fona.checkAT()) { simReset(); }
-    else { reset(6); }
+    else { reset(10); }
 
 }
 
@@ -85,8 +78,7 @@ void connectGPRS() {
       //checkNetwork();
       simReset();
      }
-      GPRS=fona.enableGPRS(false);
-      delay(3000);
+      dropConnection(0);
       GPRS=fona.enableGPRS(true);
     
     #ifdef DEBUG
@@ -151,7 +143,7 @@ void gatherData() {
 void PostData() {           
 
   if (measureCount < 5){ 
-    if (EEPROM.read(39)==1 and EEPROM.read(62)>= 10){
+    if (EEPROM.read(39)==1 and EEPROM.read(62)>= 5){
          #ifdef DEBUG
           DEBUGSERIAL.println("EEPROM data");
           DEBUGSERIAL.println(EEPROM.read(62));
@@ -336,6 +328,18 @@ void SendData() {
   checkServer();
   PostData();
 }
+
+void dropConnection(byte drop_type) { // 1 - full drop cnnection, 0 only drop gprs
+  fona.enableGPRS(false);  
+  if (drop_type==1){ 
+    fona.setCOPS(2); //de-register
+    delay(500);
+    fona.setCOPS(0); //auto
+  } 
+  delay(1000);
+}
+
+
 
 void checkIMEI() {
   char IMEI[15]; // Use this for device ID
