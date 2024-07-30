@@ -56,6 +56,7 @@ void GSMerror() {
     #endif 
     bool checkAT = fona.checkAT();
     delay(50);
+    dropConnection(1);
     if (fona.checkAT()) { simReset(); }
     else { reset(10); }
 
@@ -325,6 +326,7 @@ void AfterPost() {
 void SendData() {
   if (failedSend==0){  BeforePostCalculations(); }
   if (netStatus()!=5) {  checkNetwork(); }
+  tryGPRS();
   checkServer();
   PostData();
 }

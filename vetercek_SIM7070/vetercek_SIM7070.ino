@@ -625,15 +625,15 @@ void simReset() {
     connectGPRS(); 
 }
 
-void S7070Reset() {  
-  #ifdef DEBUG
-    DEBUGSERIAL.println("7070 RST");
-  #endif 
-  digitalWrite(PWRKEY, LOW); 
-  delay(7000); 
-  moduleSetup(); // Establishes first-time serial comm and prints IMEI 
-  connectGPRS(); 
-}
+//void S7070Reset() {  
+//  #ifdef DEBUG
+//    DEBUGSERIAL.println("7070 RST");
+//  #endif 
+//  digitalWrite(PWRKEY, LOW); 
+//  delay(7000); 
+//  moduleSetup(); // Establishes first-time serial comm and prints IMEI 
+//  connectGPRS(); 
+//}
 
 
 #ifdef UZ_Anemometer

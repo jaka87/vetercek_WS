@@ -131,23 +131,19 @@ battLevel = readVcc(); // Get voltage %
 
 void fail_to_send() {     //if cannot send data to vetercek.com
   fona.UDPclose();
-  
+
   if (failedSend ==4) {       
-      //GSMerror();
       reset(6);
+  }  
+  else if (failedSend ==3) {       
+      GSMerror();
   }   
-  if (failedSend ==3) {       
+  else if (failedSend ==2) {       
     dropConnection(1); 
     checkNetwork();
     tryGPRS();  
   }  
   
-  else if (failedSend == 2) {          
-    dropConnection(0);
-    fona.enableGPRS(true);
-  } 
-
-  else { tryGPRS();  } 
 
 #ifdef DEBUG
   DEBUGSERIAL.print(F("Fail_Send"));
