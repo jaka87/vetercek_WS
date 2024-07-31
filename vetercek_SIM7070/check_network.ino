@@ -5,7 +5,9 @@ bool checkNetwork() {
     do {
       GSMstatus=netStatus();
       if ((GSMstatus==0 or GSMstatus==3) and (millis() - startTime) > 20000) {
-            dropConnection(1); //drop connection  
+            fona.setCOPS(2); //de-register
+            delay(500);
+            fona.setCOPS(0); //auto            
             #ifdef DEBUG
               DEBUGSERIAL.println(F("dereg"));
             #endif
@@ -101,24 +103,29 @@ bool checkServer() {
         checkServernum=checkServernum+1;
         conn=fona.UDPconnect(broker,6789);
   
-        if (checkServernum>0 and conn== false)  { 
-           delay( 2000*checkServernum); 
-           checkNetwork();
-           tryGPRS();
-           #ifdef DEBUG
-              DEBUGSERIAL.println(F("vet_con_fail"));
-           #endif 
+        if (checkServernum==1 and conn== false)  { 
+            dropConnection(0);  //disconnect GPRS
+            checkNetwork();
+            tryGPRS();            
         } 
-      
-        if (checkServernum==4 )  {
-          #ifdef DEBUG
-            DEBUGSERIAL.println(F("srvrF 3"));
-          #endif
+
+        else if (checkServernum==2 and conn== false)  { 
+            dropConnection(1); //full disconnect
+            checkNetwork();
+            tryGPRS();            
+        } 
+              
+        else if (checkServernum==3 )  {
           reset(12);
         } 
+
+     #ifdef DEBUG
+        DEBUGSERIAL.print(F("vet_con_fail"));
+        DEBUGSERIAL.println(checkServernum);
+     #endif 
   
     } 
-    while (conn == false and checkServernum < 6);
+    while (conn == false and checkServernum < 5);
   } 
   
 //must wait couple seconds before sending data - otherwise UDPsend3 error
@@ -131,17 +138,22 @@ battLevel = readVcc(); // Get voltage %
 
 void fail_to_send() {     //if cannot send data to vetercek.com
   fona.UDPclose();
+  failedSend=failedSend+1;
 
   if (failedSend ==4) {       
-      reset(6);
+      reset(13);
+      //GSMerror();
   }  
   else if (failedSend ==3) {       
-      GSMerror();
-  }   
-  else if (failedSend ==2) {       
     dropConnection(1); 
     checkNetwork();
     tryGPRS();  
+  }  
+
+  else if (failedSend ==2) {       
+    fona.activatePDP(0);  
+    delay(1000);
+    fona.activatePDP(1);  
   }  
   
 
@@ -149,5 +161,4 @@ void fail_to_send() {     //if cannot send data to vetercek.com
   DEBUGSERIAL.print(F("Fail_Send"));
   DEBUGSERIAL.println(failedSend);
 #endif  
-failedSend=failedSend+1;
 }

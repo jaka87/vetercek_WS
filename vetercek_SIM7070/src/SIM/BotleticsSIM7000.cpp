@@ -28,8 +28,6 @@ Botletics_modem::Botletics_modem(int8_t rst)
   _rstpin = rst;
 
   apn = F("");
-  apnusername = 0;
-  apnpassword = 0;
   mySerial = 0;
   ok_reply = F("OK");
 }
@@ -199,6 +197,12 @@ boolean Botletics_modem_LTE::setNetwork(uint16_t net, uint8_t band) {
 boolean Botletics_modem_LTE::setCOPS( uint8_t band) {
   char cmdBuff[24];
   sprintf(cmdBuff, "AT+COPS=%i",band);
+  return sendCheckReply(cmdBuff, ok_reply, 3500);
+   }
+
+boolean Botletics_modem_LTE::activatePDP( uint8_t band) {
+  char cmdBuff[24];
+  sprintf(cmdBuff, "AT+CGACT=%i,1",band);
   return sendCheckReply(cmdBuff, ok_reply, 3500);
    }
 
@@ -400,14 +404,10 @@ int8_t Botletics_modem::GPRSstate(void) {
   return state;
 }
 
-void Botletics_modem::setNetworkSettings(FStringPtr apn,
-              FStringPtr username, FStringPtr password) {
+void Botletics_modem::setNetworkSettings(FStringPtr apn) {
   this->apn = apn;
-  this->apnusername = username;
-  this->apnpassword = password;
-
   if (_type >= SIM7000) sendCheckReplyQuoted(F("AT+CGDCONT=1,\"IP\","), apn, ok_reply, 10000);
-  if (_type >= SIM7000) sendCheckReplyQuoted(F("AT+CNCFG=0,1,"), apn, ok_reply, 10000);
+  //if (_type >= SIM7000) sendCheckReplyQuoted(F("AT+CNCFG=0,1,"), apn, ok_reply, 10000);
 }
 
 

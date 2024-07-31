@@ -43,7 +43,6 @@ void changeNetwork_id(int network, byte technology) {
   delay(7000);
   connectGPRS();
 }
-
 byte netStatus() {
   byte n = fona.getNetworkStatus();
   return n;
@@ -199,6 +198,8 @@ if ( udp_send==1) {
   else if (response[8]==41) { EEPROM.write(14, 11); stopSleepChange=0; } 
   else if (response[8]==160) { EEPROM.write(16, 1); enableHum=1; }  // humidity on off
   else if (response[8]==161) { EEPROM.write(16, 0); enableHum=0; } 
+  else if (response[8]==27) { EEPROM.write(27, 1); } //turn on toggle mobile network
+  else if (response[8]==28) { EEPROM.write(27, 0); } //turn on toggle mobile network
   else if (response[8] == 102 ) { GSMstate=2; moduleSetup(); } // temporarry change network - auto
   else if (response[8] == 113 ) { GSMstate=13; moduleSetup(); } // temporarry change network - 2G
   else if (response[8] == 138 ) { GSMstate=38; moduleSetup(); } // temporarry change network - nb-iot
@@ -326,17 +327,21 @@ void AfterPost() {
 void SendData() {
   if (failedSend==0){  BeforePostCalculations(); }
   if (netStatus()!=5) {  checkNetwork(); }
-  tryGPRS();
+  //tryGPRS();
   checkServer();
   PostData();
 }
 
 void dropConnection(byte drop_type) { // 1 - full drop cnnection, 0 only drop gprs
+  fona.activatePDP(0);  
   fona.enableGPRS(false);  
   if (drop_type==1){ 
     fona.setCOPS(2); //de-register
     delay(500);
     fona.setCOPS(0); //auto
+    checkNetwork(); // wait till new network connection
+    fona.setNetworkSettings(F(APN)); // after connection to new network APN shoud be entered
+
   } 
   delay(1000);
 }

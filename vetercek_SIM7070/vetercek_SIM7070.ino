@@ -183,7 +183,7 @@ int PDPcount=0; // first reset after 100s
 byte failedSend=0; // if send fail
 byte sonicError=0;
 byte UltrasonicAnemo=0;
-byte enableSolar=0;
+byte enableSolar=1;
 byte enableRain=0;
 byte enableBmp=0;
 byte enableHum=0;
@@ -279,7 +279,6 @@ void setup() {
 #ifdef TMPDS18B20
   sensor_air.begin();
 #endif
-  if (EEPROM.read(11)==255 or EEPROM.read(11)==1) {  enableSolar=1; }   
   if (EEPROM.read(10)==0) { attachInterrupt(digitalPinToInterrupt(3), rain_count, FALLING); enableRain=1;} // rain counts
   #ifdef TMPDS18B20
     else { sensor_water.begin(); } // water temperature
@@ -334,13 +333,14 @@ void setup() {
 //GetPressure();
 
 
-  if (EEPROM.read(20)>0 and EEPROM.read(20)<250) {  
-    readEEPROMnetwork(20,21,22);
- }   
-  if (EEPROM.read(23)>0 and EEPROM.read(23)<250) {  
-    readEEPROMnetwork(23,24,25);
- }   
- 
+if (EEPROM.read(27)==1) {  
+    if (EEPROM.read(20)>0 and EEPROM.read(20)<250) {  
+      readEEPROMnetwork(20,21,22);
+    }   
+    if (EEPROM.read(23)>0 and EEPROM.read(23)<250) {  
+      readEEPROMnetwork(23,24,25);
+    }   
+ }  
 
   if (resetReason==8 ) { //////////////////// reset reason detailed        
     if (EEPROM.read(15)>0 ) {

@@ -79,7 +79,7 @@ class Botletics_modem : public BotleticsStreamType {
   boolean enableGPRS(boolean onoff);
   int8_t GPRSstate(void);
   boolean checkPDP(void);
-  void setNetworkSettings(FStringPtr apn, FStringPtr username=0, FStringPtr password=0);
+  void setNetworkSettings(FStringPtr apn);
   int8_t getNetworkType(char *typeStringBuffer, size_t bufferLength);
   int8_t getBearerStatus(void);
   int8_t getNetworkInfo(void);
@@ -172,6 +172,7 @@ class Botletics_modem_LTE : public Botletics_modem {
   boolean setOperatingBand(const char * mode, uint8_t band);
   boolean setNetwork(uint16_t net, uint8_t band);
   boolean setCOPS(uint8_t band);
+  boolean activatePDP(uint8_t band);
 
 
 };
