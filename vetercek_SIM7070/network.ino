@@ -199,7 +199,7 @@ if ( udp_send==1) {
   else if (response[8]==160) { EEPROM.write(16, 1); enableHum=1; }  // humidity on off
   else if (response[8]==161) { EEPROM.write(16, 0); enableHum=0; } 
   else if (response[8]==27) { EEPROM.write(27, 1); } //turn on toggle mobile network
-  else if (response[8]==28) { EEPROM.write(27, 0); } //turn on toggle mobile network
+  else if (response[8]==28) { EEPROM.write(27, 0); } //turn off toggle mobile network
   else if (response[8] == 102 ) { GSMstate=2; moduleSetup(); } // temporarry change network - auto
   else if (response[8] == 113 ) { GSMstate=13; moduleSetup(); } // temporarry change network - 2G
   else if (response[8] == 138 ) { GSMstate=38; moduleSetup(); } // temporarry change network - nb-iot
@@ -315,6 +315,7 @@ void AfterPost() {
     rainCount=0;
     pressure=0;
     humidity=0;
+    checkServernum=0;
     memset(windGust, 0, sizeof(windGust)); // empty direction array
 
 }
@@ -325,7 +326,8 @@ void AfterPost() {
 
 // send data to server
 void SendData() {
-  if (failedSend==0){  BeforePostCalculations(); }
+  if (failedSend==0 and checkServernum==0){  BeforePostCalculations(1); }
+  else {  BeforePostCalculations(0); }
   if (netStatus()!=5) {  checkNetwork(); }
   //tryGPRS();
   checkServer();

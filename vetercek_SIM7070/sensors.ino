@@ -432,26 +432,23 @@ void GetTmpNow() {
 }
 
 
-void BeforePostCalculations() {
+void BeforePostCalculations( byte kind) {
   DominantDirection();                          // wind direction
   GetAvgWInd();                                 // avg wind
 
-  if (enableSolar==1){
-    int curr = 0;  // measure solar cell current
-    volatile unsigned currCount = 0;
-    while (currCount < 10) {
-          curr += ((analogRead(A0)*3.98)/1000/1.15)*940; //2.2k resistor
-          currCount++;
-          delay(20);
-      }
-    SolarCurrent=(curr/currCount)/5;  // calculate average solar current // divide with 5 so it can be send as byte
-    } 
-    // solar and battery and signal
-    //sig=fona.getRSSI(); 
-    //battLevel = readVcc(); // Get voltage %   
-    // end
-    
-  GetTmpNow();    
+  if (kind==1){
+    if (enableSolar==1){
+      int curr = 0;  // measure solar cell current
+      volatile unsigned currCount = 0;
+      while (currCount < 10) {
+            curr += ((analogRead(A0)*3.98)/1000/1.15)*940; //2.2k resistor
+            currCount++;
+            delay(20);
+        }
+      SolarCurrent=(curr/currCount)/5;  // calculate average solar current // divide with 5 so it can be send as byte
+      }     
+    GetTmpNow(); 
+  }     
 }
 
 //

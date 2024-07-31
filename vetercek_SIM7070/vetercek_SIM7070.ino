@@ -193,6 +193,7 @@ byte changeSleep=0;
 byte batteryState=0; // 0 normal; 1 low battery; 2 very low battery
 byte stopSleepChange=0; //on
 volatile byte countWake = 0;
+byte checkServernum=0;
 
 #if NETWORK_OPERATORS == 1
   int network1=29340;
@@ -333,7 +334,7 @@ void setup() {
 //GetPressure();
 
 
-if (EEPROM.read(27)==1) {  
+if (EEPROM.read(27)==255 or EEPROM.read(27)==1) {  
     if (EEPROM.read(20)>0 and EEPROM.read(20)<250) {  
       readEEPROMnetwork(20,21,22);
     }   
@@ -605,6 +606,17 @@ void reset(byte rr) {
   #ifdef DEBUG
     DEBUGSERIAL.print(F("rst: "));
     DEBUGSERIAL.println(rr);
+
+    fona.println(F("AT+CEER"));  // Send the command
+    delay(500); // Wait for the response
+    String response = "";
+    while (fonaSS.available()) {
+        char c = fonaSS.read();
+        response += c;
+    }
+    DEBUGSERIAL.println(response);
+
+    
   #endif  
   //digitalWrite(PWRKEY, LOW);
   //delay(1500); 

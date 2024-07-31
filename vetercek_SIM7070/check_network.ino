@@ -94,7 +94,6 @@ bool checkGPRS() {
 bool checkServer() {
   unsigned long startTime=millis();    
   bool conn=false;
-  byte checkServernum=0;
   conn=fona.UDPconnect(broker,6789);
   
   if (conn== false){ // cant connect
