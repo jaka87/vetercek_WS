@@ -538,7 +538,7 @@ uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 	if (strcmp(replybuffer, "OK") != 0) { return 4;}
 
-	uint8_t sendD2 = readline(4000); // return SEND OK
+	uint8_t sendD2 = readline(6000); // return SEND OK
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 	if (strcmp(replybuffer, "+CADATAIND: 0") != 0) { return 5;}
 

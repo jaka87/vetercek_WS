@@ -29,10 +29,11 @@ int whenSend = 3; // interval after how many measurements data is send
 int sea_level_m=0; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
+#define DEBUG2 // comment out if you want to turn off SIM debugging
 #define LOCAL_WS // comment out if the station is global - shown on windgust.eu
-#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
-#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
+//#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
 //#define TMPDS18B20 // comment out if you want to turn off temerature sensor
 //#define BME // comment out if you want to turn off pressure and humidity sensor
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
@@ -269,10 +270,11 @@ void setup() {
   delay(20);
   DEBUGSERIAL.println(F("S"));
   DEBUGSERIAL.println(resetReason);
-  //Serial1.begin(9600); //for sim7070 AT commands debug
 #endif
 
-
+#ifdef DEBUG2
+  Serial1.begin(9600); //for sim7070 AT commands debug
+#endif
 //delay(3000);
 //Serial1.begin(9600); //for sim7000 debug
 
@@ -342,6 +344,9 @@ if (EEPROM.read(27)==255 or EEPROM.read(27)==1) {
       readEEPROMnetwork(23,24,25);
     }   
  }  
+ else{ 
+    connectGPRS();
+ }
 
   if (resetReason==8 ) { //////////////////// reset reason detailed        
     if (EEPROM.read(15)>0 ) {
@@ -550,15 +555,12 @@ void beforeSend() {
         //GetTmpNow();
       digitalWrite(DTR, LOW);  //wake up  
       delay(50);
-      bool checkAT = fona.checkAT();
-      delay(50);
-//     #ifdef DEBUG
-//    DEBUGSERIAL.println(F("CAT"));
-//    DEBUGSERIAL.println(checkAT);
-//    delay(50);
-//    #endif 
-        if (fona.checkAT()) { SendData(); }
-        else {moduleSetup(); SendData(); }
+      //bool checkAT = fona.checkAT();
+      //delay(50);
+      //if (fona.checkAT()) { SendData(); }
+      //else {moduleSetup(); SendData(); }
+
+      SendData();  
       digitalWrite(DTR, HIGH);  //sleep  
       delay(50);
 
@@ -606,17 +608,6 @@ void reset(byte rr) {
   #ifdef DEBUG
     DEBUGSERIAL.print(F("rst: "));
     DEBUGSERIAL.println(rr);
-
-    fona.println(F("AT+CEER"));  // Send the command
-    delay(500); // Wait for the response
-    String response = "";
-    while (fonaSS.available()) {
-        char c = fonaSS.read();
-        response += c;
-    }
-    DEBUGSERIAL.println(response);
-
-    
   #endif  
   //digitalWrite(PWRKEY, LOW);
   //delay(1500); 

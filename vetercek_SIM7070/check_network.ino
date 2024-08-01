@@ -109,9 +109,8 @@ bool checkServer() {
         } 
 
         else if (checkServernum==2 and conn== false)  { 
-            dropConnection(1); //full disconnect
-            checkNetwork();
-            tryGPRS();            
+           fona.activatePDP(0);  
+           simReset();            
         } 
               
         else if (checkServernum==3 )  {
@@ -139,20 +138,18 @@ void fail_to_send() {     //if cannot send data to vetercek.com
   fona.UDPclose();
   failedSend=failedSend+1;
 
-  if (failedSend ==4) {       
-      reset(13);
-      //GSMerror();
-  }  
-  else if (failedSend ==3) {       
-    dropConnection(1); 
-    checkNetwork();
-    tryGPRS();  
+  if (failedSend ==4) {    
+     reset(13);
   }  
 
-  else if (failedSend ==2) {       
-    fona.activatePDP(0);  
-    delay(1000);
-    fona.activatePDP(1);  
+  else if (failedSend ==3) {    
+     fona.activatePDP(0);  
+     simReset();
+  }  
+
+
+  else  {       
+    delay(2000);
   }  
   
 
