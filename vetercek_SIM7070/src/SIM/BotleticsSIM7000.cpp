@@ -466,27 +466,13 @@ int8_t Botletics_modem::GPRSPDP(void) {
 
 boolean Botletics_modem::UDPconnect(char *server, uint16_t port) {
   flushInput();
+  char buffer[50]; // Make sure the buffer is large enough to hold the entire string
 
-	  
-	  sendCheckReply(F("AT+CACLOSE=0"),  F("OK"), 3000);
-	  
-	  mySerial->print(F("AT+CAOPEN=0,0,\"UDP\",\""));
-	  mySerial->print(server);
-	  mySerial->print(F("\",\""));
-	  mySerial->print(port);
-	  mySerial->println(F("\""));
-
-	  DEBUG_PRINT(F("AT+CAOPEN=0,0,\"UDP\",\""));
-	  DEBUG_PRINT(server);
-	  DEBUG_PRINT(F("\",\""));
-	  DEBUG_PRINT(port);
-	  DEBUG_PRINTLN(F("\""));
-
-	  readline(5000);
-
-	  DEBUG_PRINT(F("\t<-- ")); DEBUG_PRINTLN(replybuffer);
-	  if (strstr(replybuffer, "+CAOPEN: 0,0") == NULL) return false;
-	  DEBUG_PRINT(F("\t<-- caopen ")); DEBUG_PRINTLN("OK");
+	  //sendCheckReply(F("AT+CACLOSE=0"),  F("OK"), 300);
+     sendCheckReply(F("AT"),  F("OK"), 300);
+     sprintf(buffer, "AT+CAOPEN=0,0,\"UDP\",\"%s\",\"%u\"", server, port);
+      if (! sendCheckReply(buffer,  F("+CAOPEN: 0,0"), 5000))
+        return false;	  
 	  
 	  // looks like it was a success (?)
 	  return true;
@@ -494,7 +480,7 @@ boolean Botletics_modem::UDPconnect(char *server, uint16_t port) {
 }
 
 boolean Botletics_modem::UDPclose(void) {
-      if (! sendCheckReply(F("AT+CACLOSE=0"),  F("OK"), 3000))
+      if (! sendCheckReply(F("AT+CACLOSE=0"),  F("OK"), 500))
         return false;
   return true;
   
@@ -538,7 +524,7 @@ uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 	if (strcmp(replybuffer, "OK") != 0) { return 4;}
 
-	uint8_t sendD2 = readline(6000); // return SEND OK
+	uint8_t sendD2 = readline(3000); // return SEND OK
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 	if (strcmp(replybuffer, "+CADATAIND: 0") != 0) { return 5;}
 

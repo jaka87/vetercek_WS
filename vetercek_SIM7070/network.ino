@@ -29,6 +29,7 @@ bool zagnano=fona.begin(Serial);
     //fona.set_eDRX(1, 5, "1001");    
   //}
 
+//fona.println(F("AT+CMEE=1"));  //extend debugging
 #ifdef DEBUG
   DEBUGSERIAL.println(F("modOK"));
 #endif
@@ -78,7 +79,7 @@ void connectGPRS() {
       //checkNetwork();
       simReset();
      }
-      dropConnection(0);
+      //dropConnection(0);
       GPRS=fona.enableGPRS(true);
     
     #ifdef DEBUG
@@ -328,7 +329,7 @@ void AfterPost() {
 void SendData() {
   if (failedSend==0 and checkServernum==0){  BeforePostCalculations(1); }
   else {  BeforePostCalculations(0); }
-  if (netStatus()!=5) {  checkNetwork(); }
+  //if (netStatus()!=5) {  checkNetwork(); }
   //tryGPRS();
   checkServer();
   PostData();

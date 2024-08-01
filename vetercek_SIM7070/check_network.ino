@@ -97,24 +97,22 @@ bool checkServer() {
   conn=fona.UDPconnect(broker,6789);
   
   if (conn== false){ // cant connect
-    delay(200);
+    delay(100);
     do {
         checkServernum=checkServernum+1;
         conn=fona.UDPconnect(broker,6789);
-  
-        if (checkServernum==1 and conn== false)  { 
-            dropConnection(0);  //disconnect GPRS
-            checkNetwork();
-            tryGPRS();            
-        } 
 
-        else if (checkServernum==2 and conn== false)  { 
+        if (checkServernum==2 and conn== false)  { 
            fona.activatePDP(0);  
            simReset();            
         } 
               
-        else if (checkServernum==3 )  {
+        else if (checkServernum==4 )  {
           reset(12);
+        } 
+
+        else  { 
+          delay(1000);            
         } 
 
      #ifdef DEBUG
@@ -149,7 +147,7 @@ void fail_to_send() {     //if cannot send data to vetercek.com
 
 
   else  {       
-    delay(2000);
+    delay(500);
   }  
   
 
