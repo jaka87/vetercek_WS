@@ -497,19 +497,23 @@ uint8_t Botletics_modem::UDPconnected(void) {
 
 uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte response[12],uint8_t charr) {	
 	  uint8_t howmany;
-	  DEBUG_PRINT(F("AT+CASEND=0,"));
-	  DEBUG_PRINTLN(len);
-	#ifdef BOTLETICS_MODEM_DEBUG
-	  for (uint16_t i=0; i<len; i++) {
-	  DEBUG_PRINT(F(" 0x"));
-	  DEBUG_PRINT(packet[i], HEX);
-	  }
-	#endif
-	  DEBUG_PRINTLN();
+     char buffer[20]; // Make sure the buffer is large enough to hold the entire string
 
+	//#ifdef BOTLETICS_MODEM_DEBUG
+	  //DEBUG_PRINT(F("AT+CASEND=0,"));
+	  //DEBUG_PRINTLN(len);
+	  //for (uint16_t i=0; i<len; i++) {
+		  //DEBUG_PRINT(F(" 0x"));
+		  //DEBUG_PRINT(packet[i], HEX);
+	  //}
+	  //DEBUG_PRINTLN();
+	//#endif
 
-	  mySerial->print(F("AT+CASEND=0,"));
-	  mySerial->println(len);
+     sprintf(buffer, "AT+CASEND=0,%u", len);
+     mySerial->println(buffer);
+     DEBUG_PRINTLN(buffer);
+	  //mySerial->print(F("AT+CASEND=0,"));
+	  //mySerial->println(len);
 	  
 	  readline(1000);
 	  //DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer[0]);
@@ -524,18 +528,18 @@ uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 	if (strcmp(replybuffer, "OK") != 0) { return 4;}
 
-	uint8_t sendD2 = readline(3000); // return SEND OK
+	uint8_t sendD2 = readline(5000); // return SEND OK
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 	if (strcmp(replybuffer, "+CADATAIND: 0") != 0) { return 5;}
 
 		 if (_type2 == 2) { // different firmware version
-			uint8_t sendD3 = readline(2000); // buffer full
+			uint8_t sendD3 = readline(1000); // buffer full
 			DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 		 }
 
 	  
 	mySerial->println(F("AT+CARECV=0,25"));
-	uint8_t receveD = readline2(5000,charr); // RETURN DATA
+	uint8_t receveD = readline2(2000,charr); // RETURN DATA
 
 	if (replybuffer2[12]==50 and replybuffer2[13]==44){
 		howmany=13;

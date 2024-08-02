@@ -140,7 +140,7 @@ void fail_to_send() {     //if cannot send data to vetercek.com
      reset(13);
   }  
 
-  else if (failedSend ==3) {    
+  else if (failedSend ==4) {    
      fona.activatePDP(0);  
      simReset();
   }  
