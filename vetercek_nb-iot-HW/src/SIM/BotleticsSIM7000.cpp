@@ -563,10 +563,12 @@ int8_t Botletics_modem::GPRSPDP(void) {
 
 boolean Botletics_modem::UDPconnect(char *server, uint16_t port) {
   flushInput();
+  char buffer[50];
+  sprintf(buffer, "AT+CIPSTART=\"UDP\",\"%s\",\"%u\"", server, port);
 
   if (_type == SIM7000) {
 	  // close all old connections
-	  if (! sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 5000) ) return false;
+	  if (! sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 300) ) return false;
 
 	  // single connection at a time
 	  if (! sendCheckReply(F("AT+CIPMUX=0"), ok_reply) ) return false;
@@ -581,12 +583,13 @@ boolean Botletics_modem::UDPconnect(char *server, uint16_t port) {
 	  //DEBUG_PRINTLN(F("\""));
 
 
-	  mySerial->print(F("AT+CIPSTART=\"UDP\",\""));
-	  mySerial->print(server);
-	  mySerial->print(F("\",\""));
-	  mySerial->print(port);
-	  mySerial->println(F("\""));
+	  // mySerial->print(F("AT+CIPSTART=\"UDP\",\""));
+	  // mySerial->print(server);
+	  // mySerial->print(F("\",\""));
+	  // mySerial->print(port);
+	  // mySerial->println(F("\""));
 
+      mySerial->println(buffer);
 	  if (! expectReply(ok_reply)) return false;
 	  if (! expectReply(F("CONNECT OK"))) return false; 
 

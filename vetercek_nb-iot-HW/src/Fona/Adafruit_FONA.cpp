@@ -457,7 +457,8 @@ void Adafruit_FONA::setNetworkSettings(FONAFlashStringPtr apn,
 
 boolean Adafruit_FONA::UDPconnect(char *server, uint16_t port) {
   flushInput();
-
+  char buffer[50];
+  sprintf(buffer, "AT+CIPSTART=\"UDP\",\"%s\",\"%u\"", server, port);
 
   // close all old connections
   if (! sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 5000) ) return false;
@@ -471,19 +472,13 @@ boolean Adafruit_FONA::UDPconnect(char *server, uint16_t port) {
   // keep alvie
   //if (! sendCheckReply(F("AT+CIPTKA=1,7200,600,9"), ok_reply) ) return false;
 
+  // mySerial->print(F("AT+CIPSTART=\"UDP\",\""));
+  // mySerial->print(server);
+  // mySerial->print(F("\",\""));
+  // mySerial->print(port);
+  // mySerial->println(F("\""));
 
-  DEBUG_PRINT(F("AT+CIPSTART=\"UDP\",\""));
-  DEBUG_PRINT(server);
-  DEBUG_PRINT(F("\",\""));
-  DEBUG_PRINT(port);
-  DEBUG_PRINTLN(F("\""));
-
-
-  mySerial->print(F("AT+CIPSTART=\"UDP\",\""));
-  mySerial->print(server);
-  mySerial->print(F("\",\""));
-  mySerial->print(port);
-  mySerial->println(F("\""));
+  mySerial->println(buffer);
 
   if (! expectReply(ok_reply)) return false;
   if (! expectReply(F("CONNECT OK"))) return false;  //if ALREADY CONNECT
@@ -525,20 +520,11 @@ uint8_t Adafruit_FONA::UDPconnected(void) {
 }
 
 boolean Adafruit_FONA::UDPsend(unsigned char *packet, uint8_t len, byte response[10],uint8_t charr) {
+     char buffer[20];
+  sprintf(buffer, "AT+CIPSEND=%u", len);
+  mySerial->println(buffer);
+  DEBUG_PRINTLN(buffer);
 
-  DEBUG_PRINT(F("AT+CIPSEND="));
-  DEBUG_PRINTLN(len);
-#ifdef ADAFRUIT_FONA_DEBUG
-  for (uint16_t i=0; i<len; i++) {
-  DEBUG_PRINT(F(" 0x"));
-  DEBUG_PRINT(packet[i], HEX);
-  }
-#endif
-  DEBUG_PRINTLN();
-
-
-  mySerial->print(F("AT+CIPSEND="));
-  mySerial->println(len);
   readline();
 
   if (replybuffer[0] != '>') return false;
