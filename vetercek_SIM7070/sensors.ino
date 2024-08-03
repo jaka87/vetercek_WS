@@ -9,16 +9,7 @@ void UltrasonicAnemometer() { //measure wind speed
               
       int size = ultrasonic.readBytesUntil('\r\n', buffer, 70);
       buffer[size]='\0'; 
-
       delay(20); // important in case of error
-
-//       #ifdef DEBUG 
-//       delay(20);
-//        DEBUGSERIAL.print(size); 
-//        DEBUGSERIAL.print(F(" buff ")); 
-//        DEBUGSERIAL.println(buffer); 
-//       delay(20);
-//       #endif 
           
       char *dir = strtok(buffer, ",/");
       char *wind = strtok(NULL, ",/");
