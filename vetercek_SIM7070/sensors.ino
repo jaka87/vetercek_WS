@@ -9,16 +9,7 @@ void UltrasonicAnemometer() { //measure wind speed
               
       int size = ultrasonic.readBytesUntil('\r\n', buffer, 70);
       buffer[size]='\0'; 
-
       delay(20); // important in case of error
-
-       #ifdef DEBUG 
-       delay(20);
-        DEBUGSERIAL.print(size); 
-        DEBUGSERIAL.print(F(" buff ")); 
-        DEBUGSERIAL.println(buffer); 
-       delay(20);
-       #endif 
           
       char *dir = strtok(buffer, ",/");
       char *wind = strtok(NULL, ",/");
@@ -358,9 +349,9 @@ void GetPressure() {
 
 #ifdef HUMIDITY
   void GetHumidity() {
-      #ifdef DEBUG 
-      DEBUGSERIAL.println(F("hum start")); 
-     #endif 
+//      #ifdef DEBUG 
+//      DEBUGSERIAL.println(F("hum start")); 
+//     #endif 
   #if HUMIDITY == 31    
     if ( sht.isConnected() ){
       sht.read();         // default = true/fast       slow = false
@@ -372,9 +363,9 @@ void GetPressure() {
      if (sht.RHcrcOK) { humidity=sht.RHtoPercent();} 
   #endif 
    
-      #ifdef DEBUG 
-      DEBUGSERIAL.println(F("hum stop")); 
-     #endif 
+//      #ifdef DEBUG 
+//      DEBUGSERIAL.println(F("hum stop")); 
+//     #endif 
  
      #ifdef DEBUG
       DEBUGSERIAL.print(F("hum: "));
@@ -432,24 +423,23 @@ void GetTmpNow() {
 }
 
 
-void BeforePostCalculations() {
+void BeforePostCalculations( byte kind) {
   DominantDirection();                          // wind direction
   GetAvgWInd();                                 // avg wind
 
-  if (enableSolar==1){
-    int curr = 0;  // measure solar cell current
-    volatile unsigned currCount = 0;
-    while (currCount < 10) {
-          curr += ((analogRead(A0)*3.98)/1000/1.15)*940; //2.2k resistor
-          currCount++;
-          delay(20);
-      }
-    SolarCurrent=(curr/currCount)/5;  // calculate average solar current // divide with 5 so it can be send as byte
-    } 
-    // solar and battery and signal
-    sig=fona.getRSSI(); 
-    battLevel = readVcc(); // Get voltage %   
-    // end
+  if (kind==1){
+    if (enableSolar==1){
+      int curr = 0;  // measure solar cell current
+      volatile unsigned currCount = 0;
+      while (currCount < 10) {
+            curr += ((analogRead(A0)*3.98)/1000/1.15)*940; //2.2k resistor
+            currCount++;
+            delay(20);
+        }
+      SolarCurrent=(curr/currCount)/5;  // calculate average solar current // divide with 5 so it can be send as byte
+      }     
+    GetTmpNow(); 
+  }     
 }
 
 //

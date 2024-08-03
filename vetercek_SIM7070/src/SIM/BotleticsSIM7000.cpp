@@ -28,8 +28,6 @@ Botletics_modem::Botletics_modem(int8_t rst)
   _rstpin = rst;
 
   apn = F("");
-  apnusername = 0;
-  apnpassword = 0;
   mySerial = 0;
   ok_reply = F("OK");
 }
@@ -199,6 +197,12 @@ boolean Botletics_modem_LTE::setNetwork(uint16_t net, uint8_t band) {
 boolean Botletics_modem_LTE::setCOPS( uint8_t band) {
   char cmdBuff[24];
   sprintf(cmdBuff, "AT+COPS=%i",band);
+  return sendCheckReply(cmdBuff, ok_reply, 3500);
+   }
+
+boolean Botletics_modem_LTE::activatePDP( uint8_t band) {
+  char cmdBuff[24];
+  sprintf(cmdBuff, "AT+CGACT=%i,1",band);
   return sendCheckReply(cmdBuff, ok_reply, 3500);
    }
 
@@ -374,6 +378,22 @@ bool Botletics_modem::getNetworkInfoLong(void) {
   return true;
 }
 
+boolean Botletics_modem::checkPDP(void) {
+  if (! sendCheckReply(F("AT+CGACT?"), F("+CGACT: 1,1")) ) {
+     DEBUG_PRINTLN(F("PDP false")); 
+     return false;
+  }
+  
+  //getReply(F("AT+CGPADDR=?"));
+  // Format of response:
+  // +CNACT: <status>,<ip_addr>  (ex.SIM7000)
+  // +CNACT: <pdpidx>,<status>,<ip_addr>  (ex.SIM7070)
+	      DEBUG_PRINT("\t<--- "); DEBUG_PRINTLN(replybuffer);
+    //if (strstr(replybuffer, "+CNACT: 0,1") == NULL) return false;
+  
+  return true;
+}
+
 int8_t Botletics_modem::GPRSstate(void) {
   uint16_t state;
 
@@ -384,14 +404,10 @@ int8_t Botletics_modem::GPRSstate(void) {
   return state;
 }
 
-void Botletics_modem::setNetworkSettings(FStringPtr apn,
-              FStringPtr username, FStringPtr password) {
+void Botletics_modem::setNetworkSettings(FStringPtr apn) {
   this->apn = apn;
-  this->apnusername = username;
-  this->apnpassword = password;
-
   if (_type >= SIM7000) sendCheckReplyQuoted(F("AT+CGDCONT=1,\"IP\","), apn, ok_reply, 10000);
-  if (_type >= SIM7000) sendCheckReplyQuoted(F("AT+CNCFG=0,1,"), apn, ok_reply, 10000);
+  //if (_type >= SIM7000) sendCheckReplyQuoted(F("AT+CNCFG=0,1,"), apn, ok_reply, 10000);
 }
 
 
@@ -450,27 +466,13 @@ int8_t Botletics_modem::GPRSPDP(void) {
 
 boolean Botletics_modem::UDPconnect(char *server, uint16_t port) {
   flushInput();
+  char buffer[50]; // Make sure the buffer is large enough to hold the entire string
 
-	  
-	  sendCheckReply(F("AT+CACLOSE=0"),  F("OK"), 3000);
-	  
-	  mySerial->print(F("AT+CAOPEN=0,0,\"UDP\",\""));
-	  mySerial->print(server);
-	  mySerial->print(F("\",\""));
-	  mySerial->print(port);
-	  mySerial->println(F("\""));
-
-	  DEBUG_PRINT(F("AT+CAOPEN=0,0,\"UDP\",\""));
-	  DEBUG_PRINT(server);
-	  DEBUG_PRINT(F("\",\""));
-	  DEBUG_PRINT(port);
-	  DEBUG_PRINTLN(F("\""));
-
-	  readline(5000);
-
-	  DEBUG_PRINT(F("\t<-- ")); DEBUG_PRINTLN(replybuffer);
-	  if (strstr(replybuffer, "+CAOPEN: 0,0") == NULL) return false;
-	  DEBUG_PRINT(F("\t<-- caopen ")); DEBUG_PRINTLN("OK");
+	  //sendCheckReply(F("AT+CACLOSE=0"),  F("OK"), 300);
+     sendCheckReply(F("AT"),  F("OK"), 300);
+     sprintf(buffer, "AT+CAOPEN=0,0,\"UDP\",\"%s\",\"%u\"", server, port);
+      if (! sendCheckReply(buffer,  F("+CAOPEN: 0,0"), 5000))
+        return false;	  
 	  
 	  // looks like it was a success (?)
 	  return true;
@@ -478,7 +480,7 @@ boolean Botletics_modem::UDPconnect(char *server, uint16_t port) {
 }
 
 boolean Botletics_modem::UDPclose(void) {
-      if (! sendCheckReply(F("AT+CACLOSE=0"),  F("OK"), 3000))
+      if (! sendCheckReply(F("AT+CACLOSE=0"),  F("OK"), 500))
         return false;
   return true;
   
@@ -493,47 +495,51 @@ uint8_t Botletics_modem::UDPconnected(void) {
 
 
 
-boolean Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte response[12],uint8_t charr) {	
+uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte response[12],uint8_t charr) {	
 	  uint8_t howmany;
-	  DEBUG_PRINT(F("AT+CASEND=0,"));
-	  DEBUG_PRINTLN(len);
-	#ifdef BOTLETICS_MODEM_DEBUG
-	  for (uint16_t i=0; i<len; i++) {
-	  DEBUG_PRINT(F(" 0x"));
-	  DEBUG_PRINT(packet[i], HEX);
-	  }
-	#endif
-	  DEBUG_PRINTLN();
+     char buffer[20]; // Make sure the buffer is large enough to hold the entire string
 
+	//#ifdef BOTLETICS_MODEM_DEBUG
+	  //DEBUG_PRINT(F("AT+CASEND=0,"));
+	  //DEBUG_PRINTLN(len);
+	  //for (uint16_t i=0; i<len; i++) {
+		  //DEBUG_PRINT(F(" 0x"));
+		  //DEBUG_PRINT(packet[i], HEX);
+	  //}
+	  //DEBUG_PRINTLN();
+	//#endif
 
-	  mySerial->print(F("AT+CASEND=0,"));
-	  mySerial->println(len);
+     sprintf(buffer, "AT+CASEND=0,%u", len);
+     mySerial->println(buffer);
+     DEBUG_PRINTLN(buffer);
+	  //mySerial->print(F("AT+CASEND=0,"));
+	  //mySerial->println(len);
 	  
-	  readline();
+	  readline(1000);
 	  //DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer[0]);
 
-	  if (replybuffer[0] == '>') DEBUG_PRINTLN("ok");
+	  //if (replybuffer[0] == '>') DEBUG_PRINTLN("ok");
 
 
-	  if (replybuffer[0] != '>') return false;
+	  if (replybuffer[0] != '>') return 3;
 	  mySerial->write(packet, len);
 
 	uint8_t sendD = readline(2000); // return SEND OK
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
-	if (strcmp(replybuffer, "OK") != 0) { return false;}
+	if (strcmp(replybuffer, "OK") != 0) { return 4;}
 
-	uint8_t sendD2 = readline(4000); // return SEND OK
+	uint8_t sendD2 = readline(5000); // return SEND OK
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
-	if (strcmp(replybuffer, "+CADATAIND: 0") != 0) { return false;}
+	if (strcmp(replybuffer, "+CADATAIND: 0") != 0) { return 5;}
 
 		 if (_type2 == 2) { // different firmware version
-			uint8_t sendD3 = readline(2000); // buffer full
+			uint8_t sendD3 = readline(1000); // buffer full
 			DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 		 }
 
 	  
 	mySerial->println(F("AT+CARECV=0,25"));
-	uint8_t receveD = readline2(5000,charr); // RETURN DATA
+	uint8_t receveD = readline2(2000,charr); // RETURN DATA
 
 	if (replybuffer2[12]==50 and replybuffer2[13]==44){
 		howmany=13;
@@ -542,20 +548,20 @@ boolean Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
 		howmany=12;
 	}
 		
-		DEBUG_PRINTLN("response :");   
+		//DEBUG_PRINTLN("response :");   
 		  for (uint16_t i=0; i<charr;i++) {
-			  		DEBUG_PRINT(i);		
-					DEBUG_PRINT(" - ");		
-					DEBUG_PRINTLN(replybuffer2[i]);	
+			  		//DEBUG_PRINT(i);		
+					//DEBUG_PRINT(" - ");		
+					//DEBUG_PRINTLN(replybuffer2[i]);	
 					
 			if (i>howmany) {	 	
 					response[i-(howmany+1)]=replybuffer2[i];
 				}
 		}
 		//DEBUG_PRINTLN(response[0]);
-	  if (response[0] > 0 and response[1] < 4) return true;
+	  if (response[0] > 0 and response[1] < 4) return 1;
 
-	  else return false;
+	  else return 6;
   
 }
 

@@ -15,13 +15,6 @@ bool zagnano=fona.begin(Serial);
   delay(3000);
   fona.setNetLED(true,3,64,5000);
   delay(100);
-//  bool cops1=fona.setCOPS(2); //de-register
-//  bool cops2=fona.setCOPS(0); //auto
-//    #ifdef DEBUG    
-//      DEBUGSERIAL.println(cops1);   
-//      DEBUGSERIAL.println(cops2);   
-//    #endif 
-//  delay(100);
   fona.setNetworkSettings(F(APN)); // APN
   delay(100);
 
@@ -36,7 +29,10 @@ bool zagnano=fona.begin(Serial);
     //fona.set_eDRX(1, 5, "1001");    
   //}
 
-
+//fona.println(F("AT+CMEE=1"));  //extend debugging
+#ifdef DEBUG
+  DEBUGSERIAL.println(F("modOK"));
+#endif
 }  
 
 
@@ -48,7 +44,6 @@ void changeNetwork_id(int network, byte technology) {
   delay(7000);
   connectGPRS();
 }
-
 byte netStatus() {
   byte n = fona.getNetworkStatus();
   return n;
@@ -61,126 +56,16 @@ void GSMerror() {
     #endif 
     bool checkAT = fona.checkAT();
     delay(50);
+    dropConnection(1);
     if (fona.checkAT()) { simReset(); }
-    else { reset(7); }
+    else { reset(10); }
 
 }
-
-
-bool checkNetwork() {  
-byte GSMstatus=99;
-unsigned long startTime=millis();  
-byte zero_network=0;
-  do {
-    GSMstatus=netStatus();
-//    if ((GSMstatus==0) and millis() - startTime >= 10000) {
-//        #ifdef DEBUG
-//          DEBUGSERIAL.println(F("NTWRK fail"));
-//          DEBUGSERIAL.println(GSMstatus);
-//        #endif
-//        simReset();       
-//        startTime=millis(); 
-//    }
-
-    if ((GSMstatus==0 or GSMstatus==3) and (millis() - startTime) > 20000) {
-          bool cops1=fona.setCOPS(2); //de-register
-          bool cops2=fona.setCOPS(0); //auto  
-          #ifdef DEBUG
-            DEBUGSERIAL.println(F("dereg"));
-          #endif
-          startTime=millis(); 
-    }
-    
-    else if (GSMstatus==0) {
-        #ifdef DEBUG
-          DEBUGSERIAL.println(F("nogps"));
-        #endif
-        fona.setFunctionality(0); // AT+CFUN=0
-        delay(3000);
-        fona.setFunctionality(1); // AT+CFUN=1
-        delay(10*1000);        
-    }
-    else if (GSMstatus==3) {
-        #ifdef DEBUG
-          DEBUGSERIAL.println(F("forbidden"));
-        #endif
-        fona.setPreferredMode(13);   
-        startTime=millis(); 
-    }
-    else if (GSMstatus==2 and millis() - startTime >= 60000) {
-        #ifdef DEBUG
-          DEBUGSERIAL.println(F("NTWRK fail"));
-          DEBUGSERIAL.println(GSMstatus);
-        #endif
-        fona.setFunctionality(0); // AT+CFUN=0
-        delay(3000);
-        fona.setFunctionality(1); // AT+CFUN=1     
-        startTime=millis(); 
-    }
-    else {
-      #ifdef DEBUG
-        DEBUGSERIAL.print(F("Src "));
-        DEBUGSERIAL.println(GSMstatus);
-      #endif     
-       delay(1000);            
-     }
-  } 
-  while (GSMstatus !=5 and GSMstatus !=1 );
-  return true;    
-}
-
-
-bool checkServer() {
-  unsigned long startTime=millis();    
-  bool conn=false;
-  byte checkServernum=0;
-  do {
-      checkServernum=checkServernum+1;
-      conn=fona.UDPconnect("vetercek.com",6789);
-        // solar and battery and signal
-        sig=fona.getRSSI(); 
-        battLevel = readVcc(); // Get voltage %   
-        // end
-      if (checkServernum>1 and conn== false)  { delay( 2000*checkServernum); }
-     #ifdef DEBUG
-        DEBUGSERIAL.print(F("vet "));
-        DEBUGSERIAL.println(conn);
-     #endif   
-     if (checkServernum==3)  {
-        #ifdef DEBUG
-          DEBUGSERIAL.println("SRVR fail 3x");
-        #endif 
-      conn=fona.enableGPRS(false);
-      delay(3000);
-      conn=fona.enableGPRS(true);
-        //S7070Reset();
-        //simReset();
-     }
-  } 
-  while (conn == false and checkServernum < 6);
-  
-  if (checkServernum>5 )  {
-    #ifdef DEBUG
-    DEBUGSERIAL.println(F("srvr fail 5"));
-    #endif
-    //reset(5);
-    simReset();
-  }    
-}
-
 
 
 void connectGPRS() {
   bool GPRS=false;
-  byte checkGPRSnum=0;
-//  int8_t info=fona.getNetworkInfo();  // check if connected to network, else try 2G
-//  if ((info <1 or info > 10) and GSMstate==2)  {
-//   #ifdef DEBUG
-//      DEBUGSERIAL.println(F("n2g"));
-//   #endif 
-//    fona.setPreferredMode(13);   
-//  }
-  
+  byte checkGPRSnum=0;  
   checkNetwork();
   unsigned long startTime=millis();    
 
@@ -188,14 +73,13 @@ void connectGPRS() {
    checkGPRSnum=checkGPRSnum+1;
      if (checkGPRSnum >3 )  {
         #ifdef DEBUG
-          DEBUGSERIAL.println("GPRS fail 3");
+          DEBUGSERIAL.println("GPRSf3");
         #endif 
       //S7070Reset();
       //checkNetwork();
       simReset();
      }
-      GPRS=fona.enableGPRS(false);
-      delay(3000);
+      //dropConnection(0);
       GPRS=fona.enableGPRS(true);
     
     #ifdef DEBUG
@@ -206,11 +90,7 @@ void connectGPRS() {
   while (GPRS==false and millis() - startTime >= 60000);
 }
 
-
-
-void PostData() {           
-  bool GPRS=true;
-
+void gatherData() {
   data[8]=windDir/100;
   data[9]=windDir%100;
   data[10]=wind_speed/10;
@@ -227,13 +107,8 @@ void PostData() {
   data[23]=resetReason;
   data[24]=SolarCurrent;
 
-
-  if (temp > 0) { // if positive or negative air temperature
-    data[14]=1;
-  } 
-  else {
-    data[14]=0;
-  } 
+  if (temp > 0) { data[14]=1; } // if positive or negative air temperature
+  else {    data[14]=0; } 
 
   if (rainCount > -1 and enableRain==1) { // if rain instead of water
     data[17]=10;
@@ -252,20 +127,55 @@ void PostData() {
     data[19]=abs(int(water*100))%100;
   } 
 
-      if (enableBmp==1) { // if send pressure value
-        data[25]=pressure/100;
-        data[26]=pressure%100;
-      } 
-      else { 
-        data[25]=sonicError;    
-      } 
+  if (enableBmp==1) { // if send pressure value
+    data[25]=pressure/100;
+    data[26]=pressure%100;
+  } 
+  else { 
+    data[25]=sonicError;    
+  } 
 
-      if (enableHum==1) { // if send humidity value
-        data[27]=humidity;
-      } 
+  if (enableHum==1) { // if send humidity value
+    data[27]=humidity;
+  } 
+
+}
+
+void PostData() {           
+
+  if (measureCount < 5){ 
+    if (EEPROM.read(39)==1 and EEPROM.read(62)>= 5){
+         #ifdef DEBUG
+          DEBUGSERIAL.println("EEPROM data");
+          DEBUGSERIAL.println(EEPROM.read(62));
+        #endif 
+        const int dataSize = sizeof(data) / sizeof(data[0]);
+        const int eepromStartAddress = 40; 
+        for (int i = 0; i < dataSize; i++) {
+          data[i] = EEPROM.read(eepromStartAddress + i);
+        }
+        EEPROM.write(39, 0); // do not read from eeprom
+        data[23]=resetReason;
+      }
+     else  {gatherData();}
+    }
+
+  else  {gatherData();}
+
+
 
   byte response[13];  
-    if ( fona.UDPsend(data,sizeof(data),response,26)) {
+
+ //try to send data 
+
+  byte udp_send=fona.UDPsend(data,sizeof(data),response,26);
+    #ifdef DEBUG 
+      delay(20);
+      DEBUGSERIAL.print("UDPsend"); 
+      DEBUGSERIAL.println(udp_send); 
+      delay(20);
+    #endif 
+if ( udp_send==1) { 
       
   if (response[1] ==1 ) {  
     vaneOffset=(response[2]*100)+response[3];    // if byte is positive value
@@ -289,6 +199,8 @@ void PostData() {
   else if (response[8]==41) { EEPROM.write(14, 11); stopSleepChange=0; } 
   else if (response[8]==160) { EEPROM.write(16, 1); enableHum=1; }  // humidity on off
   else if (response[8]==161) { EEPROM.write(16, 0); enableHum=0; } 
+  else if (response[8]==27) { EEPROM.write(27, 1); } //turn on toggle mobile network
+  else if (response[8]==28) { EEPROM.write(27, 0); } //turn off toggle mobile network
   else if (response[8] == 102 ) { GSMstate=2; moduleSetup(); } // temporarry change network - auto
   else if (response[8] == 113 ) { GSMstate=13; moduleSetup(); } // temporarry change network - 2G
   else if (response[8] == 138 ) { GSMstate=38; moduleSetup(); } // temporarry change network - nb-iot
@@ -303,7 +215,7 @@ void PostData() {
         EEPROM.write(21, response[10]);
         EEPROM.write(22, response[11]);
    #ifdef DEBUG                                 
-    DEBUGSERIAL.println("network1");
+    DEBUGSERIAL.println("net1");
   #endif
       }
       else if (response[8] == 98){
@@ -311,7 +223,7 @@ void PostData() {
         EEPROM.write(24, response[10]);
         EEPROM.write(25, response[11]);
    #ifdef DEBUG                                 
-    DEBUGSERIAL.println("network2");
+    DEBUGSERIAL.println("net2");
   #endif        
       }
 
@@ -374,39 +286,14 @@ void PostData() {
 
 
      #ifdef DEBUG
-      DEBUGSERIAL.println(F("SEND"));
+      DEBUGSERIAL.println(F("-->"));
      #endif
   
   AfterPost(); 
    } 
 
-   else {  //if cannot send data to vetercek.com
-     fona.UDPclose();
-     failedSend=failedSend+1;
-     
-      if (failedSend ==3 or GPRS==false) {
-        #ifdef DEBUG
-          DEBUGSERIAL.println(F("failsend3"));
-        #endif        
-          GSMerror();
-          SendData(1);
-      }   
-      else if (failedSend == 2) {   
-        #ifdef DEBUG
-          DEBUGSERIAL.println(F("failsend2"));
-        #endif          
-        GPRS=fona.enableGPRS(false);
-        delay(1000);
-        GPRS=fona.enableGPRS(true);
-        SendData(1); 
-      } 
-      else if (failedSend == 1) {    
-        #ifdef DEBUG
-          DEBUGSERIAL.println(F("failsend1"));
-        #endif         
-        SendData(1); 
-      } 
-         
+   else {
+       fail_to_send();
    } 
   
 }
@@ -429,26 +316,49 @@ void AfterPost() {
     rainCount=0;
     pressure=0;
     humidity=0;
+    checkServernum=0;
     memset(windGust, 0, sizeof(windGust)); // empty direction array
+
 }
+
+
 
 
 
 // send data to server
-void SendData(byte var) {
-  if (var==0){  BeforePostCalculations(); }
+void SendData() {
+  if (failedSend==0 and checkServernum==0){  BeforePostCalculations(1); }
+  else {  BeforePostCalculations(0); }
+  //if (netStatus()!=5) {  checkNetwork(); }
+  //tryGPRS();
   checkServer();
   PostData();
 }
+
+void dropConnection(byte drop_type) { // 1 - full drop cnnection, 0 only drop gprs
+  fona.activatePDP(0);  
+  fona.enableGPRS(false);  
+  if (drop_type==1){ 
+    fona.setCOPS(2); //de-register
+    delay(500);
+    fona.setCOPS(0); //auto
+    checkNetwork(); // wait till new network connection
+    fona.setNetworkSettings(F(APN)); // after connection to new network APN shoud be entered
+
+  } 
+  delay(1000);
+}
+
+
 
 void checkIMEI() {
   char IMEI[15]; // Use this for device ID
    if (EEPROM.read(0)==1 and EEPROM.read(1)!=240) {  // read from EEPROM if data in it 
       for (int i = 0; i < 8; i++){
        data[i]=EEPROM.read(i+1);
-        #ifdef DEBUG                                 
-          DEBUGSERIAL.println(EEPROM.read(i+1));
-        #endif
+        //#ifdef DEBUG                                 
+        //  DEBUGSERIAL.println(EEPROM.read(i+1));
+        //#endif
        }
    }
    
