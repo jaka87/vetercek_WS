@@ -29,11 +29,11 @@ int whenSend = 3; // interval after how many measurements data is send
 int sea_level_m=0; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
-#define DEBUG2 // comment out if you want to turn off SIM debugging
-#define LOCAL_WS // comment out if the station is global - shown on windgust.eu
-//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+//#define DEBUG2 // comment out if you want to turn off SIM debugging
+//#define LOCAL_WS // comment out if the station is global - shown on windgust.eu
+#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
-//#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
+#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
 //#define TMPDS18B20 // comment out if you want to turn off temerature sensor
 //#define BME // comment out if you want to turn off pressure and humidity sensor
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
@@ -44,12 +44,16 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
   // 4. Hungary
   // 5. Austria
   // 6. Germany 
+  // 7. France
+  // 8. Netherlands
+  // 9. Portugal
+  // 10. Greece
 ///////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LOCAL_WS 
   char* broker = "vetercek.com";
 #else
-  char* broker = "windgust.eu";
+  char* broker = "data.windgust.eu";
 #endif
 
 #define ONE_WIRE_BUS_1 4 //air
@@ -202,9 +206,9 @@ byte checkServernum=0;
   byte net_ver1=9;
   byte net_ver2=0;
 #elif NETWORK_OPERATORS == 2
-  int network1=21902;
-  int network2=21910;
-  byte net_ver1=0;
+  int network1=21901;
+  int network2=21902;
+  byte net_ver1=9;
   byte net_ver2=0;
 #elif NETWORK_OPERATORS == 3
   int network1=22210;
@@ -224,7 +228,27 @@ byte checkServernum=0;
 #elif NETWORK_OPERATORS == 6
   int network1=26201;
   int network2=26202;
-  byte net_ver1=0;
+  byte net_ver1=9;
+  byte net_ver2=0;
+#elif NETWORK_OPERATORS == 7
+  int network1=20801;
+  int network2=20810;
+  byte net_ver1=9;
+  byte net_ver2=0;
+#elif NETWORK_OPERATORS == 8
+  int network1=20402;
+  int network2=20401;
+  byte net_ver1=9;
+  byte net_ver2=0;
+#elif NETWORK_OPERATORS == 9
+  int network1=26802;
+  int network2=26801;
+  byte net_ver1=9;
+  byte net_ver2=0;
+#elif NETWORK_OPERATORS == 10
+  int network1=20202;
+  int network2=20201;
+  byte net_ver1=9;
   byte net_ver2=0;
 #else
   int network1=0;
@@ -232,8 +256,7 @@ byte checkServernum=0;
   byte net_ver1=0;
   byte net_ver2=0;
 #endif
-
-
+//MCC + MNC
 
 void setup() {
   MCUSR = 0; // clear reset flags
