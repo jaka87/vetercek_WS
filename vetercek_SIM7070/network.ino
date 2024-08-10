@@ -65,29 +65,25 @@ void GSMerror() {
 
 void connectGPRS() {
   bool GPRS=false;
-  byte checkGPRSnum=0;  
   checkNetwork();
   unsigned long startTime=millis();    
 
-  do {
-   checkGPRSnum=checkGPRSnum+1;
-     if (checkGPRSnum >3 )  {
-        #ifdef DEBUG
-          DEBUGSERIAL.println("GPRSf3");
-        #endif 
-      //S7070Reset();
-      //checkNetwork();
-      simReset();
-     }
-      //dropConnection(0);
-      GPRS=fona.enableGPRS(true);
-    
+  while (!GPRS && (millis() - startTime) < 20000) {
+      dropConnection(0);
+      GPRS = fona.enableGPRS(true);
+      delay(3000);
+  }
+
+  if (!GPRS)  {
+    simReset();
+  }
+  
+  else {
     #ifdef DEBUG
       DEBUGSERIAL.print(F("GPRS "));
       DEBUGSERIAL.println(GPRS);
     #endif 
   }
-  while (GPRS==false and millis() - startTime >= 60000);
 }
 
 void gatherData() {
@@ -344,7 +340,7 @@ void dropConnection(byte drop_type) { // 1 - full drop cnnection, 0 only drop gp
     fona.setNetworkSettings(F(APN)); // after connection to new network APN shoud be entered
 
   } 
-  delay(1000);
+  delay(1500);
 }
 
 

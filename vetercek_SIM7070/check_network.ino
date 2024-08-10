@@ -159,6 +159,10 @@ void fail_to_send() {     //if cannot send data to vetercek.com
      resetReason=1;
   }  
 
+  else if (failedSend ==2) {    
+      tryGPRS();
+     resetReason=3;
+  } 
 
   else  {       
     delay(500);
