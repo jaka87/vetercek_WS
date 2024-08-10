@@ -329,10 +329,8 @@ void AfterPost() {
 void SendData() {
   if (failedSend==0 and checkServernum==0){  BeforePostCalculations(1); }
   else {  BeforePostCalculations(0); }
-  //if (netStatus()!=5) {  checkNetwork(); }
-  //tryGPRS();
-  checkServer();
-  PostData();
+  if (checkServer()) {  PostData(); }
+  
 }
 
 void dropConnection(byte drop_type) { // 1 - full drop cnnection, 0 only drop gprs

@@ -97,32 +97,44 @@ bool checkServer() {
   conn=fona.UDPconnect(broker,6789);
   
   if (conn== false){ // cant connect
-    delay(100);
-    do {
-        checkServernum=checkServernum+1;
-        conn=fona.UDPconnect(broker,6789);
+    int count = 0;
+    delay(1000);
+    while (count < 2) {
+      conn = fona.UDPconnect(broker, 6789);
+      if (conn) {
+        return true; // Connection successful
+      }
+      count++;
+      delay(2000); // Optional: Wait 2 second before retrying
+    }
+  }
 
-        if (checkServernum==2 and conn== false)  { 
+  if (conn== false){ // cant connect
+        checkServernum=checkServernum+1;
+        
+        if (checkServernum==3 )  { 
            fona.activatePDP(0);  
-           simReset();            
+           simReset();     
+           resetReason=2;       
         } 
               
         else if (checkServernum==4 )  {
           reset(12);
         } 
-
-        else  { 
-          delay(1000);            
+        else if (checkServernum==2 )  {
+          checkNetwork();
+          tryGPRS();
         } 
+
 
      #ifdef DEBUG
         DEBUGSERIAL.print(F("vet_con_fail"));
         DEBUGSERIAL.println(checkServernum);
      #endif 
-  
+     
+    return false;  
     } 
-    while (conn == false and checkServernum < 5);
-  } 
+   
   
 //must wait couple seconds before sending data - otherwise UDPsend3 error
 sig=fona.getRSSI(); 
@@ -140,9 +152,11 @@ void fail_to_send() {     //if cannot send data to vetercek.com
      reset(13);
   }  
 
-  else if (failedSend ==4) {    
-     fona.activatePDP(0);  
+  else if (failedSend ==3) {    
+     fona.activatePDP(0);
+     delay(500); 
      simReset();
+     resetReason=1;
   }  
 
 
