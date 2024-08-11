@@ -160,7 +160,7 @@ void fail_to_send() {     //if cannot send data to vetercek.com
   }  
 
   else if (failedSend ==2) {    
-      tryGPRS();
+     connectGPRS();
      resetReason=3;
   } 
 
