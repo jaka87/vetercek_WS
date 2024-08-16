@@ -40,10 +40,15 @@ bool zagnano=fona.begin(Serial);
 void changeNetwork_id(int network, byte technology) {
   //fona.setPreferredMode(51);
  fona.setNetwork(network,technology); 
+  #ifdef DEBUG
+    DEBUGSERIAL.println(F("network change"));
+  #endif 
   //EEPROM.write(9, 51);
   delay(7000);
   connectGPRS();
 }
+
+
 byte netStatus() {
   byte n = fona.getNetworkStatus();
   return n;
@@ -68,13 +73,20 @@ void connectGPRS() {
   checkNetwork();
   unsigned long startTime=millis();    
 
-  while (!GPRS && (millis() - startTime) < 20000) {
+  while (!GPRS && (millis() - startTime) < 30000) {
+    #ifdef DEBUG
+      DEBUGSERIAL.println(F("GPRS try"));
+    #endif 
       dropConnection(0);
+      delay(500);
       GPRS = fona.enableGPRS(true);
-      delay(3000);
+      delay(500);
   }
 
   if (!GPRS)  {
+    #ifdef DEBUG
+      DEBUGSERIAL.println(F("GPRS fail"));
+    #endif     
     simReset();
   }
   
@@ -330,17 +342,23 @@ void SendData() {
 }
 
 void dropConnection(byte drop_type) { // 1 - full drop cnnection, 0 only drop gprs
+      #ifdef DEBUG                                 
+    DEBUGSERIAL.println("drp con start");
+  #endif
   fona.activatePDP(0);  
   fona.enableGPRS(false);  
   if (drop_type==1){ 
     fona.setCOPS(2); //de-register
-    delay(500);
+    delay(200);
     fona.setCOPS(0); //auto
     checkNetwork(); // wait till new network connection
     fona.setNetworkSettings(F(APN)); // after connection to new network APN shoud be entered
 
   } 
-  delay(1500);
+  delay(350);
+      #ifdef DEBUG                                 
+    DEBUGSERIAL.println("drp con stop");
+  #endif
 }
 
 

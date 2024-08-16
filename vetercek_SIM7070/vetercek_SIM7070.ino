@@ -161,7 +161,7 @@ volatile unsigned long currentMillis2;
 volatile unsigned long contactBounceTime2; // Timer to avoid contact bounce in rain interrupt routine
 volatile unsigned long updateBattery = 0;
 
-int rainCount=-1; // count rain bucket tilts
+volatile int rainCount=-1; // count rain bucket tilts
 byte SolarCurrent; // calculate solar cell current 
 byte firstWindPulse; // ignore 1st anemometer rotation since it didn't make full circle
 int windSpeed; // speed
@@ -644,8 +644,10 @@ void simReset() {
   #ifdef DEBUG
     DEBUGSERIAL.println("SIM RST");
   #endif 
+    dropConnection(1);    
+    delay(200);
     fona.reset(); // AT+CFUN=1,1
-    delay(3000);
+    delay(300);
     moduleSetup(); // Establishes first-time serial comm and prints IMEI 
     checkIMEI();
     connectGPRS(); 

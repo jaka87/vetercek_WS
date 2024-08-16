@@ -55,16 +55,20 @@ bool checkNetwork() {
 
 void tryGPRS() {
     int attempts = 0;
-    const int maxAttempts = 3;
+    const int maxAttempts = 10;
     bool success = false;
 
+    #ifdef DEBUG
+      DEBUGSERIAL.println(F("try gprs"));
+    #endif 
     if (checkGPRS() ) { return;} //break function
     while (attempts < maxAttempts && !success) {
+        dropConnection(0);
+        delay(500);
         success = checkGPRS();
         attempts++;
-        dropConnection(0);
         fona.enableGPRS(true);        
-        delay(2000);
+        delay(1000);
     }
 
     if (!success) {
@@ -111,26 +115,23 @@ bool checkServer() {
 
   if (conn== false){ // cant connect
         checkServernum=checkServernum+1;
-        
+     #ifdef DEBUG
+        DEBUGSERIAL.print(F("vet_con_fail"));
+        DEBUGSERIAL.println(checkServernum);
+     #endif 
+             
         if (checkServernum==3 )  { 
-           fona.activatePDP(0);  
            simReset();     
-           resetReason=2;       
+           resetReason=33;       
         } 
               
         else if (checkServernum==4 )  {
           reset(12);
         } 
         else if (checkServernum==2 )  {
-          checkNetwork();
-          tryGPRS();
+          connectGPRS();
+           resetReason=32;       
         } 
-
-
-     #ifdef DEBUG
-        DEBUGSERIAL.print(F("vet_con_fail"));
-        DEBUGSERIAL.println(checkServernum);
-     #endif 
      
     return false;  
     } 
@@ -148,29 +149,31 @@ void fail_to_send() {     //if cannot send data to vetercek.com
   fona.UDPclose();
   failedSend=failedSend+1;
 
+#ifdef DEBUG
+  DEBUGSERIAL.print(F("Fail_Send"));
+  DEBUGSERIAL.println(failedSend);
+#endif 
+
+
   if (failedSend ==4) {    
      reset(13);
   }  
 
   else if (failedSend ==3) {    
-     fona.activatePDP(0);
-     delay(500); 
      simReset();
-     resetReason=1;
+     resetReason=36;
   }  
 
   else if (failedSend ==2) {    
      connectGPRS();
-     resetReason=3;
+     resetReason=35;
   } 
 
   else  {       
     delay(500);
+    resetReason=34;       
+
   }  
   
-
-#ifdef DEBUG
-  DEBUGSERIAL.print(F("Fail_Send"));
-  DEBUGSERIAL.println(failedSend);
-#endif  
+ 
 }
