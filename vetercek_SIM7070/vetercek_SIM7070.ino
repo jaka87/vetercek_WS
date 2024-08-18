@@ -368,7 +368,7 @@ if (EEPROM.read(27)==255 or EEPROM.read(27)==1) {
     }   
  }  
  else{ 
-    connectGPRS();
+    connectGPRS(0); //just connect
  }
 
   if (resetReason==8 ) { //////////////////// reset reason detailed        
@@ -644,13 +644,13 @@ void simReset() {
   #ifdef DEBUG
     DEBUGSERIAL.println("SIM RST");
   #endif 
-    dropConnection(1);    
+    dropConnection(1);  //deactivate PDP, drop GPRS, drop network  
     delay(200);
     fona.reset(); // AT+CFUN=1,1
     delay(300);
     moduleSetup(); // Establishes first-time serial comm and prints IMEI 
     checkIMEI();
-    connectGPRS(); 
+    connectGPRS(0); //just connect
 }
 
 //void S7070Reset() {  

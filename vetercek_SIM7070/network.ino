@@ -45,7 +45,7 @@ void changeNetwork_id(int network, byte technology) {
   #endif 
   //EEPROM.write(9, 51);
   delay(7000);
-  connectGPRS();
+  connectGPRS(1);
 }
 
 
@@ -61,14 +61,14 @@ void GSMerror() {
     #endif 
     bool checkAT = fona.checkAT();
     delay(50);
-    dropConnection(1);
+    dropConnection(1); //deactivate PDP, drop GPRS, drop network
     if (fona.checkAT()) { simReset(); }
     else { reset(10); }
 
 }
 
 
-void connectGPRS() {
+void connectGPRS(byte what) { //0 - just connect / 1 - drop GPRS, then reconnect / 2 - drop whole network
   bool GPRS=false;
   checkNetwork();
   unsigned long startTime=millis();    
@@ -77,7 +77,10 @@ void connectGPRS() {
     #ifdef DEBUG
       DEBUGSERIAL.println(F("GPRS try"));
     #endif 
-      dropConnection(0);
+
+    if (what==1)  {dropConnection(0); }//deactivate PDP, drop GPRS
+    else if (what==1)  {dropConnection(1); }//drop whole network
+      
       delay(500);
       GPRS = fona.enableGPRS(true);
       delay(500);
@@ -149,42 +152,9 @@ void gatherData() {
 
 }
 
-void PostData() {           
 
-  if (measureCount < 5){ 
-    if (EEPROM.read(39)==1 and EEPROM.read(62)>= 5){
-         #ifdef DEBUG
-          DEBUGSERIAL.println("EEPROM data");
-          DEBUGSERIAL.println(EEPROM.read(62));
-        #endif 
-        const int dataSize = sizeof(data) / sizeof(data[0]);
-        const int eepromStartAddress = 40; 
-        for (int i = 0; i < dataSize; i++) {
-          data[i] = EEPROM.read(eepromStartAddress + i);
-        }
-        EEPROM.write(39, 0); // do not read from eeprom
-        data[23]=resetReason;
-      }
-     else  {gatherData();}
-    }
-
-  else  {gatherData();}
-
-
-
-  byte response[13];  
-
- //try to send data 
-
-  byte udp_send=fona.UDPsend(data,sizeof(data),response,26);
-    #ifdef DEBUG 
-      delay(20);
-      DEBUGSERIAL.print("UDPsend"); 
-      DEBUGSERIAL.println(udp_send); 
-      delay(20);
-    #endif 
-if ( udp_send==1) { 
-      
+void parseResponse(byte response[13]) {
+        
   if (response[1] ==1 ) {  
     vaneOffset=(response[2]*100)+response[3];    // if byte is positive value
   } 
@@ -297,14 +267,65 @@ if ( udp_send==1) {
       DEBUGSERIAL.println(F("-->"));
      #endif
   
-  AfterPost(); 
-   } 
+} 
 
-   else {
-       fail_to_send();
-   } 
-  
-}
+
+void PostData() {           
+
+  if (measureCount < 5){ 
+    if (EEPROM.read(39) == 1 && EEPROM.read(62) >= 5) {
+      #ifdef DEBUG
+        DEBUGSERIAL.println("EEPROM data");
+        DEBUGSERIAL.println(EEPROM.read(62));
+      #endif 
+      const int dataSize = sizeof(data) / sizeof(data[0]);
+      const int eepromStartAddress = 40; 
+      for (int i = 0; i < dataSize; i++) {
+        data[i] = EEPROM.read(eepromStartAddress + i);
+      }
+      EEPROM.write(39, 0); // do not read from eeprom
+      data[23] = resetReason;
+    } else {
+      gatherData();
+    }
+  } else {
+    gatherData();
+  }
+
+  byte response[13];  
+  byte udp_send = 0;
+  byte attempts = 0;
+  const byte maxAttempts = 3;
+
+  // Try to send data up to three times
+  while (attempts < maxAttempts) {
+    udp_send = fona.UDPsend(data, sizeof(data), response, 26);
+    
+    #ifdef DEBUG 
+      delay(20);
+      DEBUGSERIAL.print("UDPsend attempt ");
+      DEBUGSERIAL.println(attempts + 1);
+      delay(20);
+    #endif
+
+    if (udp_send == 1) {
+      #ifdef DEBUG
+        DEBUGSERIAL.println(F("-->"));
+      #endif
+
+      parseResponse(response);
+      AfterPost(); 
+      return; // Exit the function after successful send
+    }
+
+    attempts++;
+    delay(1000);
+  }
+
+  // If all attempts fail
+  fail_to_send();
+} 
+
 
 
 void AfterPost() {
@@ -355,7 +376,7 @@ void dropConnection(byte drop_type) { // 1 - full drop cnnection, 0 only drop gp
     fona.setNetworkSettings(F(APN)); // after connection to new network APN shoud be entered
 
   } 
-  delay(350);
+  delay(100);
       #ifdef DEBUG                                 
     DEBUGSERIAL.println("drp con stop");
   #endif

@@ -53,7 +53,7 @@ bool checkNetwork() {
 }
 
 
-void tryGPRS() {
+void tryGPRS() { //try gprs connect
     int attempts = 0;
     const int maxAttempts = 10;
     bool success = false;
@@ -63,7 +63,7 @@ void tryGPRS() {
     #endif 
     if (checkGPRS() ) { return;} //break function
     while (attempts < maxAttempts && !success) {
-        dropConnection(0);
+        dropConnection(0); //deactivate PDP, drop GPRS
         delay(500);
         success = checkGPRS();
         attempts++;
@@ -76,7 +76,7 @@ void tryGPRS() {
     }
 }
 
-bool checkGPRS() {
+bool checkGPRS() { //check if gprs connected
   if (fona.GPRSstate()!=1)  { 
      #ifdef DEBUG
         DEBUGSERIAL.println(F("GPRS_NI1"));
@@ -95,21 +95,23 @@ bool checkGPRS() {
   return true;
 }
 
-bool checkServer() {
+bool checkServer() { // try connecting to server
   unsigned long startTime=millis();    
   bool conn=false;
+
+  if (checkGPRS()==false){ connectGPRS(1);  }  //check network, restart gprs
   conn=fona.UDPconnect(broker,6789);
   
   if (conn== false){ // cant connect
     int count = 0;
-    delay(1000);
-    while (count < 2) {
+    delay(500);
+    while (count < 5) {
       conn = fona.UDPconnect(broker, 6789);
       if (conn) {
         return true; // Connection successful
       }
       count++;
-      delay(2000); // Optional: Wait 2 second before retrying
+      delay(500); // Optional: Wait 2 second before retrying
     }
   }
 
@@ -119,19 +121,28 @@ bool checkServer() {
         DEBUGSERIAL.print(F("vet_con_fail"));
         DEBUGSERIAL.println(checkServernum);
      #endif 
-             
-        if (checkServernum==3 )  { 
-           simReset();     
-           resetReason=33;       
-        } 
-              
-        else if (checkServernum==4 )  {
+
+        if (checkServernum==5 )  {
           reset(12);
         } 
-        else if (checkServernum==2 )  {
-          connectGPRS();
-           resetReason=32;       
+             
+        else if (checkServernum==4 )  { 
+           simReset();     
+           resetReason=34;       
         } 
+
+
+       else if (checkServernum==3 ){ 
+          connectGPRS(1); //check network, restart gprs
+           resetReason=33;       
+       }
+              
+       else if (checkServernum==2 )  {
+           if (checkGPRS()==false){ 
+              connectGPRS(1); //check network, restart gprs
+           }
+           resetReason=32;       
+       } 
      
     return false;  
     } 
@@ -155,23 +166,30 @@ void fail_to_send() {     //if cannot send data to vetercek.com
 #endif 
 
 
-  if (failedSend ==4) {    
+  if (failedSend ==5) {    
      reset(13);
   }  
 
-  else if (failedSend ==3) {    
+  else if (failedSend ==4) {    
      simReset();
-     resetReason=36;
+     resetReason=38;
   }  
 
-  else if (failedSend ==2) {    
-     connectGPRS();
-     resetReason=35;
+  else if (failedSend ==3) {    
+     connectGPRS(2); //check network, restart gprs
+     resetReason=37;
+  } 
+
+  else if (failedSend ==2 ) {    
+     if (checkGPRS()==false){ 
+        connectGPRS(1); //check network, restart gprs
+     }
+     resetReason=36;
   } 
 
   else  {       
     delay(500);
-    resetReason=34;       
+    resetReason=35;       
 
   }  
   
