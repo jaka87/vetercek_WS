@@ -1,14 +1,8 @@
 void moduleSetup() {
-Serial.begin(57600);
+  Serial.begin(57600);
+  bool zagnano=fona.begin(Serial);
+  if (!zagnano ){   reset(9); }
 
-bool zagnano=fona.begin(Serial);
-
-
-  if (!zagnano ){
-    reset(9);
-  }
-
-    
   fona.enableSleepMode(true);
   delay(100);
   fona.setPreferredMode(GSMstate);
@@ -23,27 +17,18 @@ bool zagnano=fona.begin(Serial);
     delay(100);
   }
 
-  //if (GSMstate == 38 or GSMstate == 51) {
-    //fona.setPreferredLTEMode(2);   
-    //fona.setOperatingBand("NB-IOT",20); 
-    //fona.set_eDRX(1, 5, "1001");    
-  //}
-
-//fona.println(F("AT+CMEE=1"));  //extend debugging
-#ifdef DEBUG
-  DEBUGSERIAL.println(F("modOK"));
-#endif
+  #ifdef DEBUG
+    DEBUGSERIAL.println(F("modOK"));
+  #endif
 }  
 
 
 
 void changeNetwork_id(int network, byte technology) {
-  //fona.setPreferredMode(51);
  fona.setNetwork(network,technology); 
   #ifdef DEBUG
     DEBUGSERIAL.println(F("network change"));
   #endif 
-  //EEPROM.write(9, 51);
   delay(7000);
   connectGPRS(1);
 }
@@ -249,7 +234,7 @@ void parseResponse(byte response[13]) {
   
   
   #ifdef UZ_Anemometer
-    if ( response[7]!= sleepBetween and UltrasonicAnemo==1 and response[7] > -1 and response[7] < 9 and sleepBetween != response[7]) { //change of sleep time
+    if ( response[7]!= sleepBetween and response[7] > -1 and response[7] < 9 and sleepBetween != response[7]) { //change of sleep time
       changeSleep=1;
       sleepBetween=response[7];
     }
@@ -261,18 +246,12 @@ void parseResponse(byte response[13]) {
 
   if (response[0] >0 and sleepBetween==0) { whenSend=response[0]*2;} // when sleep is 0 updates =2x
   else if (response[0] >0 ) { whenSend=response[0];}
-
-
-     #ifdef DEBUG
-      DEBUGSERIAL.println(F("-->"));
-     #endif
   
 } 
 
 
 void PostData() {           
-
-  if (measureCount < 5){ 
+  if (measureCount ==0){ 
     if (EEPROM.read(39) == 1 && EEPROM.read(62) >= 5) {
       #ifdef DEBUG
         DEBUGSERIAL.println("EEPROM data");
@@ -374,7 +353,6 @@ void dropConnection(byte drop_type) { // 1 - full drop cnnection, 0 only drop gp
     fona.setCOPS(0); //auto
     checkNetwork(); // wait till new network connection
     fona.setNetworkSettings(F(APN)); // after connection to new network APN shoud be entered
-
   } 
   delay(100);
       #ifdef DEBUG                                 

@@ -53,28 +53,7 @@ bool checkNetwork() {
 }
 
 
-void tryGPRS() { //try gprs connect
-    int attempts = 0;
-    const int maxAttempts = 10;
-    bool success = false;
 
-    #ifdef DEBUG
-      DEBUGSERIAL.println(F("try gprs"));
-    #endif 
-    if (checkGPRS() ) { return;} //break function
-    while (attempts < maxAttempts && !success) {
-        dropConnection(0); //deactivate PDP, drop GPRS
-        delay(500);
-        success = checkGPRS();
-        attempts++;
-        fona.enableGPRS(true);        
-        delay(1000);
-    }
-
-    if (!success) {
-        reset(11);
-    }
-}
 
 bool checkGPRS() { //check if gprs connected
   if (fona.GPRSstate()!=1)  { 
@@ -98,7 +77,6 @@ bool checkGPRS() { //check if gprs connected
 bool checkServer() { // try connecting to server
   unsigned long startTime=millis();    
   bool conn=false;
-
   if (checkGPRS()==false){ connectGPRS(1);  }  //check network, restart gprs
   conn=fona.UDPconnect(broker,6789);
   
@@ -111,7 +89,7 @@ bool checkServer() { // try connecting to server
         return true; // Connection successful
       }
       count++;
-      delay(500); // Optional: Wait 2 second before retrying
+      delay(500); // Optional: Wait 0.5 second before retrying
     }
   }
 
@@ -166,14 +144,9 @@ void fail_to_send() {     //if cannot send data to vetercek.com
 #endif 
 
 
-  if (failedSend ==5) {    
-     reset(13);
-  }  
+  if (failedSend ==5) {    reset(13);}  
 
-  else if (failedSend ==4) {    
-     simReset();
-     resetReason=38;
-  }  
+  else if (failedSend ==4) {    simReset();  resetReason=38; }  
 
   else if (failedSend ==3) {    
      connectGPRS(2); //check network, restart gprs
@@ -187,11 +160,7 @@ void fail_to_send() {     //if cannot send data to vetercek.com
      resetReason=36;
   } 
 
-  else  {       
-    delay(500);
-    resetReason=35;       
-
-  }  
+  else  {  delay(500);  resetReason=35;  }  
   
  
 }

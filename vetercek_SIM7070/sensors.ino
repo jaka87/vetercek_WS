@@ -42,17 +42,7 @@ void UltrasonicAnemometer() { //measure wind speed
               timergprs = 0;                                            
         }
         else { 
-//          if (atof(wind)*19.4384449 < 40){ // new function to allow data that dont pass checkup, hopefuly to fix Lanterna station issue
-//              calDirection = atoi(dir) + vaneOffset;
-//              CalculateWindDirection();  // calculate wind direction from data
-//              windSpeed=atof(wind)*19.4384449;
-//              CalculateWindGust(windSpeed);
-//              CalculateWind();
-//              timergprs = 0;             
-//          }
-//          else{ 
             UZerror(3); 
-          //}
           }        
       }
       else { 
@@ -134,36 +124,6 @@ while (ultrasonic.available() <2) {  delay(10); }
       DEBUGSERIAL.println(F("err sleepc")); 
      #endif       
       }
-//  ultrasonicFlush();
-//    while (ultrasonic.available() <2) {  
-//      delay(5);
-//      }  
-//  ultrasonic.write(buffer);   
-//  ultrasonic.write(">SaveConfig\r\n");
-//
-//  unsigned long startedWaiting = millis(); 
-//  while (strstr (buffer2,"IdleSec") == NULL and millis() - startedWaiting > 10000) {
-//    int size = ultrasonic.readBytesUntil('\n', buffer2, 80);
-//    delay(50);
-//  }
-//
-//    if(millis() - startedWaiting < 10000){ 
-//      sleepBetween=sleepT;
-//      changeSleep=0;
-//      stopSleepChange=0;
-//      ultrasonicFlush();
-//     #ifdef DEBUG 
-//      DEBUGSERIAL.print(F("sleepcok ")); 
-//      DEBUGSERIAL.println(sleepT); 
-//      delay(10);
-//     #endif 
-//      }
-//    else { 
-//     stopSleepChange++;
-//     #ifdef DEBUG 
-//      DEBUGSERIAL.println(F("err sleepc")); 
-//     #endif       
-//      } 
 }
 #endif 
 
@@ -349,9 +309,6 @@ void GetPressure() {
 
 #ifdef HUMIDITY
   void GetHumidity() {
-//      #ifdef DEBUG 
-//      DEBUGSERIAL.println(F("hum start")); 
-//     #endif 
   #if HUMIDITY == 31    
     if ( sht.isConnected() ){
       sht.read();         // default = true/fast       slow = false
@@ -362,11 +319,6 @@ void GetPressure() {
      if (sht.TcrcOK) {temp=sht.TtoDegC();} 
      if (sht.RHcrcOK) { humidity=sht.RHtoPercent();} 
   #endif 
-   
-//      #ifdef DEBUG 
-//      DEBUGSERIAL.println(F("hum stop")); 
-//     #endif 
- 
      #ifdef DEBUG
       DEBUGSERIAL.print(F("hum: "));
       DEBUGSERIAL.println(humidity);
@@ -442,59 +394,16 @@ void BeforePostCalculations( byte kind) {
   }     
 }
 
-//
-//void adc_init() {
-//  // Set the ADC reference to AVcc
-//  ADMUX = (1 << REFS0);
-//  // Set the ADC prescaler to 64 (assuming 8 MHz clock, gives 125 KHz ADC clock)
-//  //ADCSRA = (1 << ADPS2) | (1 << ADPS1);
-//  // Enable the ADC
-//  ADCSRA |= (1 << ADEN);
-//}
-//
-//uint16_t adc_read(uint8_t channel) {
-//  // Select the ADC channel
-//  ADMUX = (ADMUX & 0xF8) | (channel & 0x07);
-//  // Start the conversion
-//  ADCSRA |= (1 << ADSC);
-//  // Wait for the conversion to complete
-//  while (ADCSRA & (1 << ADSC));
-//  // Read the ADC value
-//  return ADC;
-//}
-//
-//int readVcc() {
-//  uint16_t adc_value=0;
-//  // Convert the ADC value to a voltage
-//  volatile unsigned currCount = 0;
-//    while (currCount < 10) {
-//      adc_value += adc_read(A1);
-//      currCount++;
-//      delay(10);       
-//  }
-//  return ((adc_value/currCount)*2);
-//}
-
-
 // Read the module's power supply voltage
 float readVcc() {
-  // Read battery voltage
-if (fona.getBattVoltage(&battVoltage)) {
-  battLevel=battVoltage/20; // voltage  
-}
-else {
-  battLevel=0;
-}
-
-//  int curr = 0;
-//  volatile unsigned currCount = 0;
-//    while (currCount < 10) {
-//          curr += analogRead(A1)*3.8;
-//          currCount++;
-//          delay(10);
-//      }
-//  battLevel=(curr/currCount)/20;
-return battLevel;
+    // Read battery voltage
+  if (fona.getBattVoltage(&battVoltage)) {
+    battLevel=battVoltage/20; // voltage  
+  }
+  else {
+    battLevel=0;
+  }
+  return battLevel;
 }
 
 #ifdef UZ_Anemometer

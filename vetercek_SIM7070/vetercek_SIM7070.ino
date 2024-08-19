@@ -28,8 +28,9 @@ int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 3; // interval after how many measurements data is send
 int sea_level_m=0; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
-//#define DEBUG // comment out if you want to turn off debugging
+#define DEBUG // comment out if you want to turn off debugging
 //#define DEBUG2 // comment out if you want to turn off SIM debugging
+//#define DEBUG_MEASURE // comment out if you want to turn off SIM debugging
 //#define LOCAL_WS // comment out if the station is global - shown on windgust.eu
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
@@ -187,7 +188,6 @@ byte sleepBetween=2;
 int PDPcount=0; // first reset after 100s
 byte failedSend=0; // if send fail
 byte sonicError=0;
-byte UltrasonicAnemo=0;
 byte enableSolar=1;
 byte enableRain=0;
 byte enableBmp=0;
@@ -286,8 +286,6 @@ void setup() {
     ENABLE_UART_START_FRAME_INTERRUPT;
   #endif
 
-
-  
 #ifdef DEBUG
   DEBUGSERIAL.begin(9600);
   delay(20);
@@ -315,6 +313,7 @@ void setup() {
   else if (EEPROM.read(9)==51) {GSMstate=51; } //#define NBIOT or 2G
   if (EEPROM.read(14)==10) { stopSleepChange=3; } // UZ sleep on/off
 
+
 #ifdef BMP
   if ((EEPROM.read(13)==255 or EEPROM.read(13)==1) and lps.begin()) {  
       enableBmp=1; 
@@ -322,8 +321,6 @@ void setup() {
       lps.setOutputRate(LPS35HW::OutputRate_OneShot);   
       }
 #endif  
-
-
 
 
 #ifdef BME
@@ -336,13 +333,13 @@ void setup() {
   }
 #endif 
 
+
 #ifdef HUMIDITY
   #if HUMIDITY == 31
     Wire.begin();
     sht.begin(SHT_ADDRESS);
     Wire.setClock(100000);
     uint16_t stat = sht.readStatus();
-  
       if ( sht.isConnected() ){
         enableHum=1;
       }
@@ -359,6 +356,7 @@ void setup() {
 //GetPressure();
 
 
+
 if (EEPROM.read(27)==255 or EEPROM.read(27)==1) {  
     if (EEPROM.read(20)>0 and EEPROM.read(20)<250) {  
       readEEPROMnetwork(20,21,22);
@@ -368,7 +366,7 @@ if (EEPROM.read(27)==255 or EEPROM.read(27)==1) {
     }   
  }  
  else{ 
-    connectGPRS(0); //just connect
+    //connectGPRS(0); //just connect
  }
 
   if (resetReason==8 ) { //////////////////// reset reason detailed        
@@ -425,7 +423,6 @@ moduleSetup(); // Establishes first-time serial comm and prints IMEI
 bool checkAT = fona.checkAT();
 delay(50);
 if (fona.checkAT()) { checkIMEI(); }
-//if ((resetReason==82 or resetReason==85 or resetReason==86) and network1>0  and EEPROM.read(26)!= 1) { 
 if (network1>0  and EEPROM.read(26)!= 1) { 
   EEPROM.write(26,1); 
     #ifdef DEBUG                                 
@@ -442,7 +439,6 @@ else if (network2>0) {
   #endif
   changeNetwork_id(network2,net_ver2);
   } 
-//connectGPRS(); 
 
 beforeSend();
 
@@ -454,7 +450,6 @@ beforeSend();
   unsigned long startedWaiting = millis();
   UZ_wake(startedWaiting);
   if (millis() - startedWaiting <= (65000) ) {
-    UltrasonicAnemo=1;
     windDelay=1000;
     ultrasonicFlush();
    #ifdef DEBUG
@@ -519,16 +514,16 @@ void loop() {
 #endif  
 
 
-//  #ifdef DEBUG                                 // debug data
-//    DEBUGSERIAL.print(F(" d:"));
-//    DEBUGSERIAL.print(calDirection);
-//    DEBUGSERIAL.print(F(" s:"));
-//    DEBUGSERIAL.print(windSpeed);
-//    DEBUGSERIAL.print(F(" c:"));
-//    DEBUGSERIAL.print(measureCount);
-//    DEBUGSERIAL.print(F(" s:"));
-//    DEBUGSERIAL.println(sonicError);
-//  #endif
+  #ifdef DEBUG_MEASURE                                 // debug data
+    DEBUGSERIAL.print(F(" d:"));
+    DEBUGSERIAL.print(calDirection);
+    DEBUGSERIAL.print(F(" s:"));
+    DEBUGSERIAL.print(windSpeed);
+    DEBUGSERIAL.print(F(" c:"));
+    DEBUGSERIAL.print(measureCount);
+    DEBUGSERIAL.print(F(" s:"));
+    DEBUGSERIAL.println(sonicError);
+  #endif
 
   GetAvgWInd();                                 // avg wind
 
@@ -548,19 +543,17 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
   {  
     beforeSend();
   }
-  
-  else if ( UltrasonicAnemo==0 ){ // restart timer
+
+#ifndef UZ_Anemometer  
+  else { // restart timer in mechanic anemometer
     noInterrupts();
     timergprs = 0;                                
     interrupts();
   }
+#endif
 
 #ifdef UZ_Anemometer
-  else if ( UltrasonicAnemo==1 ){ // go to sleep
-//      #ifdef DEBUG
-//      DEBUGSERIAL.print(F("wc "));
-//      DEBUGSERIAL.println(countWake);
-//    #endif   
+  else { // go to sleep 
     ENABLE_UART_START_FRAME_INTERRUPT;
     countWake=0;
     LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
@@ -572,27 +565,17 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
 
 void beforeSend() { 
       /////////////////////////// send data to server ///////////////////////////////////////////////  
-//      #ifdef UZ_Anemometer
-//        ultrasonic.end();
-//      #endif
-        //GetTmpNow();
       digitalWrite(DTR, LOW);  //wake up  
-      delay(50);
-      //bool checkAT = fona.checkAT();
-      //delay(50);
-      //if (fona.checkAT()) { SendData(); }
-      //else {moduleSetup(); SendData(); }
-
+      delay(100); // wait for wake up
+      bool checkAT = fona.checkAT();
       SendData();  
       digitalWrite(DTR, HIGH);  //sleep  
       delay(50);
 
       #ifdef UZ_Anemometer
-        if (UltrasonicAnemo==1){
-            if ( changeSleep== 1 and stopSleepChange<3) { //change of sleep time
+        if ( changeSleep== 1 and stopSleepChange<3) { //change of sleep time
           ultrasonicFlush();   
           UZsleep(sleepBetween);
-            }
         }
       ultrasonicFlush();  
       ENABLE_UART_START_FRAME_INTERRUPT;
@@ -632,8 +615,6 @@ void reset(byte rr) {
     DEBUGSERIAL.print(F("rst: "));
     DEBUGSERIAL.println(rr);
   #endif  
-  //digitalWrite(PWRKEY, LOW);
-  //delay(1500); 
   wdt_enable(WDTO_60MS);
   delay(100);
 }
@@ -652,16 +633,6 @@ void simReset() {
     checkIMEI();
     connectGPRS(0); //just connect
 }
-
-//void S7070Reset() {  
-//  #ifdef DEBUG
-//    DEBUGSERIAL.println("7070 RST");
-//  #endif 
-//  digitalWrite(PWRKEY, LOW); 
-//  delay(7000); 
-//  moduleSetup(); // Establishes first-time serial comm and prints IMEI 
-//  connectGPRS(); 
-//}
 
 
 #ifdef UZ_Anemometer

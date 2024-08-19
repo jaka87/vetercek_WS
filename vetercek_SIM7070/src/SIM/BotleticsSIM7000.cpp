@@ -37,7 +37,7 @@ uint8_t Botletics_modem::type(void) {
 }
 
 boolean Botletics_modem::checkAT() {
-	if (sendCheckReply(F("AT"), ok_reply),5000)
+	if (sendCheckReply(F("AT"), ok_reply),300)
 		return true;
 return false;
 }
@@ -469,7 +469,7 @@ boolean Botletics_modem::UDPconnect(char *server, uint16_t port) {
   char buffer[50]; // Make sure the buffer is large enough to hold the entire string
 
 	  //sendCheckReply(F("AT+CACLOSE=0"),  F("OK"), 300);
-     sendCheckReply(F("AT"),  F("OK"), 300);
+     //sendCheckReply(F("AT"),  F("OK"), 300);
      sprintf(buffer, "AT+CAOPEN=0,0,\"UDP\",\"%s\",\"%u\"", server, port);
       if (! sendCheckReply(buffer,  F("+CAOPEN: 0,0"), 5000))
         return false;	  
