@@ -56,6 +56,7 @@ bool checkNetwork() {
 
 
 bool checkGPRS() { //check if gprs connected
+  bool checkAT = fona.checkAT(); // first thing to send to module after wake up
   if (fona.GPRSstate()!=1)  { 
      #ifdef DEBUG
         DEBUGSERIAL.println(F("GPRS_NI1"));

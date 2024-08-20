@@ -298,7 +298,7 @@ void PostData() {
     }
 
     attempts++;
-    delay(1000);
+    delay(500);
   }
 
   // If all attempts fail
