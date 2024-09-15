@@ -39,7 +39,9 @@ void UltrasonicAnemometer() { //measure wind speed
               windSpeed=atof(wind)*19.4384449;
               CalculateWindGust(windSpeed);
               CalculateWind();
-              timergprs = 0;                                            
+              if ( (wind_speed >= (cutoffWind*10) and measureCount <= whenSend )  or (wind_speed < (cutoffWind*10) and measureCount <= (whenSend*2))  ) {  // uz dont reset timer if more measurement than needed
+                timergprs = 0;  
+              }                                            
         }
         else { 
             UZerror(3); 
