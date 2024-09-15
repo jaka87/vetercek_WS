@@ -107,20 +107,20 @@ bool checkServer() { // try connecting to server
              
         else if (checkServernum==4 )  { 
            simReset();     
-           resetReason=34;       
+           //resetReason=34;       
         } 
 
 
        else if (checkServernum==3 ){ 
           connectGPRS(1); //check network, restart gprs
-           resetReason=33;       
+           //resetReason=33;       
        }
               
        else if (checkServernum==2 )  {
            if (checkGPRS()==false){ 
               connectGPRS(1); //check network, restart gprs
            }
-           resetReason=32;       
+           //resetReason=32;       
        } 
      
     return false;  
@@ -147,21 +147,22 @@ void fail_to_send() {     //if cannot send data to vetercek.com
 
   if (failedSend ==5) {    reset(13);}  
 
-  else if (failedSend ==4) {    simReset();  resetReason=38; }  
+  else if (failedSend ==4) {    simReset();  
+  //resetReason=38; 
+  }  
 
   else if (failedSend ==3) {    
      connectGPRS(2); //check network, restart gprs
-     resetReason=37;
+     //resetReason=37;
   } 
 
-  else if (failedSend ==2 ) {    
+  else {    
      if (checkGPRS()==false){ 
         connectGPRS(1); //check network, restart gprs
      }
-     resetReason=36;
+     delay(1000);
+     //resetReason=36;
   } 
 
-  else  {  delay(500);  resetReason=35;  }  
-  
  
 }
