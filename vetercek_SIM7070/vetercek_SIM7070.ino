@@ -28,16 +28,21 @@ int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 3; // interval after how many measurements data is send
 int sea_level_m=0; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
-//#define DEBUG // comment out if you want to turn off debugging
+#define DEBUG // comment out if you want to turn off debugging
 //#define DEBUG2 // comment out if you want to turn off SIM debugging
-//#define DEBUG_MEASURE                                 // debug data
-//#define LOCAL_WS // comment out if the station is global - shown on windgust.eu
-#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+//#define DEBUG_MEASURE  // debug data
+#define DEBUG_ERROR  // debug connection,DEBUG_ERROR not written to serial but as reset reason
+#define LOCAL_WS // comment out if the station is global - shown on windgust.eu
+//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 //#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
-#define TMPDS18B20 // comment out if you want to turn off temerature sensor
+//#define TMPDS18B20 // comment out if you want to turn off temerature sensor
 //#define BME // comment out if you want to turn off pressure and humidity sensor
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
+//#define COMPASS
+#define ANEMOMETER 3 //1 Davis // 2 - chinese 20 pulses per rotation //3 - custom 1 pulses per rotation
+#define ANEMOMETER_DEBOUNCE 15 // 15 davis anemometer, 4 chinese with 20 pulses
+
 #define NETWORK_OPERATORS 1
   // 1. Slovenia
   // 2. Croatia
@@ -50,6 +55,14 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
   // 9. Portugal
   // 10. Greece
 ///////////////////////////////////////////////////////////////////////////////////
+
+#if ANEMOMETER == 1 //Davis mechanical anemometer
+  #define windFactor 19555.96 
+#elif ANEMOMETER == 2
+ #define windFactor 1700.086 //chinese with 20 pulses per turn
+#elif ANEMOMETER == 3
+  #define windFactor 34001.72 // custom 1 pulses per rotation
+#endif
 
 #ifdef LOCAL_WS 
   char* broker = "vetercek.com";
@@ -130,8 +143,11 @@ Botletics_modem_LTE fona = Botletics_modem_LTE();
   LPS35HW lps(address);
 #endif
 
-#ifdef HUMIDITY
+#if defined(HUMIDITY) || defined(COMPASS)
   #include "Wire.h"
+#endif
+
+#ifdef HUMIDITY
   #if HUMIDITY == 31
     #include "src/HUM/SHT31.h"
     #define SHT_ADDRESS   0x44
@@ -200,6 +216,7 @@ byte batteryState=0; // 0 normal; 1 low battery; 2 very low battery
 byte stopSleepChange=0; //on
 volatile byte countWake = 0;
 byte checkServernum=0;
+byte sendError=0;
 
 #if NETWORK_OPERATORS == 1
   int network1=29340;
@@ -209,7 +226,7 @@ byte checkServernum=0;
 #elif NETWORK_OPERATORS == 2
   int network1=21901;
   int network2=21902;
-  byte net_ver1=9;
+  byte net_ver1=0;
   byte net_ver2=0;
 #elif NETWORK_OPERATORS == 3
   int network1=22210;
@@ -337,9 +354,19 @@ void setup() {
   }
 #endif 
 
+
+#if defined(HUMIDITY) || defined(COMPASS)
+    Wire.begin();
+#endif
+
+#if defined(COMPASS)
+  initCompass();
+#endif
+
+
+
 #ifdef HUMIDITY
   #if HUMIDITY == 31
-    Wire.begin();
     sht.begin(SHT_ADDRESS);
     Wire.setClock(100000);
     uint16_t stat = sht.readStatus();
@@ -589,7 +616,7 @@ void beforeSend() {
 void CheckTimerGPRS() { // if unable to send data in 200s
   timergprs++;
     
-  if (timergprs > 130 ) {
+  if (timergprs > 200 ) {
     #ifdef DEBUG
       DEBUGSERIAL.println(F("hardR"));
     #endif    

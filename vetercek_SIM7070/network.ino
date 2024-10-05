@@ -274,9 +274,13 @@ void PostData() {
   byte response[13];  
   byte udp_send = 0;
   byte attempts = 0;
+  byte max_attempts;
+
+  if (sendError==1) {max_attempts = 1;}
+  else {max_attempts = 2;}
 
   // Try to send data up to three times
-  while (attempts < 3) {
+  while (attempts < max_attempts) {
     udp_send = fona.UDPsend(data, sizeof(data), response, 26);
     
     #ifdef DEBUG 
@@ -291,16 +295,18 @@ void PostData() {
         DEBUGSERIAL.println(F("-->"));
       #endif
 
+      sendError=0;
       parseResponse(response);
       AfterPost(); 
       return; // Exit the function after successful send
     }
 
     attempts++;
-    delay(2000);
+    delay(1000);
   }
 
   // If all attempts fail
+  sendError=1;
   fail_to_send();
 } 
 

@@ -6,11 +6,26 @@ void UltrasonicAnemometer() { //measure wind speed
     int sum;
     int sum2; // new anemometer with aditional 0 in string
     unsigned long startedWaiting = millis();
+    unsigned long startTime = millis(); // Get the start time
+    int size = 0;
+    while ((millis() - startTime) < 30000) {  // 30 seconds = 30000 milliseconds
+        // Check if data is available to read
+        if (ultrasonic.available()) {
+            size = ultrasonic.readBytesUntil('\r\n', buffer, 70);
+            buffer[size] = '\0'; // Null-terminate the string
+            break; // Exit the loop once data is read
+        }
+        delay(10); // Small delay to prevent busy-waiting (optional)
+    }
+    
+    if ((millis() - startTime) >= 30000) {
+        // Timeout occurred
+        UZerror(1); // Handle timeout error (1 indicates timeout for this case)
+        return;
+    }
               
-      int size = ultrasonic.readBytesUntil('\r\n', buffer, 70);
-      buffer[size]='\0'; 
-      delay(20); // important in case of error
-          
+ 
+      delay(20); // important in case of error          
       char *dir = strtok(buffer, ",/");
       char *wind = strtok(NULL, ",/");
       char* check = strtok(NULL, ",/");
@@ -35,6 +50,17 @@ void UltrasonicAnemometer() { //measure wind speed
     
         if( (check[0] ==hexbuffer[2] and check[1] ==hexbuffer[3]) or (check[0] ==hexbuffer2[2] and check[1] ==hexbuffer2[3]) )  {  
               calDirection = atoi(dir) + vaneOffset;
+
+              #if defined(COMPASS)
+                int heading = getCompassHeading();
+                calDirection=calDirection+heading;
+                if (calDirection >= 360) {
+                    calDirection -= 360;  // Not executed because calDirection = 135
+                } else if (calDirection < 0) {
+                    calDirection += 360;  // Not executed because calDirection = 135
+                }
+              #endif 
+              
               CalculateWindDirection();  // calculate wind direction from data
               windSpeed=atof(wind)*19.4384449;
               CalculateWindGust(windSpeed);
@@ -73,7 +99,11 @@ void UZerror(byte where) { //ultrasonic error
       DEBUGSERIAL.println(where);
   #endif
 
-if ( sonicError ==4)  { ultrasonic.end(); delay(2000); ultrasonic.begin(9600);delay(5000);  }  
+  #ifdef DEBUG_ERROR
+    resetReason=55;  
+  #endif
+
+if ( sonicError ==3)  { ultrasonic.end(); delay(2000); ultrasonic.begin(9600);delay(5000);  }  
 if ( sonicError >=7)  { reset(4);  }   // if more than x US errors 
 }
 
@@ -145,9 +175,8 @@ while (ultrasonic.available() <2) {  delay(10); }
   }
   else  {
     actualWindDelay = (lastPulseMillis - firstPulseMillis);
-    windSpeed = rotations * (2250 / actualWindDelay) * 0.868976242 * 10 ; // convert to mp/h using the formula V=P(2.25/Time);
-    // 2250 instead of 2.25 because formula is in seconds not millis   & * 0.868976242 to convert in knots   & *10 so we can calculate decimals later
-  }
+      windSpeed = (rotations * windFactor) / actualWindDelay;  //chinese anemometer
+   }
 
   if (windSpeed < 600) { // delete data larger than 60KT
       CalculateWind();
@@ -194,7 +223,8 @@ void GetAvgWInd() {
     firstWindPulse = 0;
     firstPulseMillis = currentMillis;
   }
-  else if ((currentMillis - contactBounceTime) > 15 ) { // debounce the switch contact.
+
+    else if ((currentMillis - contactBounceTime) > ANEMOMETER_DEBOUNCE ) { // debounce the switch contact
     rotations++;
     contactBounceTime = currentMillis;
     lastPulseMillis = currentMillis;
@@ -210,7 +240,16 @@ void DominantDirection() { // get dominant wind direction
 // Get Wind direction, and split it in 16 parts and save it to array
 void GetWindDirection() {
   vaneValue = analogRead(PIN_A3);
+
+#if ANEMOMETER == 1 //Davis mechanical anemometer
   direction = map(vaneValue, 0, 1023, 0, 360);
+#else
+  float actualReferenceVoltage = 4.08;  // Measured voltage reference
+  float voltage = (vaneValue * actualReferenceVoltage) / 1023.0;    
+    // Calculate the angle (0 to 360 degrees based on voltage)
+  direction = (voltage / actualReferenceVoltage) * 360.0;  // Assuming 5V supply for AS5600
+#endif
+    
   calDirection = direction + vaneOffset;
   CalculateWindDirection();
 }
@@ -417,3 +456,62 @@ void ultrasonicFlush(){
 
   
 #endif 
+
+
+
+
+#if defined(COMPASS)
+
+
+// Function to handle compass data reading and heading calculation
+int getCompassHeading() {
+  int x, y, z;
+
+  // Start communication with the compass sensor
+  Wire.beginTransmission(0x1E);
+  Wire.write(0x03);  // Start reading from the data register
+  Wire.endTransmission();
+
+  // Request 6 bytes from the compass sensor (X, Y, Z axes data)
+  Wire.requestFrom(0x1E, 6);
+
+  // Check if we received all the required bytes
+  if (Wire.available() == 6) {
+    x = (Wire.read() << 8) | Wire.read();  // X-axis data
+    y = (Wire.read() << 8) | Wire.read();  // Y-axis data
+    z = (Wire.read() << 8) | Wire.read();  // Z-axis data (if needed)
+  } else {
+    // If no data is available, return an invalid value
+    return -1.0;  // Error value
+  }
+
+  // Calculate the heading in degrees
+  int heading = atan2((float)y, (float)x) * 180 / PI;
+
+  // Correct for when the heading is negative
+  if (heading < 0) {
+    heading += 360;
+  }
+
+  return heading;  // Return the calculated heading
+}
+
+
+void initCompass() {
+  Wire.beginTransmission(0x1E);
+  Wire.write(0x00);  // Write to configuration register A
+  Wire.write(0x70);  // 8-average, 15 Hz default, normal measurement
+  Wire.endTransmission();
+  
+  Wire.beginTransmission(0x1E);
+  Wire.write(0x01);  // Write to configuration register B
+  Wire.write(0xA0);  // Gain = 5
+  Wire.endTransmission();
+
+  Wire.beginTransmission(0x1E);
+  Wire.write(0x02);  // Select mode register
+  Wire.write(0x00);  // Continuous measurement mode
+  Wire.endTransmission();
+}
+
+#endif
