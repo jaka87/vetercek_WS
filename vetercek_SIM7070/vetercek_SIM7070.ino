@@ -28,14 +28,14 @@ int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 3; // interval after how many measurements data is send
 int sea_level_m=0; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
-#define DEBUG // comment out if you want to turn off debugging
+//#define DEBUG // comment out if you want to turn off debugging
 //#define DEBUG2 // comment out if you want to turn off SIM debugging
 //#define DEBUG_MEASURE  // debug data
-#define DEBUG_ERROR  // debug connection,DEBUG_ERROR not written to serial but as reset reason
+//#define DEBUG_ERROR  // debug connection,DEBUG_ERROR not written to serial but as reset reason
 #define LOCAL_WS // comment out if the station is global - shown on windgust.eu
-//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
-//#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
+#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
 //#define TMPDS18B20 // comment out if you want to turn off temerature sensor
 //#define BME // comment out if you want to turn off pressure and humidity sensor
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
