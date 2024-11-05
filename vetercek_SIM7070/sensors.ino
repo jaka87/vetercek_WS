@@ -6,11 +6,26 @@ void UltrasonicAnemometer() { //measure wind speed
     int sum;
     int sum2; // new anemometer with aditional 0 in string
     unsigned long startedWaiting = millis();
+    unsigned long startTime = millis(); // Get the start time
+    int size = 0;
+    while ((millis() - startTime) < 30000) {  // 30 seconds = 30000 milliseconds
+        // Check if data is available to read
+        if (ultrasonic.available()) {
+            size = ultrasonic.readBytesUntil('\r\n', buffer, 70);
+            buffer[size] = '\0'; // Null-terminate the string
+            break; // Exit the loop once data is read
+        }
+        delay(10); // Small delay to prevent busy-waiting (optional)
+    }
+    
+    if ((millis() - startTime) >= 30000) {
+        // Timeout occurred
+        UZerror(1); // Handle timeout error (1 indicates timeout for this case)
+        return;
+    }
               
-      int size = ultrasonic.readBytesUntil('\r\n', buffer, 70);
-      buffer[size]='\0'; 
-      delay(20); // important in case of error
-          
+ 
+      delay(20); // important in case of error          
       char *dir = strtok(buffer, ",/");
       char *wind = strtok(NULL, ",/");
       char* check = strtok(NULL, ",/");
@@ -35,24 +50,27 @@ void UltrasonicAnemometer() { //measure wind speed
     
         if( (check[0] ==hexbuffer[2] and check[1] ==hexbuffer[3]) or (check[0] ==hexbuffer2[2] and check[1] ==hexbuffer2[3]) )  {  
               calDirection = atoi(dir) + vaneOffset;
+
+              #if defined(COMPASS)
+                int heading = getCompassHeading();
+                calDirection=calDirection+heading;
+                if (calDirection >= 360) {
+                    calDirection -= 360;  // Not executed because calDirection = 135
+                } else if (calDirection < 0) {
+                    calDirection += 360;  // Not executed because calDirection = 135
+                }
+              #endif 
+              
               CalculateWindDirection();  // calculate wind direction from data
               windSpeed=atof(wind)*19.4384449;
               CalculateWindGust(windSpeed);
               CalculateWind();
-              timergprs = 0;                                            
+              if ( (wind_speed >= (cutoffWind*10) and measureCount <= whenSend )  or (wind_speed < (cutoffWind*10) and measureCount <= (whenSend*2))  ) {  // uz dont reset timer if more measurement than needed
+                timergprs = 0;  
+              }                                            
         }
         else { 
-//          if (atof(wind)*19.4384449 < 40){ // new function to allow data that dont pass checkup, hopefuly to fix Lanterna station issue
-//              calDirection = atoi(dir) + vaneOffset;
-//              CalculateWindDirection();  // calculate wind direction from data
-//              windSpeed=atof(wind)*19.4384449;
-//              CalculateWindGust(windSpeed);
-//              CalculateWind();
-//              timergprs = 0;             
-//          }
-//          else{ 
             UZerror(3); 
-          //}
           }        
       }
       else { 
@@ -81,7 +99,11 @@ void UZerror(byte where) { //ultrasonic error
       DEBUGSERIAL.println(where);
   #endif
 
-if ( sonicError ==4)  { ultrasonic.end(); delay(2000); ultrasonic.begin(9600);delay(5000);  }  
+  #ifdef DEBUG_ERROR
+    resetReason=55;  
+  #endif
+
+if ( sonicError ==3)  { ultrasonic.end(); delay(2000); ultrasonic.begin(9600);delay(5000);  }  
 if ( sonicError >=7)  { reset(4);  }   // if more than x US errors 
 }
 
@@ -134,36 +156,6 @@ while (ultrasonic.available() <2) {  delay(10); }
       DEBUGSERIAL.println(F("err sleepc")); 
      #endif       
       }
-//  ultrasonicFlush();
-//    while (ultrasonic.available() <2) {  
-//      delay(5);
-//      }  
-//  ultrasonic.write(buffer);   
-//  ultrasonic.write(">SaveConfig\r\n");
-//
-//  unsigned long startedWaiting = millis(); 
-//  while (strstr (buffer2,"IdleSec") == NULL and millis() - startedWaiting > 10000) {
-//    int size = ultrasonic.readBytesUntil('\n', buffer2, 80);
-//    delay(50);
-//  }
-//
-//    if(millis() - startedWaiting < 10000){ 
-//      sleepBetween=sleepT;
-//      changeSleep=0;
-//      stopSleepChange=0;
-//      ultrasonicFlush();
-//     #ifdef DEBUG 
-//      DEBUGSERIAL.print(F("sleepcok ")); 
-//      DEBUGSERIAL.println(sleepT); 
-//      delay(10);
-//     #endif 
-//      }
-//    else { 
-//     stopSleepChange++;
-//     #ifdef DEBUG 
-//      DEBUGSERIAL.println(F("err sleepc")); 
-//     #endif       
-//      } 
 }
 #endif 
 
@@ -183,9 +175,8 @@ while (ultrasonic.available() <2) {  delay(10); }
   }
   else  {
     actualWindDelay = (lastPulseMillis - firstPulseMillis);
-    windSpeed = rotations * (2250 / actualWindDelay) * 0.868976242 * 10 ; // convert to mp/h using the formula V=P(2.25/Time);
-    // 2250 instead of 2.25 because formula is in seconds not millis   & * 0.868976242 to convert in knots   & *10 so we can calculate decimals later
-  }
+      windSpeed = (rotations * windFactor) / actualWindDelay;  //chinese anemometer
+   }
 
   if (windSpeed < 600) { // delete data larger than 60KT
       CalculateWind();
@@ -232,7 +223,8 @@ void GetAvgWInd() {
     firstWindPulse = 0;
     firstPulseMillis = currentMillis;
   }
-  else if ((currentMillis - contactBounceTime) > 15 ) { // debounce the switch contact.
+
+    else if ((currentMillis - contactBounceTime) > ANEMOMETER_DEBOUNCE ) { // debounce the switch contact
     rotations++;
     contactBounceTime = currentMillis;
     lastPulseMillis = currentMillis;
@@ -248,7 +240,16 @@ void DominantDirection() { // get dominant wind direction
 // Get Wind direction, and split it in 16 parts and save it to array
 void GetWindDirection() {
   vaneValue = analogRead(PIN_A3);
+
+#if ANEMOMETER == 1 //Davis mechanical anemometer
   direction = map(vaneValue, 0, 1023, 0, 360);
+#else
+  float actualReferenceVoltage = 4.08;  // Measured voltage reference
+  float voltage = (vaneValue * actualReferenceVoltage) / 1023.0;    
+    // Calculate the angle (0 to 360 degrees based on voltage)
+  direction = (voltage / actualReferenceVoltage) * 360.0;  // Assuming 5V supply for AS5600
+#endif
+    
   calDirection = direction + vaneOffset;
   CalculateWindDirection();
 }
@@ -349,9 +350,6 @@ void GetPressure() {
 
 #ifdef HUMIDITY
   void GetHumidity() {
-//      #ifdef DEBUG 
-//      DEBUGSERIAL.println(F("hum start")); 
-//     #endif 
   #if HUMIDITY == 31    
     if ( sht.isConnected() ){
       sht.read();         // default = true/fast       slow = false
@@ -362,11 +360,6 @@ void GetPressure() {
      if (sht.TcrcOK) {temp=sht.TtoDegC();} 
      if (sht.RHcrcOK) { humidity=sht.RHtoPercent();} 
   #endif 
-   
-//      #ifdef DEBUG 
-//      DEBUGSERIAL.println(F("hum stop")); 
-//     #endif 
- 
      #ifdef DEBUG
       DEBUGSERIAL.print(F("hum: "));
       DEBUGSERIAL.println(humidity);
@@ -442,59 +435,16 @@ void BeforePostCalculations( byte kind) {
   }     
 }
 
-//
-//void adc_init() {
-//  // Set the ADC reference to AVcc
-//  ADMUX = (1 << REFS0);
-//  // Set the ADC prescaler to 64 (assuming 8 MHz clock, gives 125 KHz ADC clock)
-//  //ADCSRA = (1 << ADPS2) | (1 << ADPS1);
-//  // Enable the ADC
-//  ADCSRA |= (1 << ADEN);
-//}
-//
-//uint16_t adc_read(uint8_t channel) {
-//  // Select the ADC channel
-//  ADMUX = (ADMUX & 0xF8) | (channel & 0x07);
-//  // Start the conversion
-//  ADCSRA |= (1 << ADSC);
-//  // Wait for the conversion to complete
-//  while (ADCSRA & (1 << ADSC));
-//  // Read the ADC value
-//  return ADC;
-//}
-//
-//int readVcc() {
-//  uint16_t adc_value=0;
-//  // Convert the ADC value to a voltage
-//  volatile unsigned currCount = 0;
-//    while (currCount < 10) {
-//      adc_value += adc_read(A1);
-//      currCount++;
-//      delay(10);       
-//  }
-//  return ((adc_value/currCount)*2);
-//}
-
-
 // Read the module's power supply voltage
 float readVcc() {
-  // Read battery voltage
-if (fona.getBattVoltage(&battVoltage)) {
-  battLevel=battVoltage/20; // voltage  
-}
-else {
-  battLevel=0;
-}
-
-//  int curr = 0;
-//  volatile unsigned currCount = 0;
-//    while (currCount < 10) {
-//          curr += analogRead(A1)*3.8;
-//          currCount++;
-//          delay(10);
-//      }
-//  battLevel=(curr/currCount)/20;
-return battLevel;
+    // Read battery voltage
+  if (fona.getBattVoltage(&battVoltage)) {
+    battLevel=battVoltage/20; // voltage  
+  }
+  else {
+    battLevel=0;
+  }
+  return battLevel;
 }
 
 #ifdef UZ_Anemometer
@@ -506,3 +456,62 @@ void ultrasonicFlush(){
 
   
 #endif 
+
+
+
+
+#if defined(COMPASS)
+
+
+// Function to handle compass data reading and heading calculation
+int getCompassHeading() {
+  int x, y, z;
+
+  // Start communication with the compass sensor
+  Wire.beginTransmission(0x1E);
+  Wire.write(0x03);  // Start reading from the data register
+  Wire.endTransmission();
+
+  // Request 6 bytes from the compass sensor (X, Y, Z axes data)
+  Wire.requestFrom(0x1E, 6);
+
+  // Check if we received all the required bytes
+  if (Wire.available() == 6) {
+    x = (Wire.read() << 8) | Wire.read();  // X-axis data
+    y = (Wire.read() << 8) | Wire.read();  // Y-axis data
+    z = (Wire.read() << 8) | Wire.read();  // Z-axis data (if needed)
+  } else {
+    // If no data is available, return an invalid value
+    return -1.0;  // Error value
+  }
+
+  // Calculate the heading in degrees
+  int heading = atan2((float)y, (float)x) * 180 / PI;
+
+  // Correct for when the heading is negative
+  if (heading < 0) {
+    heading += 360;
+  }
+
+  return heading;  // Return the calculated heading
+}
+
+
+void initCompass() {
+  Wire.beginTransmission(0x1E);
+  Wire.write(0x00);  // Write to configuration register A
+  Wire.write(0x70);  // 8-average, 15 Hz default, normal measurement
+  Wire.endTransmission();
+  
+  Wire.beginTransmission(0x1E);
+  Wire.write(0x01);  // Write to configuration register B
+  Wire.write(0xA0);  // Gain = 5
+  Wire.endTransmission();
+
+  Wire.beginTransmission(0x1E);
+  Wire.write(0x02);  // Select mode register
+  Wire.write(0x00);  // Continuous measurement mode
+  Wire.endTransmission();
+}
+
+#endif

@@ -37,7 +37,7 @@ uint8_t Botletics_modem::type(void) {
 }
 
 boolean Botletics_modem::checkAT() {
-	if (sendCheckReply(F("AT"), ok_reply),5000)
+	if (sendCheckReply(F("AT"), ok_reply),300)
 		return true;
 return false;
 }
@@ -469,7 +469,7 @@ boolean Botletics_modem::UDPconnect(char *server, uint16_t port) {
   char buffer[50]; // Make sure the buffer is large enough to hold the entire string
 
 	  //sendCheckReply(F("AT+CACLOSE=0"),  F("OK"), 300);
-     sendCheckReply(F("AT"),  F("OK"), 300);
+     //sendCheckReply(F("AT"),  F("OK"), 300);
      sprintf(buffer, "AT+CAOPEN=0,0,\"UDP\",\"%s\",\"%u\"", server, port);
       if (! sendCheckReply(buffer,  F("+CAOPEN: 0,0"), 5000))
         return false;	  
@@ -498,28 +498,14 @@ uint8_t Botletics_modem::UDPconnected(void) {
 uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte response[12],uint8_t charr) {	
 	  uint8_t howmany;
      char buffer[20]; // Make sure the buffer is large enough to hold the entire string
-
-	//#ifdef BOTLETICS_MODEM_DEBUG
-	  //DEBUG_PRINT(F("AT+CASEND=0,"));
-	  //DEBUG_PRINTLN(len);
-	  //for (uint16_t i=0; i<len; i++) {
-		  //DEBUG_PRINT(F(" 0x"));
-		  //DEBUG_PRINT(packet[i], HEX);
-	  //}
-	  //DEBUG_PRINTLN();
-	//#endif
+     flushInput();
 
      sprintf(buffer, "AT+CASEND=0,%u", len);
      mySerial->println(buffer);
      DEBUG_PRINTLN(buffer);
-	  //mySerial->print(F("AT+CASEND=0,"));
-	  //mySerial->println(len);
+
 	  
 	  readline(1000);
-	  //DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer[0]);
-
-	  //if (replybuffer[0] == '>') DEBUG_PRINTLN("ok");
-
 
 	  if (replybuffer[0] != '>') return 3;
 	  mySerial->write(packet, len);
@@ -528,7 +514,7 @@ uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 	if (strcmp(replybuffer, "OK") != 0) { return 4;}
 
-	uint8_t sendD2 = readline(5000); // return SEND OK
+	uint8_t sendD2 = readline(5000); // return if received data back
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 	if (strcmp(replybuffer, "+CADATAIND: 0") != 0) { return 5;}
 
@@ -537,7 +523,6 @@ uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
 			DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
 		 }
 
-	  
 	mySerial->println(F("AT+CARECV=0,25"));
 	uint8_t receveD = readline2(2000,charr); // RETURN DATA
 

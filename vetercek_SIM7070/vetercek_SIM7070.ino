@@ -22,21 +22,27 @@ int resetReason = MCUSR;
 
 //////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
 #define APN "iot.1nce.net"
-byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 (2g with nb-iot as backup) and 51 (nb-iot with 2g as backup)
+byte GSMstate=51; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 (2g with nb-iot as backup) and 51 (nb-iot with 2g as backup)
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 3; // interval after how many measurements data is send
 int sea_level_m=0; // enter elevation for your location for pressure calculation
 /////////////////////////////////    OPTIONS TO TURN ON AN OFF
 //#define DEBUG // comment out if you want to turn off debugging
-#define DEBUG2 // comment out if you want to turn off SIM debugging
+//#define DEBUG2 // comment out if you want to turn off SIM debugging
+//#define DEBUG_MEASURE  // debug data
+//#define DEBUG_ERROR  // debug connection,DEBUG_ERROR not written to serial but as reset reason
 #define LOCAL_WS // comment out if the station is global - shown on windgust.eu
-//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
-//#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
+#define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
 //#define TMPDS18B20 // comment out if you want to turn off temerature sensor
 //#define BME // comment out if you want to turn off pressure and humidity sensor
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
+//#define COMPASS
+#define ANEMOMETER 3 //1 Davis // 2 - chinese 20 pulses per rotation //3 - custom 1 pulses per rotation
+#define ANEMOMETER_DEBOUNCE 15 // 15 davis anemometer, 4 chinese with 20 pulses
+
 #define NETWORK_OPERATORS 1
   // 1. Slovenia
   // 2. Croatia
@@ -44,12 +50,24 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
   // 4. Hungary
   // 5. Austria
   // 6. Germany 
+  // 7. France
+  // 8. Netherlands
+  // 9. Portugal
+  // 10. Greece
 ///////////////////////////////////////////////////////////////////////////////////
+
+#if ANEMOMETER == 1 //Davis mechanical anemometer
+  #define windFactor 19555.96 
+#elif ANEMOMETER == 2
+ #define windFactor 1700.086 //chinese with 20 pulses per turn
+#elif ANEMOMETER == 3
+  #define windFactor 34001.72 // custom 1 pulses per rotation
+#endif
 
 #ifdef LOCAL_WS 
   char* broker = "vetercek.com";
 #else
-  char* broker = "windgust.eu";
+  char* broker = "data.windgust.eu";
 #endif
 
 #define ONE_WIRE_BUS_1 4 //air
@@ -125,8 +143,11 @@ Botletics_modem_LTE fona = Botletics_modem_LTE();
   LPS35HW lps(address);
 #endif
 
-#ifdef HUMIDITY
+#if defined(HUMIDITY) || defined(COMPASS)
   #include "Wire.h"
+#endif
+
+#ifdef HUMIDITY
   #if HUMIDITY == 31
     #include "src/HUM/SHT31.h"
     #define SHT_ADDRESS   0x44
@@ -157,7 +178,7 @@ volatile unsigned long currentMillis2;
 volatile unsigned long contactBounceTime2; // Timer to avoid contact bounce in rain interrupt routine
 volatile unsigned long updateBattery = 0;
 
-int rainCount=-1; // count rain bucket tilts
+volatile int rainCount=-1; // count rain bucket tilts
 byte SolarCurrent; // calculate solar cell current 
 byte firstWindPulse; // ignore 1st anemometer rotation since it didn't make full circle
 int windSpeed; // speed
@@ -195,6 +216,7 @@ byte batteryState=0; // 0 normal; 1 low battery; 2 very low battery
 byte stopSleepChange=0; //on
 volatile byte countWake = 0;
 byte checkServernum=0;
+byte sendError=0;
 
 #if NETWORK_OPERATORS == 1
   int network1=29340;
@@ -202,8 +224,8 @@ byte checkServernum=0;
   byte net_ver1=9;
   byte net_ver2=0;
 #elif NETWORK_OPERATORS == 2
-  int network1=21902;
-  int network2=21910;
+  int network1=21901;
+  int network2=21902;
   byte net_ver1=0;
   byte net_ver2=0;
 #elif NETWORK_OPERATORS == 3
@@ -224,7 +246,27 @@ byte checkServernum=0;
 #elif NETWORK_OPERATORS == 6
   int network1=26201;
   int network2=26202;
-  byte net_ver1=0;
+  byte net_ver1=9;
+  byte net_ver2=0;
+#elif NETWORK_OPERATORS == 7
+  int network1=20801;
+  int network2=20810;
+  byte net_ver1=9;
+  byte net_ver2=0;
+#elif NETWORK_OPERATORS == 8
+  int network1=20402;
+  int network2=20401;
+  byte net_ver1=9;
+  byte net_ver2=0;
+#elif NETWORK_OPERATORS == 9
+  int network1=26802;
+  int network2=26801;
+  byte net_ver1=9;
+  byte net_ver2=0;
+#elif NETWORK_OPERATORS == 10
+  int network1=20202;
+  int network2=20201;
+  byte net_ver1=9;
   byte net_ver2=0;
 #else
   int network1=0;
@@ -232,8 +274,7 @@ byte checkServernum=0;
   byte net_ver1=0;
   byte net_ver2=0;
 #endif
-
-
+//MCC + MNC
 
 void setup() {
   MCUSR = 0; // clear reset flags
@@ -313,9 +354,19 @@ void setup() {
   }
 #endif 
 
+
+#if defined(HUMIDITY) || defined(COMPASS)
+    Wire.begin();
+#endif
+
+#if defined(COMPASS)
+  initCompass();
+#endif
+
+
+
 #ifdef HUMIDITY
   #if HUMIDITY == 31
-    Wire.begin();
     sht.begin(SHT_ADDRESS);
     Wire.setClock(100000);
     uint16_t stat = sht.readStatus();
@@ -344,9 +395,7 @@ if (EEPROM.read(27)==255 or EEPROM.read(27)==1) {
       readEEPROMnetwork(23,24,25);
     }   
  }  
- else{ 
-    connectGPRS();
- }
+
 
   if (resetReason==8 ) { //////////////////// reset reason detailed        
     if (EEPROM.read(15)>0 ) {
@@ -400,9 +449,8 @@ delay(7000);
 #endif
 moduleSetup(); // Establishes first-time serial comm and prints IMEI 
 bool checkAT = fona.checkAT();
-delay(50);
+delay(100);
 if (fona.checkAT()) { checkIMEI(); }
-//if ((resetReason==82 or resetReason==85 or resetReason==86) and network1>0  and EEPROM.read(26)!= 1) { 
 if (network1>0  and EEPROM.read(26)!= 1) { 
   EEPROM.write(26,1); 
     #ifdef DEBUG                                 
@@ -419,7 +467,6 @@ else if (network2>0) {
   #endif
   changeNetwork_id(network2,net_ver2);
   } 
-//connectGPRS(); 
 
 beforeSend();
 
@@ -496,16 +543,16 @@ void loop() {
 #endif  
 
 
-//  #ifdef DEBUG                                 // debug data
-//    DEBUGSERIAL.print(F(" d:"));
-//    DEBUGSERIAL.print(calDirection);
-//    DEBUGSERIAL.print(F(" s:"));
-//    DEBUGSERIAL.print(windSpeed);
-//    DEBUGSERIAL.print(F(" c:"));
-//    DEBUGSERIAL.print(measureCount);
-//    DEBUGSERIAL.print(F(" s:"));
-//    DEBUGSERIAL.println(sonicError);
-//  #endif
+  #ifdef DEBUG_MEASURE                                 // debug data
+    DEBUGSERIAL.print(F(" d:"));
+    DEBUGSERIAL.print(calDirection);
+    DEBUGSERIAL.print(F(" s:"));
+    DEBUGSERIAL.print(windSpeed);
+    DEBUGSERIAL.print(F(" c:"));
+    DEBUGSERIAL.print(measureCount);
+    DEBUGSERIAL.print(F(" s:"));
+    DEBUGSERIAL.println(sonicError);
+  #endif
 
   GetAvgWInd();                                 // avg wind
 
@@ -533,11 +580,7 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
   }
 
 #ifdef UZ_Anemometer
-  else if ( UltrasonicAnemo==1 ){ // go to sleep
-//      #ifdef DEBUG
-//      DEBUGSERIAL.print(F("wc "));
-//      DEBUGSERIAL.println(countWake);
-//    #endif   
+  else if ( UltrasonicAnemo==1 ){ // go to sleep  
     ENABLE_UART_START_FRAME_INTERRUPT;
     countWake=0;
     LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
@@ -549,17 +592,9 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
 
 void beforeSend() { 
       /////////////////////////// send data to server ///////////////////////////////////////////////  
-//      #ifdef UZ_Anemometer
-//        ultrasonic.end();
-//      #endif
-        //GetTmpNow();
       digitalWrite(DTR, LOW);  //wake up  
-      delay(50);
+      delay(100);
       //bool checkAT = fona.checkAT();
-      //delay(50);
-      //if (fona.checkAT()) { SendData(); }
-      //else {moduleSetup(); SendData(); }
-
       SendData();  
       digitalWrite(DTR, HIGH);  //sleep  
       delay(50);
@@ -581,7 +616,7 @@ void beforeSend() {
 void CheckTimerGPRS() { // if unable to send data in 200s
   timergprs++;
     
-  if (timergprs > 130 ) {
+  if (timergprs > 200 ) {
     #ifdef DEBUG
       DEBUGSERIAL.println(F("hardR"));
     #endif    
@@ -609,8 +644,6 @@ void reset(byte rr) {
     DEBUGSERIAL.print(F("rst: "));
     DEBUGSERIAL.println(rr);
   #endif  
-  //digitalWrite(PWRKEY, LOW);
-  //delay(1500); 
   wdt_enable(WDTO_60MS);
   delay(100);
 }
@@ -621,22 +654,15 @@ void simReset() {
   #ifdef DEBUG
     DEBUGSERIAL.println("SIM RST");
   #endif 
+    dropConnection(1);  //deactivate PDP, drop GPRS, drop network  
+    delay(200);
     fona.reset(); // AT+CFUN=1,1
-    delay(3000);
+    delay(300);
     moduleSetup(); // Establishes first-time serial comm and prints IMEI 
     checkIMEI();
-    connectGPRS(); 
+    connectGPRS(0); //just connect
 }
 
-//void S7070Reset() {  
-//  #ifdef DEBUG
-//    DEBUGSERIAL.println("7070 RST");
-//  #endif 
-//  digitalWrite(PWRKEY, LOW); 
-//  delay(7000); 
-//  moduleSetup(); // Establishes first-time serial comm and prints IMEI 
-//  connectGPRS(); 
-//}
 
 
 #ifdef UZ_Anemometer
