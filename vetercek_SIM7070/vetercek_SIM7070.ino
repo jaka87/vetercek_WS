@@ -54,6 +54,7 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
   // 8. Netherlands
   // 9. Portugal
   // 10. Greece
+  // 11. Spain
 ///////////////////////////////////////////////////////////////////////////////////
 
 #if ANEMOMETER == 1 //Davis mechanical anemometer
@@ -268,6 +269,11 @@ byte sendError=0;
   int network2=20201;
   byte net_ver1=9;
   byte net_ver2=0;
+#elif NETWORK_OPERATORS == 11
+  int network1=21401;
+  int network2=21403;
+  byte net_ver1=9;
+  byte net_ver2=0;
 #else
   int network1=0;
   int network2=0;
@@ -323,7 +329,7 @@ void setup() {
 #ifdef TMPDS18B20
   sensor_air.begin();
 #endif
-  if (EEPROM.read(10)==0) { attachInterrupt(digitalPinToInterrupt(3), rain_count, FALLING); enableRain=1;} // rain counts
+  if (EEPROM.read(10)==0 or enableRain==1) { attachInterrupt(digitalPinToInterrupt(3), rain_count, FALLING); enableRain=1;} // rain counts
   #ifdef TMPDS18B20
     else { sensor_water.begin(); } // water temperature
   #endif
@@ -451,6 +457,9 @@ moduleSetup(); // Establishes first-time serial comm and prints IMEI
 bool checkAT = fona.checkAT();
 delay(100);
 if (fona.checkAT()) { checkIMEI(); }
+
+
+//r change network
 if (network1>0  and EEPROM.read(26)!= 1) { 
   EEPROM.write(26,1); 
     #ifdef DEBUG                                 
