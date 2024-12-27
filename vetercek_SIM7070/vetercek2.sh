@@ -14,6 +14,14 @@ echo "Do you want to enable DEBUG? (y/n)"
 read ENABLE_DEBUG
 if [[ "$ENABLE_DEBUG" == "y" ]]; then
     sed -i 's|//\(#define DEBUG\)|\1|' "$INO_PATH"
+	echo "Do you want to enable DEBUG_MEASURE? (y/n)"
+	read ENABLE_DEBUG_MEASURE
+	if [[ "$ENABLE_DEBUG_MEASURE" == "y" ]]; then
+		sed -i 's|//\(#define DEBUG_MEASURE\)|\1|' "$INO_PATH"
+	else
+		sed -i 's|^\(#define DEBUG_MEASURE\)|//\1|' "$INO_PATH"
+	fi
+    
 else
     sed -i 's|^\(#define DEBUG\)|//\1|' "$INO_PATH"
 fi
@@ -42,21 +50,6 @@ read ENABLE_HUMIDITY
 if [[ "$ENABLE_HUMIDITY" == "n" ]]; then
     # Comment out the HUMIDITY line
     sed -i 's|^\(#define HUMIDITY\)|//\1|' "$INO_PATH"
-else
-    # Ask for the value to set (31 or 41)
-    echo "Enter the value for HUMIDITY (31 or 41):"
-    read HUMIDITY_VALUE
-
-    if [[ "$HUMIDITY_VALUE" == "31" || "$HUMIDITY_VALUE" == "41" ]]; then
-        # Update the HUMIDITY value in the .ino file
-        sed -i 's|^\(#define HUMIDITY\).*|#define HUMIDITY '"$HUMIDITY_VALUE"' // 31 or 41 or comment out if you want to turn off humidity sensor|' "$INO_PATH"
-    else
-        echo "Invalid value. Please enter 31 or 41 next time."
-        # Restore the original file and exit
-        rm "$INO_PATH"
-        mv "$TEMP_FILE" "$INO_PATH"
-        exit 1
-    fi
 fi
 
 
@@ -66,12 +59,12 @@ if [[ "$TMPDS18B20" == "y" ]]; then
     sed -i 's|//\(#define TMPDS18B20\)|\1|' "$INO_PATH"
 else
     sed -i 's|^\(#define TMPDS18B20\)|//\1|' "$INO_PATH"
-	echo "Do you want to enable RAIN? (y/n)"
-	read RAIN
-	if [[ "$RAIN" == "y" ]]; then
-		sed -i 's/enableRain=0;/enableRain=1;/g' "$INO_PATH"
-	fi
+fi
 
+echo "Do you want to enable RAIN? (y/n)"
+read RAIN
+if [[ "$RAIN" == "y" ]]; then
+	sed -i 's/enableRain=0;/enableRain=1;/g' "$INO_PATH"
 fi
 
 
@@ -142,7 +135,7 @@ echo "Original .ino file restored."
 
 
 elif [ "$var1" == "3" ]; then
-	//bin/avrdude -C//etc/avrdude.conf -v -V -patmega328pb -cusbtiny -Uflash:w:/home/jaka87/Arduino/temp/vetercek_SIM7070.ino.hex:i lfuse:w:0xDF:m efuse:w:0xFD:m hfuse:w:DA:m lock:w:0xFF:m 
+	//bin/avrdude -C//etc/avrdude.conf -v -V -patmega328pb -e -cusbtiny -Uflash:w:/home/jaka87/Arduino/temp/vetercek_SIM7070.ino.hex:i lfuse:w:0xDF:m efuse:w:0xFD:m hfuse:w:DA:m lock:w:0xFF:m 
 fi
 
 

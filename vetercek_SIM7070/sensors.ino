@@ -1,6 +1,11 @@
 #ifdef UZ_Anemometer
 void UltrasonicAnemometer() { //measure wind speed
-    char buffer[70];
+
+// first: :1,0,0.00,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,E5
+// second: :01,0,0.00,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,BE
+// latest: :01,0,0.00,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,0,,23
+
+    char buffer[75];
     char hexbuffer[5];
     char hexbuffer2[5]; // new anemometer with aditional 0 in string
     int sum;
@@ -11,7 +16,7 @@ void UltrasonicAnemometer() { //measure wind speed
     while ((millis() - startTime) < 30000) {  // 30 seconds = 30000 milliseconds
         // Check if data is available to read
         if (ultrasonic.available()) {
-            size = ultrasonic.readBytesUntil('\r\n', buffer, 70);
+            size = ultrasonic.readBytesUntil('\r\n', buffer, 75);
             buffer[size] = '\0'; // Null-terminate the string
             break; // Exit the loop once data is read
         }
@@ -24,50 +29,48 @@ void UltrasonicAnemometer() { //measure wind speed
         return;
     }
               
- 
       delay(20); // important in case of error          
       char *dir = strtok(buffer, ",/");
       char *wind = strtok(NULL, ",/");
       char* check = strtok(NULL, ",/");
+      char* check2 = strtok(NULL, ",/");
 
-//       #ifdef DEBUG 
-//       delay(20);
-//        DEBUGSERIAL.println(dir); 
-//        DEBUGSERIAL.println(wind); 
-//        DEBUGSERIAL.println(check); 
-//       delay(70);
-//       #endif 
 
       if( check!=NULL and wind!=NULL and dir!=NULL)  {    
+
+        if( check2!=NULL)  {  check=check2;  }
         sum+=countBytes(dir);
         sum+=countBytes(wind);
         sum+=2605;
-        sum2=sum+48;
+        if( check2!=NULL)  {  sum2=sum-62;  } //2781
+        else {  sum2=sum+48;  }
+        
         sum=-(sum % 256);   
         sum2=-(sum2 % 256);   
         sprintf(hexbuffer,"%02X", sum);
         sprintf(hexbuffer2,"%02X", sum2); // new anemometer with aditional 0 in string
-    
+   
         if( (check[0] ==hexbuffer[2] and check[1] ==hexbuffer[3]) or (check[0] ==hexbuffer2[2] and check[1] ==hexbuffer2[3]) )  {  
-              calDirection = atoi(dir) + vaneOffset;
-
-              #if defined(COMPASS)
-                int heading = getCompassHeading();
-                calDirection=calDirection+heading;
-                if (calDirection >= 360) {
-                    calDirection -= 360;  // Not executed because calDirection = 135
-                } else if (calDirection < 0) {
-                    calDirection += 360;  // Not executed because calDirection = 135
-                }
-              #endif 
-              
-              CalculateWindDirection();  // calculate wind direction from data
-              windSpeed=atof(wind)*19.4384449;
-              CalculateWindGust(windSpeed);
-              CalculateWind();
-              if ( (wind_speed >= (cutoffWind*10) and measureCount <= whenSend )  or (wind_speed < (cutoffWind*10) and measureCount <= (whenSend*2))  ) {  // uz dont reset timer if more measurement than needed
-                timergprs = 0;  
-              }                                            
+            calDirection = atoi(dir) + vaneOffset;
+            
+            #if defined(COMPASS)
+              int heading = getCompassHeading();
+              calDirection=calDirection+heading;
+              if (calDirection >= 360) {
+                  calDirection -= 360;  // Not executed because calDirection = 135
+              } else if (calDirection < 0) {
+                  calDirection += 360;  // Not executed because calDirection = 135
+              }
+            #endif 
+            
+            CalculateWindDirection();  // calculate wind direction from data
+            windSpeed=atof(wind)*19.4384449;
+            CalculateWindGust(windSpeed);
+            CalculateWind();
+            if ( (wind_speed >= (cutoffWind*10) and measureCount <= whenSend )  or (wind_speed < (cutoffWind*10) and measureCount <= (whenSend*2))  ) {  // uz dont reset timer if more measurement than needed
+              timergprs = 0;  
+            } 
+                                           
         }
         else { 
             UZerror(3); 
@@ -78,7 +81,9 @@ void UltrasonicAnemometer() { //measure wind speed
         }      
 
 ultrasonicFlush();
+
 }
+
 
 int countBytes( const char * data )
 {
@@ -264,9 +269,12 @@ void CalculateWindDirection() {
 
 void rain_count() {
   currentMillis2 = millis(); //we have to read millis at the same position in ISR each time to get the most accurate readings
-if ((currentMillis2 - contactBounceTime2) > 500 ) { // debounce the switch contact.
+if ((currentMillis2 - contactBounceTime2) > 350 ) { // debounce the switch contact.
     contactBounceTime2 = currentMillis2;
     rainCount++;
+  digitalWrite(13, HIGH);   // turn the LED on
+  delay(15);                       // wait
+  digitalWrite(13, LOW);    // turn the LED
   }
 }
 
@@ -317,13 +325,19 @@ void GetPressure() {
   lps.requestOneShot();  // important to request new data before reading
   delay(100);
   abs_pressure = lps.readPressure();  // hPa
-  if (temp> -30) { 
-    pressure=(abs_pressure / pow(1.0 - 0.0065 * sea_level_m / (temp  + 273.15), 5.255))*10;  // ICAO formula
-    }
-  else { 
-    temp=lps.readTemp();
-    pressure=(abs_pressure / pow(1.0 - 0.0065 * sea_level_m / (temp  + 273.15), 5.255))*10;  // ICAO formula
-    }
+  if (sea_level_m > 0) { 
+    if (temp> -30) { 
+      pressure=(abs_pressure / pow(1.0 - 0.0065 * sea_level_m / (temp  + 273.15), 5.255))*10;  // ICAO formula
+      }
+    else { 
+      temp=lps.readTemp();
+      pressure=(abs_pressure / pow(1.0 - 0.0065 * sea_level_m / (temp  + 273.15), 5.255))*10;  // ICAO formula
+      }
+  }
+  else
+  { 
+      pressure=abs_pressure*10; 
+  }
 }
 #endif
 

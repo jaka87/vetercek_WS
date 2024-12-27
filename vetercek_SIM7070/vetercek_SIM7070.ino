@@ -8,6 +8,8 @@
 //>SaveConfig\r\n
 //>ComMode:0\r\n 0 232/1 485
 
+//PCB 0.6.4 and up
+
 
 #include <avr/wdt.h> //watchdog
 #include "src/LowPower/LowPower.h" //sleep library
@@ -22,7 +24,7 @@ int resetReason = MCUSR;
 
 //////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
 #define APN "iot.1nce.net"
-byte GSMstate=51; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 (2g with nb-iot as backup) and 51 (nb-iot with 2g as backup)
+byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 (2g with nb-iot as backup) and 51 (nb-iot with 2g as backup)
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
 int whenSend = 3; // interval after how many measurements data is send
@@ -40,7 +42,7 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 //#define BME // comment out if you want to turn off pressure and humidity sensor
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
 //#define COMPASS
-#define ANEMOMETER 3 //1 Davis // 2 - chinese 20 pulses per rotation //3 - custom 1 pulses per rotation
+#define ANEMOMETER 1 //1 Davis // 2 - chinese 20 pulses per rotation //3 - custom 1 pulses per rotation
 #define ANEMOMETER_DEBOUNCE 15 // 15 davis anemometer, 4 chinese with 20 pulses
 
 #define NETWORK_OPERATORS 1
@@ -179,7 +181,7 @@ volatile unsigned long currentMillis2;
 volatile unsigned long contactBounceTime2; // Timer to avoid contact bounce in rain interrupt routine
 volatile unsigned long updateBattery = 0;
 
-volatile int rainCount=-1; // count rain bucket tilts
+volatile int rainCount=0; // count rain bucket tilts
 byte SolarCurrent; // calculate solar cell current 
 byte firstWindPulse; // ignore 1st anemometer rotation since it didn't make full circle
 int windSpeed; // speed
@@ -207,7 +209,7 @@ byte failedSend=0; // if send fail
 byte sonicError=0;
 byte UltrasonicAnemo=0;
 byte enableSolar=1;
-byte enableRain=0;
+byte enableRain=0; //disable if water
 byte enableBmp=0;
 byte enableHum=0;
 int pressure=0;
@@ -329,15 +331,29 @@ void setup() {
 #ifdef TMPDS18B20
   sensor_air.begin();
 #endif
-  if (EEPROM.read(10)==0 or enableRain==1) { attachInterrupt(digitalPinToInterrupt(3), rain_count, FALLING); enableRain=1;} // rain counts
+//  if (EEPROM.read(10)==0 or enableRain==1) { attachInterrupt(digitalPinToInterrupt(3), rain_count, FALLING); enableRain=1;} // rain counts
+  if (EEPROM.read(10)==0 or enableRain==1) { attachInterrupt(digitalPinToInterrupt(3), rain_count, RISING); enableRain=1;} // rain counts
   #ifdef TMPDS18B20
     else { sensor_water.begin(); } // water temperature
   #endif
-  if (EEPROM.read(9)==13) { GSMstate=13; }
-  else if (EEPROM.read(9)==2) { GSMstate=2; }
-  else if (EEPROM.read(9)==38) {GSMstate=38; } //#define NBIOT
-  else if (EEPROM.read(9)==51) {GSMstate=51; } //#define NBIOT or 2G
-  if (EEPROM.read(14)==10) { stopSleepChange=3; } // UZ sleep on/off
+
+  int eepromValue9 = EEPROM.read(9);
+  int eepromValue14 = EEPROM.read(14);
+  
+  if (eepromValue9 == 13) { 
+      GSMstate = 13; 
+  } else if (eepromValue9 == 2) { 
+      GSMstate = 2; 
+  } else if (eepromValue9 == 38) { 
+      GSMstate = 38; // #define NBIOT
+  } else if (eepromValue9 == 51) { 
+      GSMstate = 51; // #define NBIOT or 2G
+  }
+  
+  if (eepromValue14 == 10) { 
+      stopSleepChange = 3; // UZ sleep on/off
+  }
+  
 
 #ifdef BMP
   if ((EEPROM.read(13)==255 or EEPROM.read(13)==1) and lps.begin()) {  
@@ -373,7 +389,9 @@ void setup() {
 
 #ifdef HUMIDITY
   #if HUMIDITY == 31
-    sht.begin(SHT_ADDRESS);
+    //sht.begin(SHT_ADDRESS);
+    SHT31 sht(SHT_ADDRESS);
+
     Wire.setClock(100000);
     uint16_t stat = sht.readStatus();
   
@@ -393,61 +411,31 @@ void setup() {
 //GetPressure();
 
 
-if (EEPROM.read(27)==255 or EEPROM.read(27)==1) {  
-    if (EEPROM.read(20)>0 and EEPROM.read(20)<250) {  
-      readEEPROMnetwork(20,21,22);
-    }   
-    if (EEPROM.read(23)>0 and EEPROM.read(23)<250) {  
-      readEEPROMnetwork(23,24,25);
-    }   
- }  
+int eepromValue27 = EEPROM.read(27);
+if (eepromValue27 == 255 || eepromValue27 == 1) {  
+    int eepromValue20 = EEPROM.read(20);
+    int eepromValue23 = EEPROM.read(23);
 
+    if (eepromValue20 > 0 && eepromValue20 < 250) {  
+        readEEPROMnetwork(20, 21, 22);
+    }   
+    if (eepromValue23 > 0 && eepromValue23 < 250) {  
+        readEEPROMnetwork(23, 24, 25);
+    }   
+} 
 
-  if (resetReason==8 ) { //////////////////// reset reason detailed        
-    if (EEPROM.read(15)>0 ) {
-      if (EEPROM.read(15)==1 ) { 
-        resetReason=81; 
-      }
-      else if (EEPROM.read(15)==2 ) { 
-        resetReason=82; 
-      }  
-      else if (EEPROM.read(15)==3 ) { 
-        resetReason=83; 
-      }  
-      else if (EEPROM.read(15)==4 ) { 
-        resetReason=84; 
-      }      
-      else if (EEPROM.read(15)==5 ) { 
-        resetReason=85; 
-      }  
-    else if (EEPROM.read(15)==6 ) { 
-      resetReason=86; 
-    } 
-    else if (EEPROM.read(15)==7 ) { 
-      resetReason=87; 
-    } 
-    else if (EEPROM.read(15)==9 ) { 
-      resetReason=89; 
-    } 
-    else if (EEPROM.read(15)==10 ) { 
-      resetReason=90; 
-    } 
-    else if (EEPROM.read(15)==11 ) { 
-      resetReason=91; 
-    }       
-    else if (EEPROM.read(15)==12 ) { 
-      resetReason=92; 
+if (resetReason == 8) { //////////////////// reset reason detailed
+    int eepromValue15 = EEPROM.read(15);
+    if (eepromValue15 > 0) {
+        if (eepromValue15 >= 1 && eepromValue15 <= 13) {
+            resetReason = 80 + eepromValue15; // Map directly to 81–93
+        } else {
+            resetReason = 88; // Default case
+        }
+        EEPROM.write(15, 0); // Reset EEPROM value
     }
-    else if (EEPROM.read(15)==13 ) { 
-      resetReason=93; 
-    }
-    
-      else { 
-        resetReason=88; 
-      }   
-    EEPROM.write(15, 0); 
-    } 
-  } 
+}
+
 
 delay(7000);
 #ifdef DEBUG
@@ -560,14 +548,14 @@ void loop() {
     DEBUGSERIAL.print(F(" c:"));
     DEBUGSERIAL.print(measureCount);
     DEBUGSERIAL.print(F(" s:"));
-    DEBUGSERIAL.println(sonicError);
+    DEBUGSERIAL.println(rainCount);
   #endif
 
   GetAvgWInd();                                 // avg wind
 
 
   digitalWrite(13, HIGH);   // turn the LED on
-  delay(50);                       // wait
+  delay(15);                       // wait
   digitalWrite(13, LOW);    // turn the LED
  
 // check if is time to send data online  
