@@ -218,19 +218,19 @@ void parseResponse(byte response[13]) {
   cutoffWind=response[6];
 
   // if low battery increase sleep time
-    if ( (response[7] < 4 and battLevel < 180 and battLevel > 170) or (batteryState==1 and response[7] < 4)) { // if low battery < 3.6V
-       response[7]=4;
-       batteryState=1;
-    }
-    else if (( response[7] < 8 and battLevel < 170 and battLevel > 17) or (batteryState==2 and response[7] < 8)) { // if low battery < 3.4V
-       response[7]=8;
-       batteryState=2;
-    }
+//    if ( (response[7] < 4 and battLevel < 180 and battLevel > 170) or (batteryState==1 and response[7] < 4)) { // if low battery < 3.6V
+//       response[7]=4;
+//       batteryState=1;
+//    }
+//    else if (( response[7] < 8 and battLevel < 170 and battLevel > 17) or (batteryState==2 and response[7] < 8)) { // if low battery < 3.4V
+//       response[7]=8;
+//       batteryState=2;
+//    }
 
   // once battery gets charged change the battery state  
-    if (  battLevel > 190 and batteryState==1) { batteryState=0; }// if battery > 3.8V
-    else if (  battLevel >= 180 and battLevel >= 190 and batteryState==2) { batteryState=1; }// if battery > 3.6V
-    
+//    if (  battLevel > 190 and batteryState==1) { batteryState=0; }// if battery > 3.8V
+//    else if (  battLevel >= 180 and battLevel >= 190 and batteryState==2) { batteryState=1; }// if battery > 3.6V
+//    
   
   
   #ifdef UZ_Anemometer

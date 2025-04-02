@@ -112,56 +112,148 @@ if ( sonicError ==3)  { ultrasonic.end(); delay(2000); ultrasonic.begin(9600);de
 if ( sonicError >=7)  { reset(4);  }   // if more than x US errors 
 }
 
-void UZsleep(byte sleepT) { //ultrasonic anemometer sleep mode
+
+
+
+void UZsleep(byte sleepT) {
+  const unsigned long SYNC_TIMEOUT = 10000;  // 10 seconds for sync signal
+  const unsigned long RESPONSE_TIMEOUT = 1300; // 2 seconds for response after sending
+  const int MAX_ATTEMPTS = 5;                // 5 attempts max
   char buffer[25];
-  char buffer2[80];
-  byte slponoff=1;
-  
-  if (sleepT==0){slponoff=0;}
-  sprintf(buffer, ">PwrIdleCfg:%d,%d\r\n", slponoff,sleepT);  
+  char response[150];
+  byte slponoff = (sleepT == 0) ? 0 : 1;
+  bool success = false;
 
-while (ultrasonic.available() <2) {  delay(10); } 
-  unsigned long startedWaiting = millis();   
-  #ifdef DEBUG
-      DEBUGSERIAL.println(F("UZzzz"));
-      delay(20);
-  #endif
+  snprintf(buffer, sizeof(buffer), ">PwrIdleCfg:%d,%d\r\n", slponoff, sleepT);
+  for (int attempt = 0; attempt < MAX_ATTEMPTS && !success; attempt++) {
+    unsigned long syncStartTime = millis();
+    ultrasonicFlush();
 
-  byte trow_away;
-  trow_away=(ultrasonic.read());
-  int size = ultrasonic.readBytesUntil('\n', buffer2, 70);
-  buffer[size]='\0'; 
 
-  while (strstr (buffer2,"IdleSec") == NULL && millis() - startedWaiting <= 20000) {
-    trow_away=(ultrasonic.read());
-    size = ultrasonic.readBytesUntil('\n', buffer2, 70); 
-    buffer2[size]='\0';   
-    ultrasonic.write(buffer);  
-    delay(100);
-     #ifdef DEBUG 
-      DEBUGSERIAL.println(F("slptry")); 
+    // Phase 1: Wait for '1' (sync signal) with 10 second timeout
+    while (millis() - syncStartTime <= SYNC_TIMEOUT) {
+      if (ultrasonic.available()) {
+        char received = ultrasonic.read();
+        if (received == '1') break;  // Proceed when sync received
+      }
       delay(10);
-     #endif 
     }
 
-    if(millis() - startedWaiting < 19900){ ultrasonic.write(">SaveConfig\r\n"); }
-    if(millis() - startedWaiting < 19900){ 
-      sleepBetween=sleepT;
-      changeSleep=0;
-      stopSleepChange=0;
-     #ifdef DEBUG 
-      DEBUGSERIAL.print(F("sleepcok ")); 
-      DEBUGSERIAL.println(sleepT); 
-      delay(10);
-     #endif 
+    // Phase 2: Send command ONCE
+    ultrasonic.write(buffer);
+    //delay(10);
+    //ultrasonicFlush();
+    unsigned long responseStartTime = millis();
+
+    // Phase 3: Wait for response with 2 second timeout
+    while (!success && (millis() - responseStartTime <= RESPONSE_TIMEOUT)) {
+      if (ultrasonic.available()) {
+ 
+          ultrasonic.read();  // Discard
+        // Otherwise, read full response
+        int size = ultrasonic.readBytesUntil('\n', response, sizeof(response) - 1);
+        if (size > 0) {
+          response[size] = '\0';  // Null-terminate
+
+          if (strstr(response, "leSec") != NULL) {
+            sleepBetween = sleepT;
+            changeSleep = 0;
+            stopSleepChange = 0;
+            success = true;
+            return;
+          }
+        }
       }
-    else { 
-     stopSleepChange++;
-     #ifdef DEBUG 
-      DEBUGSERIAL.println(F("err sleepc")); 
-     #endif       
-      }
+      delay(20);  // Small delay to prevent busy-waiting
+    }
+
+    // Failure case
+  stopSleepChange++;
+  sonicError++;
+  ultrasonicFlush();
+  #ifdef DEBUG
+    DEBUGSERIAL.println(F("Slp fail"));
+  #endif
+  
+  }
+
+
 }
+
+
+
+//
+//void UZsleep(byte sleepT) {
+//  const unsigned long TIMEOUT = 20000;  // 40 seconds total timeout
+//  const int MAX_ATTEMPTS = 2;  // Number of retries
+//  char buffer[25];
+//  char response[150];
+//  byte slponoff = (sleepT == 0) ? 0 : 1;
+//
+//        #ifdef DEBUG
+//          DEBUGSERIAL.println(F("slp try"));
+//        #endif
+//
+//  snprintf(buffer, sizeof(buffer), ">PwrIdleCfg:%d,%d\r\n", slponoff, sleepT);
+//
+//  for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+//    bool success = false;
+//    unsigned long startTime = millis();
+//
+//
+//    // Wait for '1' command before proceeding
+//    while (true) {
+//      if (ultrasonic.available()) {  
+//        char received = ultrasonic.read();  
+//        if (received == '1') {  
+//          break;  // Proceed with sending the command
+//        }
+//      }
+//    }
+//
+//
+//    while (!success && (millis() - startTime <= TIMEOUT)) {
+//      // Send command
+//      ultrasonic.write(buffer);
+//
+//      // Clear serial buffer
+//      ultrasonicFlush();
+//
+//      // Check for response
+//      delay(20);
+//      if (ultrasonic.available()) {
+//        ultrasonic.read();  // Discard first byte
+//        int size = ultrasonic.readBytesUntil('\n', response, sizeof(response) - 1);
+//        if (size > 0) {
+//          response[size] = '\0';
+//
+////          #ifdef DEBUG
+////            DEBUGSERIAL.print(F("Received: "));
+////            DEBUGSERIAL.println(response);
+////          #endif
+//
+//          if (strstr(response, "IdleSec") != NULL) {
+//            sleepBetween = sleepT;
+//            changeSleep = 0;
+//            stopSleepChange = 0;
+//            //success = true;
+//
+//        #ifdef DEBUG
+//          DEBUGSERIAL.print(F("slp ok "));
+//          DEBUGSERIAL.println(attempt + 1);
+//        #endif
+//
+//            return;  // Exit function if successful
+//          }
+//        }
+//      }
+//    }
+//
+//  }
+//
+//}
+
+
 #endif 
 
 #ifndef UZ_Anemometer
@@ -366,7 +458,7 @@ void GetPressure() {
   void GetHumidity() {
   #if HUMIDITY == 31    
     if ( sht.isConnected() ){
-      sht.read();         // default = true/fast       slow = false
+      sht.read(false);         // default = true/fast       slow = false
       temp=sht.getTemperature();
       humidity=sht.getHumidity();
   #else

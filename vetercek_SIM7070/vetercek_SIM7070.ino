@@ -351,7 +351,7 @@ void setup() {
   }
   
   if (eepromValue14 == 10) { 
-      stopSleepChange = 3; // UZ sleep on/off
+      stopSleepChange = 10; // UZ sleep on/off
   }
   
 
@@ -598,12 +598,11 @@ void beforeSend() {
 
       #ifdef UZ_Anemometer
         if (UltrasonicAnemo==1){
-            if ( changeSleep== 1 and stopSleepChange<3) { //change of sleep time
-          ultrasonicFlush();   
+            if ( changeSleep== 1 and stopSleepChange<10) { //change of sleep time
           UZsleep(sleepBetween);
             }
         }
-      ultrasonicFlush();  
+      ultrasonicFlush();
       ENABLE_UART_START_FRAME_INTERRUPT;
       LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
       #endif    
@@ -664,9 +663,10 @@ void simReset() {
 
 #ifdef UZ_Anemometer
 void UZ_wake(unsigned long startedWaiting) {
-  while (!ultrasonic.available() && millis() - startedWaiting <= (65000)) {  // if US not aveliable start it
-    ultrasonic.begin(9600);
-    delay(5000);
+
+ultrasonic.begin(9600);
+while (!ultrasonic.available() && millis() - startedWaiting <= (65000)) {  // if US not aveliable start it
+    delay(1000);
     }      
 }
 #endif  
