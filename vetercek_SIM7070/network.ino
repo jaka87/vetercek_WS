@@ -250,7 +250,7 @@ void parseResponse(byte response[13]) {
 } 
 
 
-void PostData() {           
+bool PostData() {                     
   if (measureCount ==0){ 
     if (EEPROM.read(39) == 1 && EEPROM.read(62) >= 5) {
       #ifdef DEBUG
@@ -298,7 +298,7 @@ void PostData() {
       sendError=0;
       parseResponse(response);
       AfterPost(); 
-      return; // Exit the function after successful send
+      return true; // Exit the function after successful send
     }
 
     attempts++;
@@ -308,6 +308,7 @@ void PostData() {
   // If all attempts fail
   sendError=1;
   fail_to_send();
+  return false;  // Failure
 } 
 
 
@@ -339,11 +340,17 @@ void AfterPost() {
 
 
 // send data to server
-void SendData() {
-  if (failedSend==0 and checkServernum==0){  BeforePostCalculations(1); }
-  else {  BeforePostCalculations(0); }
-  if (checkServer()) {  PostData(); }
-  
+bool SendData() {
+  if (failedSend == 0 && checkServernum == 0) {  
+    BeforePostCalculations(1); 
+  }
+  else {  
+    BeforePostCalculations(0); 
+  }
+  if (checkServer()) {  
+    return PostData();  // Return the success status from PostData
+  }
+  return false;
 }
 
 void dropConnection(byte drop_type) { // 1 - full drop cnnection, 0 only drop gprs

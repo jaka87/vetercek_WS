@@ -6,7 +6,7 @@
 //ultrasonic anemometer To active ASCI.
 //>UartPro:0\r\n or 0
 //>SaveConfig\r\n
-//>ComMode:0\r\n 0 232/1 485
+//>ComMode:0\r\n 0 232/1 48r5
 
 //PCB 0.6.4 and up
 
@@ -557,6 +557,7 @@ void loop() {
   digitalWrite(13, HIGH);   // turn the LED on
   delay(15);                       // wait
   digitalWrite(13, LOW);    // turn the LED
+
  
 // check if is time to send data online  
 if ( measureCount >= ((whenSend*2)+40))   {  reset(6);  } // reset if more than 40 tries
@@ -592,16 +593,20 @@ void beforeSend() {
       digitalWrite(DTR, LOW);  //wake up  
       delay(100);
       //bool checkAT = fona.checkAT();
-      SendData();  
+      bool sendSuccess = SendData(); 
       digitalWrite(DTR, HIGH);  //sleep  
       delay(50);
 
+    if (sendSuccess) {
       #ifdef UZ_Anemometer
         if (UltrasonicAnemo==1){
             if ( changeSleep== 1 and stopSleepChange<10) { //change of sleep time
-          UZsleep(sleepBetween);
+              UZsleep(sleepBetween);
             }
+
         }
+      }
+      
       ultrasonicFlush();
       ENABLE_UART_START_FRAME_INTERRUPT;
       LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
@@ -635,6 +640,13 @@ void reset(byte rr) {
       EEPROM.write(39, 1);
       for (int i = 0; i < dataSize; i++) {EEPROM.write(eepromStartAddress + i, data[i]); }    
     }
+
+
+  #ifdef UZ_Anemometer
+    ultrasonic.end();
+  #endif 
+
+    
   delay(100);
   #ifdef DEBUG
     DEBUGSERIAL.print(F("rst: "));
@@ -668,6 +680,7 @@ ultrasonic.begin(9600);
 while (!ultrasonic.available() && millis() - startedWaiting <= (65000)) {  // if US not aveliable start it
     delay(1000);
     }      
+ultrasonicFlush();
 }
 #endif  
 

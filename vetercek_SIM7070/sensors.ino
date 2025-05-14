@@ -118,7 +118,7 @@ if ( sonicError >=7)  { reset(4);  }   // if more than x US errors
 void UZsleep(byte sleepT) {
   const unsigned long SYNC_TIMEOUT = 10000;  // 10 seconds for sync signal
   const unsigned long RESPONSE_TIMEOUT = 1300; // 2 seconds for response after sending
-  const int MAX_ATTEMPTS = 5;                // 5 attempts max
+  const int MAX_ATTEMPTS = 1;                // 5 attempts max
   char buffer[25];
   char response[150];
   byte slponoff = (sleepT == 0) ? 0 : 1;
@@ -159,6 +159,7 @@ void UZsleep(byte sleepT) {
             sleepBetween = sleepT;
             changeSleep = 0;
             stopSleepChange = 0;
+            sonicError++;
             success = true;
             return;
           }
