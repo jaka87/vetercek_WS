@@ -36,6 +36,9 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 //#define DEBUG_ERROR  // debug connection,DEBUG_ERROR not written to serial but as reset reason
 #define LOCAL_WS // comment out if the station is global - shown on windgust.eu
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+#define toggle_UZ_power // toggle ultrasonic power - PCB minimum PCB v.0.6.6
+
+//#define UZ_old // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 #define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
 //#define TMPDS18B20 // comment out if you want to turn off temerature sensor
@@ -85,6 +88,15 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 #define PWRKEY 10
 #define ENABLE_UART_START_FRAME_INTERRUPT UCSR1D = (1 << RXSIE) | (1 << SFDE)
 #define DISABLE_UART_START_FRAME_INTERRUPT UCSR1D = (0 << RXSIE) | (0 << SFDE)
+// USART1 (UZ)
+#define IGNORE_UZ_DATA UCSR1B &= ~((1 << RXEN1) | (1 << TXEN1) | (1 << RXCIE1));  // Disable RX, TX, and RX interrupt
+#define ENABLE_UZ_DATA UCSR1B |= (1 << RXEN1) | (1 << TXEN1) | (1 << RXCIE1);    // Enable RX, TX, and RX interrupt
+// USART0 (GSM)
+#define IGNORE_GSM_DATA UCSR0B &= ~((1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0));  // Disable RX, TX, and RX interrupt
+#define ENABLE_GSM_DATA UCSR0B |= (1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0);    // Enable RX, TX, and RX interrupt
+
+
+
 
 byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 0,0,0 }; // data
 
@@ -123,6 +135,7 @@ byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 
 // 90 - no GSM connection
 // 91 - no GPRS connection
 // 92 - no access to server
+// 94 - 3x failres
 
 
 
@@ -220,6 +233,8 @@ byte stopSleepChange=0; //on
 volatile byte countWake = 0;
 byte checkServernum=0;
 byte sendError=0;
+bool uzInitialized = false;
+
 
 #if NETWORK_OPERATORS == 1
   int network1=29340;
@@ -291,6 +306,10 @@ void setup() {
   Timer1.initialize(1000000UL);         // initialize timer1, and set a 1 second period
   Timer1.attachInterrupt(CheckTimerGPRS);  // attaches checkTimer() as a timer overflow interrupt
 
+  pinMode(26, OUTPUT);
+  digitalWrite(26, LOW);    // turn off UZ anemometer
+
+
   pinMode(13, OUTPUT);     // this part is used wPWRKEYhen you bypass bootloader to signal when board is starting...
   digitalWrite(13, HIGH);   // turn the LED on
   delay(1000);              // wait
@@ -308,9 +327,9 @@ void setup() {
   digitalWrite(PIN_A2, HIGH);   
   //adc_init();
   
-  #ifdef UZ_Anemometer
-    ENABLE_UART_START_FRAME_INTERRUPT;
-  #endif
+  //#ifdef UZ_Anemometer
+  //  ENABLE_UART_START_FRAME_INTERRUPT;
+  //#endif
 
 
   
@@ -427,8 +446,8 @@ if (eepromValue27 == 255 || eepromValue27 == 1) {
 if (resetReason == 8) { //////////////////// reset reason detailed
     int eepromValue15 = EEPROM.read(15);
     if (eepromValue15 > 0) {
-        if (eepromValue15 >= 1 && eepromValue15 <= 13) {
-            resetReason = 80 + eepromValue15; // Map directly to 81–93
+        if (eepromValue15 >= 1 && eepromValue15 <= 15) {
+            resetReason = 80 + eepromValue15; // Map directly to 81–95
         } else {
             resetReason = 88; // Default case
         }
@@ -466,31 +485,10 @@ else if (network2>0) {
   } 
 
 beforeSend();
+IGNORE_GSM_DATA;
 
 #ifdef UZ_Anemometer
-   #ifdef DEBUG
-    DEBUGSERIAL.println(F("startUZ"));
-    delay(50);
-  #endif 
-  unsigned long startedWaiting = millis();
-  UZ_wake(startedWaiting);
-  if (millis() - startedWaiting <= (65000) ) {
-    UltrasonicAnemo=1;
-    windDelay=1000;
-    ultrasonicFlush();
-   #ifdef DEBUG
-    DEBUGSERIAL.println(F("UZ"));
-    delay(50);
-  #endif  
-  }
-  else {
-  #ifdef DEBUG
-    DEBUGSERIAL.println(F("UZ fail"));
-    delay(50);
-  #endif  
-    reset(7); // reset board if UZ not aveliable
-  }
- 
+  UZ_wake(); 
   LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
 #endif 
 }
@@ -500,23 +498,57 @@ void loop() {
 #ifdef UZ_Anemometer
   DISABLE_UART_START_FRAME_INTERRUPT;    
   unsigned long startedWaiting = millis();
-
-  while(ultrasonic.available() < 2 and millis() - startedWaiting <= 50) {  delay(10); }
+  
+  #ifdef UZ_old
+  while (ultrasonic.available() < 2 && millis() - startedWaiting <= 15000) {  delay(10);}
   if (ultrasonic.available() < 2 ) { // sleep while receiving data and anemometer sleep time 3s or more
         LowPower.idle(SLEEP_2S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
   }
   else { // sleep while receiving data and anemometer sleep time 2s or less 
-        LowPower.idle(SLEEP_120MS, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
+        LowPower.idle(SLEEP_60MS, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
   }
+  while (ultrasonic.read() != ',' and millis() - startedWaiting <= 7000) {  } 
 
-    while (ultrasonic.read() != ',' and millis() - startedWaiting <= 7000) {  } 
+  #else
+        delay(15);
+//        #ifdef DEBUG
+//          DEBUGSERIAL.println(ultrasonic.available());
+//        #endif
+          if (ultrasonic.available() ==1 ) { // sleep while receiving data and anemometer sleep time 3s or more
+            LowPower.idle(SLEEP_1S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
+          }
+      //while (ultrasonic.read() != ',' and millis() - startedWaiting <= 7000) { delay(10); } 
+
+//while (ultrasonic.read() != ',' and millis() - startedWaiting <= 7000) { delay(10); } 
+while (millis() - startedWaiting <= 1000) {
+  char c = ultrasonic.read();
+  if (c == ',') {
+    break;
+  }
+  #ifdef DEBUG
+    if (c >= 32 && c <= 126) {  // Printable ASCII range
+      DEBUGSERIAL.println(c);
+    }
+  #endif
+  delay(10);
+}
+
+
+  #endif 
+
     delay(90);
-  
   if (ultrasonic.available()>61){  
     UltrasonicAnemometer();
+    #ifdef DEBUG
+      unsigned long totalTime = millis() - startedWaiting;
+      DEBUGSERIAL.print(F("UZ time: "));
+      DEBUGSERIAL.println(totalTime);
+    #endif
     } 
   else {  
   ultrasonicFlush();
+    sonicError++;
+
   } 
 
                     
@@ -587,31 +619,52 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
 #endif 
 }
 
+void beforeSend() {
+  /////////////////////////// send data to server ///////////////////////////////////////////////
+  //ultrasonic.end();
+  IGNORE_UZ_DATA;
+  ENABLE_GSM_DATA;
+  digitalWrite(DTR, LOW);  // wake up
+  delay(100);
 
-void beforeSend() { 
-      /////////////////////////// send data to server ///////////////////////////////////////////////  
-      digitalWrite(DTR, LOW);  //wake up  
-      delay(100);
-      //bool checkAT = fona.checkAT();
-      bool sendSuccess = SendData(); 
-      digitalWrite(DTR, HIGH);  //sleep  
-      delay(50);
+  bool sendSuccess = false;
+  int attempts = 0;
 
-    if (sendSuccess) {
-      #ifdef UZ_Anemometer
-        if (UltrasonicAnemo==1){
-            if ( changeSleep== 1 and stopSleepChange<10) { //change of sleep time
-              UZsleep(sleepBetween);
-            }
+  while (!sendSuccess && attempts < 3) {
+    sendSuccess = SendData();
+    attempts++;
+    if (!sendSuccess) {
+      delay(1000);  // Optional delay between retries
+    }
+  }
 
-        }
+
+
+  if (sendSuccess) {
+  digitalWrite(DTR, HIGH);  // sleep
+  delay(50);
+  IGNORE_GSM_DATA;
+  ENABLE_UZ_DATA;
+  //UZ_wake(); 
+  
+  #ifdef UZ_Anemometer
+    if (UltrasonicAnemo == 1) {
+      if (changeSleep == 1 && stopSleepChange < 3) {  // change of sleep time
+        UZsleep(sleepBetween);
       }
-      
-      ultrasonicFlush();
-      ENABLE_UART_START_FRAME_INTERRUPT;
-      LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
-      #endif    
+    }
+    #endif
+
+
+    // ultrasonicFlush();
+    ENABLE_UART_START_FRAME_INTERRUPT;
+    LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF, TIMER2_ON);  // sleep
+  }
+  else {
+    reset(14);
+  }
 }
+
 
 
 void CheckTimerGPRS() { // if unable to send data in 200s
@@ -643,6 +696,7 @@ void reset(byte rr) {
 
 
   #ifdef UZ_Anemometer
+    //IGNORE_UZ_DATA;
     ultrasonic.end();
   #endif 
 
@@ -667,21 +721,68 @@ void simReset() {
     fona.reset(); // AT+CFUN=1,1
     delay(300);
     moduleSetup(); // Establishes first-time serial comm and prints IMEI 
-    checkIMEI();
+    checkIMEI();     
     connectGPRS(0); //just connect
 }
 
 
 
 #ifdef UZ_Anemometer
-void UZ_wake(unsigned long startedWaiting) {
+void UZ_wake() {
+    #ifdef toggle_UZ_power
+      digitalWrite(26, HIGH);  
+      delay(1000); 
+    #endif
 
-ultrasonic.begin(9600);
-while (!ultrasonic.available() && millis() - startedWaiting <= (65000)) {  // if US not aveliable start it
+
+  if (uzInitialized) {
+    #ifdef DEBUG
+      DEBUGSERIAL.println(F("UZze"));
+      delay(50);
+    #endif
+    return; // Skip if already initialized
+  }
+
+  #ifdef DEBUG
+    DEBUGSERIAL.println(F("startUZ"));
+    delay(50);
+  #endif
+
+  // Try to flush and reset the hardware serial buffer
+  while (ultrasonic.available()) {
+    ultrasonic.read(); // Clear any junk data
+  }
+
+  ultrasonic.end();     // Stop serial port
+  delay(100);           // Give hardware time to release resources
+  ultrasonic.begin(9600); // Reopen with proper baud rate
+
+  unsigned long startedWaiting = millis();
+
+  while (!ultrasonic.available() && millis() - startedWaiting <= 65000) {
     delay(1000);
-    }      
-ultrasonicFlush();
+  }
+
+  if (millis() - startedWaiting <= 65000) {
+    UltrasonicAnemo = 1;
+    uzInitialized = true;
+    windDelay = 1000;
+    ultrasonicFlush();
+
+    #ifdef DEBUG
+      DEBUGSERIAL.println(F("UZ"));
+      delay(50);
+    #endif
+  } else {
+    #ifdef DEBUG
+      DEBUGSERIAL.println(F("UZ fail"));
+      delay(50);
+    #endif
+
+    reset(7); // reset board if UZ not available
+  }
 }
+
 #endif  
 
 

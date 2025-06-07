@@ -22,6 +22,11 @@ void UltrasonicAnemometer() { //measure wind speed
         }
         delay(10); // Small delay to prevent busy-waiting (optional)
     }
+
+    #ifdef DEBUG
+        DEBUGSERIAL.print(F("Raw buffer: "));
+        DEBUGSERIAL.println(buffer);
+    #endif
     
     if ((millis() - startTime) >= 30000) {
         // Timeout occurred
@@ -108,11 +113,26 @@ void UZerror(byte where) { //ultrasonic error
     resetReason=55;  
   #endif
 
-if ( sonicError ==3)  { ultrasonic.end(); delay(2000); ultrasonic.begin(9600);delay(5000);  }  
-if ( sonicError >=7)  { reset(4);  }   // if more than x US errors 
+  #ifdef toggle_UZ_power
+    if ( sonicError >=4)  { UZ_power_toggle();  }   // if more than x US errors 
+  #else
+    if ( sonicError >=4)  { reset(4);  }   // if more than x US errors 
+  #endif
+  
+
 }
 
-
+#ifdef toggle_UZ_power
+void UZ_power_toggle(){
+  digitalWrite(26, LOW);  
+  delay(2000); 
+  digitalWrite(26, HIGH);  
+  
+    #ifdef DEBUG
+      DEBUGSERIAL.println("uz pwr");
+  #endif
+}
+#endif
 
 
 void UZsleep(byte sleepT) {
@@ -124,6 +144,10 @@ void UZsleep(byte sleepT) {
   byte slponoff = (sleepT == 0) ? 0 : 1;
   bool success = false;
 
+  #ifdef DEBUG
+    DEBUGSERIAL.println(F("Slp try"));
+  #endif
+  
   snprintf(buffer, sizeof(buffer), ">PwrIdleCfg:%d,%d\r\n", slponoff, sleepT);
   for (int attempt = 0; attempt < MAX_ATTEMPTS && !success; attempt++) {
     unsigned long syncStartTime = millis();
@@ -161,6 +185,9 @@ void UZsleep(byte sleepT) {
             stopSleepChange = 0;
             sonicError++;
             success = true;
+              #ifdef DEBUG
+                DEBUGSERIAL.println(F("Slp ok"));
+              #endif
             return;
           }
         }
@@ -178,8 +205,8 @@ void UZsleep(byte sleepT) {
   
   }
 
-
 }
+
 
 
 
@@ -558,6 +585,9 @@ float readVcc() {
 void ultrasonicFlush(){
   while(ultrasonic.available() > 0 ) {
     char t = ultrasonic.read();
+     #ifdef DEBUG
+      DEBUGSERIAL.println(t);
+    #endif
   }
 }
 
