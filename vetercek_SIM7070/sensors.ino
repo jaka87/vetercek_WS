@@ -136,6 +136,7 @@ void UZ_power_toggle(){
 
 
 void UZsleep(byte sleepT) {
+  ENABLE_TX1;
   const unsigned long SYNC_TIMEOUT = 10000;  // 10 seconds for sync signal
   const unsigned long RESPONSE_TIMEOUT = 1300; // 2 seconds for response after sending
   const int MAX_ATTEMPTS = 1;                // 5 attempts max
@@ -205,6 +206,7 @@ void UZsleep(byte sleepT) {
   
   }
 
+DISABLE_TX1;
 }
 
 

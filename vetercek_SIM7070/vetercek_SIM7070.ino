@@ -88,13 +88,19 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 #define PWRKEY 10
 #define ENABLE_UART_START_FRAME_INTERRUPT UCSR1D = (1 << RXSIE) | (1 << SFDE)
 #define DISABLE_UART_START_FRAME_INTERRUPT UCSR1D = (0 << RXSIE) | (0 << SFDE)
-// USART1 (UZ)
-#define IGNORE_UZ_DATA UCSR1B &= ~((1 << RXEN1) | (1 << TXEN1) | (1 << RXCIE1));  // Disable RX, TX, and RX interrupt
-#define ENABLE_UZ_DATA UCSR1B |= (1 << RXEN1) | (1 << TXEN1) | (1 << RXCIE1);    // Enable RX, TX, and RX interrupt
 // USART0 (GSM)
 #define IGNORE_GSM_DATA UCSR0B &= ~((1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0));  // Disable RX, TX, and RX interrupt
 #define ENABLE_GSM_DATA UCSR0B |= (1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0);    // Enable RX, TX, and RX interrupt
 
+#define TX1_PIN 17  // PD3 = TX1 on ATmega328PB
+// Completely disable UART1 and disconnect TX
+#define IGNORE_UZ_DATA UCSR1B &= ~((1 << RXEN1) | (1 << TXEN1) | (1 << RXCIE1));   // TX1 high-impedance
+// Re-enable UART1 and reconnect TX
+#define ENABLE_UZ_DATA UCSR1B |= (1 << RXEN1) | (1 << TXEN1) | (1 << RXCIE1)
+// Disable only TX (float TX pin to prevent sending)
+#define DISABLE_TX1 UCSR1B &= ~(1 << TXEN1); pinMode(TX1_PIN, INPUT)
+// Enable only TX (to send a command to the anemometer)
+#define ENABLE_TX1 pinMode(TX1_PIN, OUTPUT); UCSR1B |= (1 << TXEN1)
 
 
 
@@ -325,6 +331,7 @@ void setup() {
   digitalWrite(PWRKEY, LOW);
   pinMode(PIN_A2, OUTPUT);
   digitalWrite(PIN_A2, HIGH);   
+  
   //adc_init();
   
   //#ifdef UZ_Anemometer
@@ -500,23 +507,24 @@ void loop() {
   unsigned long startedWaiting = millis();
   
   #ifdef UZ_old
-  while (ultrasonic.available() < 2 && millis() - startedWaiting <= 15000) {  delay(10);}
-  if (ultrasonic.available() < 2 ) { // sleep while receiving data and anemometer sleep time 3s or more
-        LowPower.idle(SLEEP_2S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
-  }
-  else { // sleep while receiving data and anemometer sleep time 2s or less 
-        LowPower.idle(SLEEP_60MS, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
-  }
-  while (ultrasonic.read() != ',' and millis() - startedWaiting <= 7000) {  } 
-
+    while (ultrasonic.available() < 2 && millis() - startedWaiting <= 15000) {  delay(10);}
+    if (ultrasonic.available() < 2 ) { // sleep while receiving data and anemometer sleep time 3s or more
+          LowPower.idle(SLEEP_2S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
+    }
+    else { // sleep while receiving data and anemometer sleep time 2s or less 
+          LowPower.idle(SLEEP_60MS, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
+    }
+    while (ultrasonic.read() != ',' and millis() - startedWaiting <= 7000) {  } 
   #else
-        delay(15);
+    LowPower.idle(SLEEP_1S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
+  
+        //delay(15);
 //        #ifdef DEBUG
 //          DEBUGSERIAL.println(ultrasonic.available());
 //        #endif
-          if (ultrasonic.available() ==1 ) { // sleep while receiving data and anemometer sleep time 3s or more
-            LowPower.idle(SLEEP_1S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
-          }
+          //if (ultrasonic.available() ==1 ) { // sleep while receiving data and anemometer sleep time 3s or more
+           // LowPower.idle(SLEEP_1S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
+          //}
       //while (ultrasonic.read() != ',' and millis() - startedWaiting <= 7000) { delay(10); } 
 
 //while (ultrasonic.read() != ',' and millis() - startedWaiting <= 7000) { delay(10); } 
@@ -756,6 +764,7 @@ void UZ_wake() {
   ultrasonic.end();     // Stop serial port
   delay(100);           // Give hardware time to release resources
   ultrasonic.begin(9600); // Reopen with proper baud rate
+  DISABLE_TX1;
 
   unsigned long startedWaiting = millis();
 
