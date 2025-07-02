@@ -554,9 +554,7 @@ while (millis() - startedWaiting <= 1000) {
     #endif
     } 
   else {  
-  ultrasonicFlush();
-    sonicError++;
-
+    UZerror(1);
   } 
 
                     

@@ -114,7 +114,7 @@ void UZerror(byte where) { //ultrasonic error
   #endif
 
   #ifdef toggle_UZ_power
-    if ( sonicError >=4)  { UZ_power_toggle();  }   // if more than x US errors 
+    if ( sonicError >=4)  { UZ_power_toggle(); sonicError=0; }   // if more than x US errors 
   #else
     if ( sonicError >=4)  { reset(4);  }   // if more than x US errors 
   #endif
