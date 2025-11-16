@@ -1,13 +1,6 @@
 //bin/avrdude -C//etc/avrdude.conf -v -V -patmega328pb -cusbtiny -Uflash:w:/vetercek_nb-iot-HW.ino.hex:i lfuse:w:0xEF:m efuse:w:0xFF:m hfuse:w:DA:m lock:w:0xFF:m 
 // 57600 max baud rate = AT+IPR=57600
 // before uploading skech burn bootloader
-// hardware serial buffer 128b 
-
-//ultrasonic anemometer To active ASCI.
-//>UartPro:0\r\n or 0
-//>SaveConfig\r\n
-//>ComMode:0\r\n 0 232/1 48r5
-
 //PCB 0.6.4 and up
 
 
@@ -35,20 +28,16 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 //#define DEBUG_MEASURE  // debug data
 //#define DEBUG_ERROR  // debug connection,DEBUG_ERROR not written to serial but as reset reason
 #define LOCAL_WS // comment out if the station is global - shown on windgust.eu
-#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
-#define toggle_UZ_power // toggle ultrasonic power - PCB minimum PCB v.0.6.6
+//#define toggle_UZ_power // toggle ultrasonic power - PCB minimum PCB v.0.6.6
 
-//#define UZ_old // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 #define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
 //#define TMPDS18B20 // comment out if you want to turn off temerature sensor
 //#define BME // comment out if you want to turn off pressure and humidity sensor
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
-#define ANEMOMETER 1 //1 Davis // 2 - chinese 20 pulses per rotation //3 - custom 1 pulses per rotation
-#define ANEMOMETER_DEBOUNCE 15 // 15 davis anemometer, 4 chinese with 20 pulses
 #define GSM
 
-#define NETWORK_OPERATORS 1
+#define NETWORK_OPERATORS 2
   // 1. Slovenia
   // 2. Croatia
   // 3. Italy
@@ -62,13 +51,6 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
   // 11. Spain
 ///////////////////////////////////////////////////////////////////////////////////
 
-#if ANEMOMETER == 1 //Davis mechanical anemometer
-  #define windFactor 19555.96 
-#elif ANEMOMETER == 2
- #define windFactor 1700.086 //chinese with 20 pulses per turn
-#elif ANEMOMETER == 3
-  #define windFactor 34001.72 // custom 1 pulses per rotation
-#endif
 
 #ifdef LOCAL_WS 
   char* broker = "vetercek.com";
@@ -78,7 +60,6 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 
 #define ONE_WIRE_BUS_1 4 //air
 #define ONE_WIRE_BUS_2 3 // water
-#define windSensorPin 2 // The pin location of the anemometer sensor
 #define USRX 11
 #define USTX 12
 #define PWRAIR 8
@@ -86,21 +67,7 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 #define windVanePin PIN_A3       // The pin the wind vane sensor is connected to
 #define DTR 6
 #define PWRKEY 10
-#define ENABLE_UART_START_FRAME_INTERRUPT UCSR1D = (1 << RXSIE) | (1 << SFDE)
-#define DISABLE_UART_START_FRAME_INTERRUPT UCSR1D = (0 << RXSIE) | (0 << SFDE)
-// USART0 (GSM)
-#define IGNORE_GSM_DATA UCSR0B &= ~((1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0));  // Disable RX, TX, and RX interrupt
-#define ENABLE_GSM_DATA UCSR0B |= (1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0);    // Enable RX, TX, and RX interrupt
 
-#define TX1_PIN 17  // PD3 = TX1 on ATmega328PB
-// Completely disable UART1 and disconnect TX
-#define IGNORE_UZ_DATA UCSR1B &= ~((1 << RXEN1) | (1 << TXEN1) | (1 << RXCIE1));   // TX1 high-impedance
-// Re-enable UART1 and reconnect TX
-#define ENABLE_UZ_DATA UCSR1B |= (1 << RXEN1) | (1 << TXEN1) | (1 << RXCIE1)
-// Disable only TX (float TX pin to prevent sending)
-#define DISABLE_TX1 UCSR1B &= ~(1 << TXEN1); pinMode(TX1_PIN, INPUT)
-// Enable only TX (to send a command to the anemometer)
-#define ENABLE_TX1 pinMode(TX1_PIN, OUTPUT); UCSR1B |= (1 << TXEN1)
 
 
 
@@ -134,7 +101,8 @@ byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 
 // 83 - manual remote reset 
 // 84 - X sonic errors in UZ function
 // 85 - cant connect
-// 86 - can't send data
+// 86 - can't send data#define ANEMOMETER_DEBOUNCE 15 // 15 davis anemometer, 4 chinese with 20 pulses
+
 // 87 - uz NC
 // 88 - other
 // 89 - no GSM serial connection
@@ -146,9 +114,9 @@ byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 
 
 
 HardwareSerial *fonaSS = &Serial;
-#ifdef UZ_Anemometer
-   #define ultrasonic Serial1
-#endif
+#define ULTRASONIC Serial1    // On ATmega328PB: RXD1=PD2, TXD1=PD3
+#define BAUD_RATE 9600
+
 #ifdef DEBUG
   #include <NeoSWSerial.h>
   NeoSWSerial DEBUGSERIAL( 5, 7 ); 
@@ -191,13 +159,8 @@ Botletics_modem_LTE fona = Botletics_modem_LTE();
 //////////////////////////////////    RATHER DON'T CHANGE
 unsigned int pwrAir = PWRAIR; // power for air sensor
 unsigned int pwrWater = PWRWATER; // power for water sensor
-int windDelay = 2300; // time for each anemometer measurement in miliseconds
 byte onOffTmp = 1;   //on/off temperature measure
 volatile unsigned long timergprs = 0; // timer to check if GPRS is taking to long to complete
-volatile unsigned long rotations; // cup rotation counter used in interrupt routine
-volatile unsigned long contactBounceTime; // Timer to avoid contact bounce in interrupt routine
-volatile unsigned long lastPulseMillis; // last anemometer measured time
-volatile unsigned long firstPulseMillis; // fisrt anemometer measured time
 volatile unsigned long currentMillis;
 volatile unsigned long currentMillis2;
 volatile unsigned long contactBounceTime2; // Timer to avoid contact bounce in rain interrupt routine
@@ -205,7 +168,6 @@ volatile unsigned long updateBattery = 0;
 
 volatile int rainCount=0; // count rain bucket tilts
 byte SolarCurrent; // calculate solar cell current 
-byte firstWindPulse; // ignore 1st anemometer rotation since it didn't make full circle
 int windSpeed; // speed
 long windAvr = 0; //sum of all wind speed between update
 int windGust[3] = { 0, 0, 0 }; // top three gusts
@@ -316,7 +278,7 @@ void setup() {
   Timer1.attachInterrupt(CheckTimerGPRS);  // attaches checkTimer() as a timer overflow interrupt
 
   pinMode(26, OUTPUT);
-  digitalWrite(26, LOW);    // turn off UZ anemometer
+  digitalWrite(26, HIGH);    // turn ON UZ anemometer
 
 
   pinMode(13, OUTPUT);     // this part is used wPWRKEYhen you bypass bootloader to signal when board is starting...
@@ -335,12 +297,6 @@ void setup() {
   pinMode(PIN_A2, OUTPUT);
   digitalWrite(PIN_A2, HIGH);   
   
-  //adc_init();
-  
-  //#ifdef UZ_Anemometer
-  //  ENABLE_UART_START_FRAME_INTERRUPT;
-  //#endif
-
 
   
 #ifdef DEBUG
@@ -407,37 +363,99 @@ void setup() {
 #endif 
 
 
-#if defined(HUMIDITY) 
-    Wire.begin();
-#endif
-
-
-
 
 
 #ifdef HUMIDITY
-  #if HUMIDITY == 31
-    //sht.begin(SHT_ADDRESS);
-    SHT31 sht(SHT_ADDRESS);
+#ifdef DEBUG
+  DEBUGSERIAL.println(F("Before humidity init"));
+#endif
 
-    Wire.setClock(100000);
-    uint16_t stat = sht.readStatus();
-  
-      if ( sht.isConnected() ){
-        enableHum=1;
-      }
-  #else
+#ifdef HUMIDITY
+  #if HUMIDITY == 31
+    // Simple SHT31 initialization with timeout
+    #ifdef DEBUG
+      DEBUGSERIAL.println(F("SHT31 init start"));
+    #endif
+    
     Wire.begin();
+    Wire.setClock(100000);
+    
+    // Simple check with timeout instead of blocking calls
+    enableHum = 0; // Default to disabled
+    
+    // Try to read status with timeout
+    unsigned long startTime = millis();
+    bool sensorResponded = false;
+    
+    while (millis() - startTime < 1000) { // 1 second timeout
+      Wire.beginTransmission(SHT_ADDRESS);
+      if (Wire.endTransmission() == 0) {
+        sensorResponded = true;
+        break;
+      }
+      delay(100);
+    }
+    
+    if (sensorResponded) {
+      enableHum = 1;
+      #ifdef DEBUG
+        DEBUGSERIAL.println(F("SHT31 connected"));
+      #endif
+    } else {
+      #ifdef DEBUG
+        DEBUGSERIAL.println(F("SHT31 not found"));
+      #endif
+    }
+    
+  #else
+    // SHT4x initialization
+    #ifdef DEBUG
+      DEBUGSERIAL.println(F("SHT4x init start"));
+    #endif
+    
+    Wire.begin();
+    enableHum = 0; // Default to disabled
+    
+    // Simple initialization without blocking checks
     sht.setChipType(SHT4X_CHIPTYPE_A);
     sht.setMode(SHT4X_CMD_MEAS_HI_PREC);
-  if (sht.checkSerial() == SHT4X_STATUS_OK) {
-    enableHum=1;
-  }
+    
+    // Quick check if sensor responds
+    unsigned long startTime = millis();
+    bool sensorResponded = false;
+    
+    while (millis() - startTime < 1000) { // 1 second timeout
+      if (sht.checkSerial() == SHT4X_STATUS_OK) {
+        sensorResponded = true;
+        break;
+      }
+      delay(100);
+    }
+    
+    if (sensorResponded) {
+      enableHum = 1;
+      #ifdef DEBUG
+        DEBUGSERIAL.println(F("SHT4x connected"));
+      #endif
+    } else {
+      #ifdef DEBUG
+        DEBUGSERIAL.println(F("SHT4x not found"));
+      #endif
+    }
   #endif 
+#endif
+
+#ifdef DEBUG
+  DEBUGSERIAL.println(F("After humidity init"));
+#endif
+
 #endif 
-GetHumidity();
 //GetPressure();
 
+
+#ifdef DEBUG
+  DEBUGSERIAL.println(F("bbb")); // ADD THIS
+#endif
 
 int eepromValue27 = EEPROM.read(27);
 if (eepromValue27 == 255 || eepromValue27 == 1) {  
@@ -463,6 +481,12 @@ if (resetReason == 8) { //////////////////// reset reason detailed
         EEPROM.write(15, 0); // Reset EEPROM value
     }
 }
+
+
+
+#ifdef DEBUG
+  DEBUGSERIAL.println(F("jj"));
+#endif
 
 #ifdef GSM 
 delay(7000);
@@ -494,93 +518,50 @@ else if (network2>0) {
   } 
 
 beforeSend();
-IGNORE_GSM_DATA;
 #endif
 
+UZ_wake(); 
 
-
-#ifdef UZ_Anemometer
-  UZ_wake(); 
-  LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
-#endif 
 }
 
 void loop() {
-     
-#ifdef UZ_Anemometer
-  DISABLE_UART_START_FRAME_INTERRUPT;    
-  unsigned long startedWaiting = millis();
-  
-  #ifdef UZ_old
-    while (ultrasonic.available() < 2 && millis() - startedWaiting <= 15000) {  delay(10);}
-    if (ultrasonic.available() < 2 ) { // sleep while receiving data and anemometer sleep time 3s or more
-          LowPower.idle(SLEEP_2S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
-    }
-    else { // sleep while receiving data and anemometer sleep time 2s or less 
-          LowPower.idle(SLEEP_60MS, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
-    }
-    while (ultrasonic.read() != ',' and millis() - startedWaiting <= 7000) {  } 
-  #else
-    LowPower.idle(SLEEP_1S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
-  
-        //delay(15);
-//        #ifdef DEBUG
-//          DEBUGSERIAL.println(ultrasonic.available());
-//        #endif
-          //if (ultrasonic.available() ==1 ) { // sleep while receiving data and anemometer sleep time 3s or more
-           // LowPower.idle(SLEEP_1S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
-          //}
-      //while (ultrasonic.read() != ',' and millis() - startedWaiting <= 7000) { delay(10); } 
-
-//while (ultrasonic.read() != ',' and millis() - startedWaiting <= 7000) { delay(10); } 
-while (millis() - startedWaiting <= 1000) {
-  char c = ultrasonic.read();
-  if (c == ',') {
-    break;
-  }
-  #ifdef DEBUG
-    if (c >= 32 && c <= 126) {  // Printable ASCII range
-      DEBUGSERIAL.println(c);
-    }
-  #endif
-  delay(10);
-}
-
-
-  #endif 
-
-    delay(90);
-  if (ultrasonic.available()>61){  
-    UltrasonicAnemometer();
-    #ifdef DEBUG
-      unsigned long totalTime = millis() - startedWaiting;
-      DEBUGSERIAL.print(F("UZ time: "));
-      DEBUGSERIAL.println(totalTime);
-    #endif
-    } 
-  else {  
-    UZerror(1);
-  } 
-
-                    
-#else 
-    Anemometer();                           // anemometer
-    GetWindDirection();
-
   if ( sleepBetween == 1)  { // to sleep or not to sleep between wind measurement
     LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);  // sleep
   }
   else if ( sleepBetween == 2)  { // to sleep or not to sleep between wind measurement
     LowPower.powerDown(SLEEP_2S, ADC_OFF, BOD_OFF);  // sleep
   }
-  else if ( sleepBetween > 2 and sleepBetween < 7)  { // to sleep or not to sleep between wind measurement
+  else if ( sleepBetween == 3)  { // to sleep or not to sleep between wind measurement
+    LowPower.powerDown(SLEEP_2S, ADC_OFF, BOD_OFF);  // sleep
+    LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);  // sleep
+  }
+  
+  else if ( sleepBetween ==4)  { // to sleep or not to sleep between wind measurement
     LowPower.powerDown(SLEEP_4S, ADC_OFF, BOD_OFF);  // sleep
   }
-  else if ( sleepBetween >= 7 )  { // to sleep or not to sleep between wind measurement
-    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);  // sleep
+  else if ( sleepBetween ==5)  { // to sleep or not to sleep between wind measurement
+    LowPower.powerDown(SLEEP_4S, ADC_OFF, BOD_OFF);  // sleep
+    LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);  // sleep
   }
-   
-#endif  
+  else if ( sleepBetween ==6)  { // to sleep or not to sleep between wind measurement
+    LowPower.powerDown(SLEEP_4S, ADC_OFF, BOD_OFF);  // sleep
+    LowPower.powerDown(SLEEP_2S, ADC_OFF, BOD_OFF);  // sleep
+  }  
+  else if ( sleepBetween ==7)  { // to sleep or not to sleep between wind measurement
+    LowPower.powerDown(SLEEP_4S, ADC_OFF, BOD_OFF);  // sleep
+    LowPower.powerDown(SLEEP_2S, ADC_OFF, BOD_OFF);  // sleep
+    LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);  // sleep
+  } 
+  
+  else if ( sleepBetween == 8 )  { // to sleep or not to sleep between wind measurement
+    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);  // sleep
+  }       
+  else if ( sleepBetween == 16 )  { // to sleep or not to sleep between wind measurement
+    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);  // sleep
+    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);  // sleep
+  }  
+
+UltrasonicAnemometer();
 
 
   #ifdef DEBUG_MEASURE                                 // debug data
@@ -596,10 +577,11 @@ while (millis() - startedWaiting <= 1000) {
 
   GetAvgWInd();                                 // avg wind
 
-
   digitalWrite(13, HIGH);   // turn the LED on
   delay(15);                       // wait
   digitalWrite(13, LOW);    // turn the LED
+
+
 
  
 // check if is time to send data online  
@@ -613,28 +595,18 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
   {  
     beforeSend();
   }
+
+
   
-  else if ( UltrasonicAnemo==0 ){ // restart timer
     noInterrupts();
     timergprs = 0;                                
     interrupts();
-  }
+  
 
-#ifdef UZ_Anemometer
-  else if ( UltrasonicAnemo==1 ){ // go to sleep  
-    ENABLE_UART_START_FRAME_INTERRUPT;
-    countWake=0;
-    LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF,TIMER2_ON);  // sleep  
-    }    
-
-#endif 
 }
 
 void beforeSend() {
   /////////////////////////// send data to server ///////////////////////////////////////////////
-  //ultrasonic.end();
-  IGNORE_UZ_DATA;
-  ENABLE_GSM_DATA;
   digitalWrite(DTR, LOW);  // wake up
   delay(100);
 
@@ -654,23 +626,8 @@ void beforeSend() {
   if (sendSuccess) {
   digitalWrite(DTR, HIGH);  // sleep
   delay(50);
-  IGNORE_GSM_DATA;
-  ENABLE_UZ_DATA;
-  //UZ_wake(); 
-  
-  #ifdef UZ_Anemometer
-    if (UltrasonicAnemo == 1) {
-      if (changeSleep == 1 && stopSleepChange < 3) {  // change of sleep time
-        UZsleep(sleepBetween);
-      }
-    }
-    #endif
 
-
-    // ultrasonicFlush();
-    ENABLE_UART_START_FRAME_INTERRUPT;
-    LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF, TIMER2_ON);  // sleep
-  }
+   }
   else {
     reset(14);
   }
@@ -706,10 +663,7 @@ void reset(byte rr) {
     }
 
 
-  #ifdef UZ_Anemometer
-    //IGNORE_UZ_DATA;
-    ultrasonic.end();
-  #endif 
+  ULTRASONIC.end();
 
     
   delay(100);
@@ -737,71 +691,34 @@ void simReset() {
 }
 
 
-
-#ifdef UZ_Anemometer
 void UZ_wake() {
-    #ifdef toggle_UZ_power
-      digitalWrite(26, HIGH);  
-      delay(1000); 
-    #endif
-
-
   if (uzInitialized) {
     #ifdef DEBUG
-      DEBUGSERIAL.println(F("UZze"));
-      delay(50);
+      DEBUGSERIAL.println(F("UZ already initialized"));
     #endif
     return; // Skip if already initialized
   }
 
-  #ifdef DEBUG
-    DEBUGSERIAL.println(F("startUZ"));
-    delay(50);
-  #endif
 
-  // Try to flush and reset the hardware serial buffer
-  while (ultrasonic.available()) {
-    ultrasonic.read(); // Clear any junk data
-  }
-
-  ultrasonic.end();     // Stop serial port
+  // Initialize Modbus RTU communication
+  ULTRASONIC.end();     // Stop serial port
   delay(100);           // Give hardware time to release resources
-  ultrasonic.begin(9600); // Reopen with proper baud rate
-  DISABLE_TX1;
+  ULTRASONIC.begin(BAUD_RATE, SERIAL_8E1); // Start with proper Modbus settings
 
-  unsigned long startedWaiting = millis();
-
-  while (!ultrasonic.available() && millis() - startedWaiting <= 65000) {
-    delay(1000);
+  // Clear any junk data from buffer
+  while (ULTRASONIC.available()) {
+    ULTRASONIC.read();
   }
 
-  if (millis() - startedWaiting <= 65000) {
-    UltrasonicAnemo = 1;
-    uzInitialized = true;
-    windDelay = 1000;
-    ultrasonicFlush();
+  UltrasonicAnemo = 1;
+  uzInitialized = true;
 
-    #ifdef DEBUG
-      DEBUGSERIAL.println(F("UZ"));
-      delay(50);
-    #endif
-  } else {
-    #ifdef DEBUG
-      DEBUGSERIAL.println(F("UZ fail"));
-      delay(50);
-    #endif
-
-    reset(7); // reset board if UZ not available
-  }
+  #ifdef DEBUG
+    DEBUGSERIAL.println(F("UZ Modbus RTU ok"));
+  #endif
 }
 
-#endif  
 
-
-
-ISR(USART1_START_vect){
-countWake++;
-}
 
 void readEEPROMnetwork(byte ee1,byte ee2, byte ee3) {
     byte lastbyte = EEPROM.read(ee3);

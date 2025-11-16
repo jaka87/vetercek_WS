@@ -58,16 +58,6 @@ void UltrasonicAnemometer() { //measure wind speed
         if( (check[0] ==hexbuffer[2] and check[1] ==hexbuffer[3]) or (check[0] ==hexbuffer2[2] and check[1] ==hexbuffer2[3]) )  {  
             calDirection = atoi(dir) + vaneOffset;
             
-            #if defined(COMPASS)
-              int heading = getCompassHeading();
-              calDirection=calDirection+heading;
-              if (calDirection >= 360) {
-                  calDirection -= 360;  // Not executed because calDirection = 135
-              } else if (calDirection < 0) {
-                  calDirection += 360;  // Not executed because calDirection = 135
-              }
-            #endif 
-            
             CalculateWindDirection();  // calculate wind direction from data
             windSpeed=atof(wind)*19.4384449;
             CalculateWindGust(windSpeed);
@@ -210,78 +200,6 @@ DISABLE_TX1;
 }
 
 
-
-
-//
-//void UZsleep(byte sleepT) {
-//  const unsigned long TIMEOUT = 20000;  // 40 seconds total timeout
-//  const int MAX_ATTEMPTS = 2;  // Number of retries
-//  char buffer[25];
-//  char response[150];
-//  byte slponoff = (sleepT == 0) ? 0 : 1;
-//
-//        #ifdef DEBUG
-//          DEBUGSERIAL.println(F("slp try"));
-//        #endif
-//
-//  snprintf(buffer, sizeof(buffer), ">PwrIdleCfg:%d,%d\r\n", slponoff, sleepT);
-//
-//  for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-//    bool success = false;
-//    unsigned long startTime = millis();
-//
-//
-//    // Wait for '1' command before proceeding
-//    while (true) {
-//      if (ultrasonic.available()) {  
-//        char received = ultrasonic.read();  
-//        if (received == '1') {  
-//          break;  // Proceed with sending the command
-//        }
-//      }
-//    }
-//
-//
-//    while (!success && (millis() - startTime <= TIMEOUT)) {
-//      // Send command
-//      ultrasonic.write(buffer);
-//
-//      // Clear serial buffer
-//      ultrasonicFlush();
-//
-//      // Check for response
-//      delay(20);
-//      if (ultrasonic.available()) {
-//        ultrasonic.read();  // Discard first byte
-//        int size = ultrasonic.readBytesUntil('\n', response, sizeof(response) - 1);
-//        if (size > 0) {
-//          response[size] = '\0';
-//
-////          #ifdef DEBUG
-////            DEBUGSERIAL.print(F("Received: "));
-////            DEBUGSERIAL.println(response);
-////          #endif
-//
-//          if (strstr(response, "IdleSec") != NULL) {
-//            sleepBetween = sleepT;
-//            changeSleep = 0;
-//            stopSleepChange = 0;
-//            //success = true;
-//
-//        #ifdef DEBUG
-//          DEBUGSERIAL.print(F("slp ok "));
-//          DEBUGSERIAL.println(attempt + 1);
-//        #endif
-//
-//            return;  // Exit function if successful
-//          }
-//        }
-//      }
-//    }
-//
-//  }
-//
-//}
 
 
 #endif 
@@ -595,62 +513,3 @@ void ultrasonicFlush(){
 
   
 #endif 
-
-
-
-
-#if defined(COMPASS)
-
-
-// Function to handle compass data reading and heading calculation
-int getCompassHeading() {
-  int x, y, z;
-
-  // Start communication with the compass sensor
-  Wire.beginTransmission(0x1E);
-  Wire.write(0x03);  // Start reading from the data register
-  Wire.endTransmission();
-
-  // Request 6 bytes from the compass sensor (X, Y, Z axes data)
-  Wire.requestFrom(0x1E, 6);
-
-  // Check if we received all the required bytes
-  if (Wire.available() == 6) {
-    x = (Wire.read() << 8) | Wire.read();  // X-axis data
-    y = (Wire.read() << 8) | Wire.read();  // Y-axis data
-    z = (Wire.read() << 8) | Wire.read();  // Z-axis data (if needed)
-  } else {
-    // If no data is available, return an invalid value
-    return -1.0;  // Error value
-  }
-
-  // Calculate the heading in degrees
-  int heading = atan2((float)y, (float)x) * 180 / PI;
-
-  // Correct for when the heading is negative
-  if (heading < 0) {
-    heading += 360;
-  }
-
-  return heading;  // Return the calculated heading
-}
-
-
-void initCompass() {
-  Wire.beginTransmission(0x1E);
-  Wire.write(0x00);  // Write to configuration register A
-  Wire.write(0x70);  // 8-average, 15 Hz default, normal measurement
-  Wire.endTransmission();
-  
-  Wire.beginTransmission(0x1E);
-  Wire.write(0x01);  // Write to configuration register B
-  Wire.write(0xA0);  // Gain = 5
-  Wire.endTransmission();
-
-  Wire.beginTransmission(0x1E);
-  Wire.write(0x02);  // Select mode register
-  Wire.write(0x00);  // Continuous measurement mode
-  Wire.endTransmission();
-}
-
-#endif

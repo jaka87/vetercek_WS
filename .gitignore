@@ -13,6 +13,8 @@
 !/vetercek_nb-iot-HW/*
 !/vetercek_SIM7070/
 !/vetercek_SIM7070/*
+!/vetercek_SIM7070_modbus/
+!/vetercek_SIM7070_modbus/*
 !/3D prints/
 !/3D prints/*
 !.gitignore
