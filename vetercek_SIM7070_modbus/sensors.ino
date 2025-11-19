@@ -58,11 +58,11 @@ void UltrasonicAnemometer() { //measure wind speed using Modbus RTU
         delay(1);
     }
 
-
     if (idx < 5) {
         #ifdef DEBUG
             DEBUGSERIAL.println(F("x modbus"));
         #endif
+        UZerror();
         return;
     }
 
@@ -109,10 +109,41 @@ void UltrasonicAnemometer() { //measure wind speed using Modbus RTU
         (wind_speed < (cutoffWind * 10) && measureCount <= (whenSend * 2))) {
         timergprs = 0;  
     }
+
+  digitalWrite(13, HIGH);   // turn the LED on
+  delay(15);                       // wait
+  digitalWrite(13, LOW);    // turn the LED
+  
+    noInterrupts();
+    timergprs = 0;                                
+    interrupts();
 }
 
+void UZerror() { //ultrasonic error
+  sonicError++;
+  #ifdef DEBUG
+      DEBUGSERIAL.print(F("err UZ "));
+      DEBUGSERIAL.println(where);
+  #endif
 
+  #ifdef toggle_UZ_power
+    if ( sonicError >=4)  { UZ_power_toggle(); sonicError=0; }   // if more than x US errors 
+  #else
+    if ( sonicError >=4)  { reset(4);  }   // if more than x US errors 
+  #endif
+}
 
+#ifdef toggle_UZ_power
+void UZ_power_toggle(){
+  digitalWrite(26, LOW);  
+  delay(2000); 
+  digitalWrite(26, HIGH);  
+  
+    #ifdef DEBUG
+      DEBUGSERIAL.println("uz pwr");
+  #endif
+}
+#endif
 
 
 void CalculateWind() {  

@@ -278,7 +278,7 @@ void setup() {
   Timer1.attachInterrupt(CheckTimerGPRS);  // attaches checkTimer() as a timer overflow interrupt
 
   pinMode(26, OUTPUT);
-  digitalWrite(26, HIGH);    // turn ON UZ anemometer
+  digitalWrite(26, LOW);    // turn off UZ anemometer
 
 
   pinMode(13, OUTPUT);     // this part is used wPWRKEYhen you bypass bootloader to signal when board is starting...
@@ -577,9 +577,6 @@ UltrasonicAnemometer();
 
   GetAvgWInd();                                 // avg wind
 
-  digitalWrite(13, HIGH);   // turn the LED on
-  delay(15);                       // wait
-  digitalWrite(13, LOW);    // turn the LED
 
 
 
@@ -594,14 +591,7 @@ if ( ((resetReason==2 or resetReason==5) and measureCount > 2)  // if reset butt
   
   {  
     beforeSend();
-  }
-
-
-  
-    noInterrupts();
-    timergprs = 0;                                
-    interrupts();
-  
+  } 
 
 }
 
@@ -692,6 +682,11 @@ void simReset() {
 
 
 void UZ_wake() {
+   #ifdef toggle_UZ_power
+      digitalWrite(26, HIGH);  
+      delay(1000); 
+    #endif
+    
   if (uzInitialized) {
     #ifdef DEBUG
       DEBUGSERIAL.println(F("UZ already initialized"));
