@@ -10,7 +10,6 @@
 
 //PCB 0.6.4 and up
 
-
 #include <avr/wdt.h> //watchdog
 #include "src/LowPower/LowPower.h" //sleep library
 #include <math.h> // wind speed calculations
@@ -70,11 +69,8 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
   #define windFactor 34001.72 // custom 1 pulses per rotation
 #endif
 
-#ifdef LOCAL_WS 
-  char* broker = "vetercek.com";
-#else
-  char* broker = "data.windgust.eu";
-#endif
+char* broker = "10.64.124.253";
+
 
 #define ONE_WIRE_BUS_1 4 //air
 #define ONE_WIRE_BUS_2 3 // water
@@ -435,7 +431,7 @@ void setup() {
   }
   #endif 
 #endif 
-GetHumidity();
+//GetHumidity();
 //GetPressure();
 
 

@@ -102,13 +102,13 @@ bool checkServer() { // try connecting to server
   unsigned long startTime=millis();    
   bool conn=false;
   if (checkGPRS()==false){ connectGPRS(1);  }  //check network, restart gprs
-  conn=fona.UDPconnect(broker,6789);
+  conn=fona.UDPconnect(broker,6788);
   
   if (conn== false){ // cant connect
     int count = 0;
     delay(500);
     while (count < 5) {
-      conn = fona.UDPconnect(broker, 6789);
+      conn = fona.UDPconnect(broker, 6788);
       if (conn) {
         return true; // Connection successful
       }

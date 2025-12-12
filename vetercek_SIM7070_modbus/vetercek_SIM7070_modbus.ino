@@ -17,6 +17,8 @@ int resetReason = MCUSR;
 
 //////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
 #define APN "iot.1nce.net"
+char* broker = "10.64.124.253";
+
 byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 (2g with nb-iot as backup) and 51 (nb-iot with 2g as backup)
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
 int vaneOffset=0; // vane offset for wind dirrection
@@ -28,7 +30,7 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 //#define DEBUG_MEASURE  // debug data
 //#define DEBUG_ERROR  // debug connection,DEBUG_ERROR not written to serial but as reset reason
 #define LOCAL_WS // comment out if the station is global - shown on windgust.eu
-//#define toggle_UZ_power // toggle ultrasonic power - PCB minimum PCB v.0.6.6
+#define toggle_UZ_power // toggle ultrasonic power - PCB minimum PCB v.0.6.6
 
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 #define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
@@ -37,7 +39,7 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 //#define TMP_POWER_ONOFF // comment out if you want power to be on all the time
 #define GSM
 
-#define NETWORK_OPERATORS 2
+#define NETWORK_OPERATORS 1
   // 1. Slovenia
   // 2. Croatia
   // 3. Italy
@@ -52,11 +54,6 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 ///////////////////////////////////////////////////////////////////////////////////
 
 
-#ifdef LOCAL_WS 
-  char* broker = "vetercek.com";
-#else
-  char* broker = "data.windgust.eu";
-#endif
 
 #define ONE_WIRE_BUS_1 4 //air
 #define ONE_WIRE_BUS_2 3 // water
