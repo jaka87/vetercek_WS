@@ -86,55 +86,60 @@ void connectGPRS(byte what) { //0 - just connect / 1 - drop GPRS, then reconnect
   }
 }
 
+
 void gatherData() {
-  data[8]=windDir/100;
-  data[9]=windDir%100;
-  data[10]=wind_speed/10;
-  data[11]=wind_speed%10;
-  data[12]=windGustAvg/10;
-  data[13]=windGustAvg%10;
-  data[15]=abs(temp*100)/100;
-  data[16]=abs(int(temp*100))%100;
-  data[18]=abs(water*100)/100;
-  data[19]=abs(int(water*100))%100;
-  data[20]=battLevel;
-  data[21]=sig;
-  data[22]=measureCount;
-  data[23]=resetReason;
-  data[24]=SolarCurrent;
+  data[2]  = windDir / 100;
+  data[3]  = windDir % 100;
+  data[4]  = wind_speed / 10;
+  data[5]  = wind_speed % 10;
+  data[6]  = windGustAvg / 10;
+  data[7]  = windGustAvg % 10;
 
-  if (temp > 0) { data[14]=1; } // if positive or negative air temperature
-  else {    data[14]=0; } 
+  data[9]  = abs(temp * 100) / 100;
+  data[10] = abs(int(temp * 100)) % 100;
 
-  if (rainCount > -1 and enableRain==1) { // if rain instead of water
-    data[17]=10;
-    data[18]=rainCount;
-    data[19]=0;    
-  } 
-  
-  else if (water > 0) { //if positive or negative water temperature
-    data[17]=1;
-    data[18]=abs(water*100)/100;
-    data[19]=abs(int(water*100))%100;
-  } 
+  data[12] = abs(water * 100) / 100;
+  data[13] = abs(int(water * 100)) % 100;
+
+  data[14] = battLevel;
+  data[15] = sig;
+  data[16] = measureCount;
+  data[17] = resetReason;
+  data[18] = SolarCurrent;
+
+  // air temperature sign
+  if (temp > 0) data[8] = 1;
+  else          data[8] = 0;
+
+  // rain / water logic
+  if (rainCount > -1 && enableRain == 1) {
+    data[11] = 10;
+    data[12] = rainCount;
+    data[13] = 0;
+  }
+  else if (water > 0) {
+    data[11] = 1;
+    data[12] = abs(water * 100) / 100;
+    data[13] = abs(int(water * 100)) % 100;
+  }
   else {
-    data[17]=0;
-    data[18]=abs(water*100)/100;
-    data[19]=abs(int(water*100))%100;
-  } 
+    data[11] = 0;
+    data[12] = abs(water * 100) / 100;
+    data[13] = abs(int(water * 100)) % 100;
+  }
 
-  if (enableBmp==1) { // if send pressure value
-    data[25]=pressure/100;
-    data[26]=pressure%100;
-  } 
-  else { 
-    data[25]=sonicError;    
-  } 
+  // pressure
+  if (enableBmp == 1) {
+    data[19] = pressure / 100;
+    data[20] = pressure % 100;
+  } else {
+    data[19] = sonicError;
+  }
 
-  if (enableHum==1) { // if send humidity value
-    data[27]=humidity;
-  } 
-
+  // humidity
+  if (enableHum == 1) {
+    data[21] = humidity;
+  }
 }
 
 
@@ -263,7 +268,7 @@ bool PostData() {
         data[i] = EEPROM.read(eepromStartAddress + i);
       }
       EEPROM.write(39, 0); // do not read from eeprom
-      data[23] = resetReason;
+      data[17] = resetReason;
     } else {
       gatherData();
     }
@@ -310,6 +315,8 @@ bool PostData() {
   fail_to_send();
   return false;  // Failure
 } 
+
+
 
 
 
@@ -370,44 +377,4 @@ void dropConnection(byte drop_type) { // 1 - full drop cnnection, 0 only drop gp
       #ifdef DEBUG                                 
     DEBUGSERIAL.println("drp con stop");
   #endif
-}
-
-
-
-void checkIMEI() {
-  char IMEI[15]; // Use this for device ID
-   if (EEPROM.read(0)==1 and EEPROM.read(1)!=240) {  // read from EEPROM if data in it 
-      for (int i = 0; i < 8; i++){
-       data[i]=EEPROM.read(i+1);
-        //#ifdef DEBUG                                 
-        //  DEBUGSERIAL.println(EEPROM.read(i+1));
-        //#endif
-       }
-   }
-   
-   else {  // read from SIM module
-      uint8_t imeiLen = fona.getIMEI(IMEI);  // imei to byte array
-        delay(200);
-        
-      for(int i=0; i<16; i++)
-        {
-          idd[i]=(int)IMEI[i] - 48;
-        }
-
-      for (int i = 0; i < 8; i++){
-        int multiply=i*2;
-        if (i > 6) {
-       data[i]=(idd[multiply]);
-       }
-        else {
-       data[i]=((idd[multiply]*10)+idd[multiply+1]);
-       }   
-      }           
-
-
-        EEPROM.write(0, 1);   // write new data to EEPROM
-        for (int i = 0; i < 8; i++){
-          EEPROM.write(i+1, data[i]);
-         }
-   }
 }

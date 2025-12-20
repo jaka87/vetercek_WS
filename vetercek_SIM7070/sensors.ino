@@ -427,14 +427,14 @@ void GetTmpNow() {
 #ifdef TMPDS18B20
   if (onOffTmp == 1) {
     GetAir();                               // air
-    data[18]=99;
+    data[12]=99;
     delay(20);
   }
   else if (onOffTmp == 2) {    
     if (enableRain==0){  
       GetWater();                             // water
     }          
-    data[19]=99;
+    data[13]=99;
     delay(20);
   }
   else if (onOffTmp > 2) {

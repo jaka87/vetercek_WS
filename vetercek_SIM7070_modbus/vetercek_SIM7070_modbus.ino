@@ -18,6 +18,8 @@ int resetReason = MCUSR;
 //////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
 #define APN "iot.1nce.net"
 char* broker = "10.64.124.253";
+#define DEVICE_ID 1   
+
 
 byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 (2g with nb-iot as backup) and 51 (nb-iot with 2g as backup)
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
@@ -68,7 +70,7 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 
 
 
-byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 0,0,0 }; // data
+byte data[] = { DEVICE_ID & 0xFF, (DEVICE_ID >> 8) & 0xFF, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 0,0,0 }; // data
 
 
 #ifdef TMPDS18B20
@@ -206,14 +208,14 @@ bool uzInitialized = false;
 
 #if NETWORK_OPERATORS == 1
   int network1=29340;
-  int network2=29341;
+  int network2=29370;
   byte net_ver1=9;
   byte net_ver2=0;
 #elif NETWORK_OPERATORS == 2
-  int network1=21901;
-  int network2=21902;
+  int network1=21901; //H-telekom
+  int network2=21902; //a1
   byte net_ver1=0;
-  byte net_ver2=0;
+  byte net_ver2=9;
 #elif NETWORK_OPERATORS == 3
   int network1=22210;
   int network2=22288;
@@ -481,10 +483,6 @@ if (resetReason == 8) { //////////////////// reset reason detailed
 
 
 
-#ifdef DEBUG
-  DEBUGSERIAL.println(F("jj"));
-#endif
-
 #ifdef GSM 
 delay(7000);
 #ifdef DEBUG
@@ -493,7 +491,6 @@ delay(7000);
 moduleSetup(); // Establishes first-time serial comm and prints IMEI 
 bool checkAT = fona.checkAT();
 delay(100);
-if (fona.checkAT()) { checkIMEI(); }
 
 
 //r change network
@@ -673,7 +670,6 @@ void simReset() {
     fona.reset(); // AT+CFUN=1,1
     delay(300);
     moduleSetup(); // Establishes first-time serial comm and prints IMEI 
-    checkIMEI();     
     connectGPRS(0); //just connect
 }
 

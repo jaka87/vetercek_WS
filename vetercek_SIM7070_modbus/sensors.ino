@@ -122,8 +122,7 @@ void UltrasonicAnemometer() { //measure wind speed using Modbus RTU
 void UZerror() { //ultrasonic error
   sonicError++;
   #ifdef DEBUG
-      DEBUGSERIAL.print(F("err UZ "));
-      DEBUGSERIAL.println(where);
+      DEBUGSERIAL.print(F("err UZ"));
   #endif
 
   #ifdef toggle_UZ_power
@@ -319,14 +318,14 @@ void GetTmpNow() {
 #ifdef TMPDS18B20
   if (onOffTmp == 1) {
     GetAir();                               // air
-    data[18]=99;
+    data[12]=99;
     delay(20);
   }
   else if (onOffTmp == 2) {    
     if (enableRain==0){  
       GetWater();                             // water
     }          
-    data[19]=99;
+    data[13]=99;
     delay(20);
   }
   else if (onOffTmp > 2) {
