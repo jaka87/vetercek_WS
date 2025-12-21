@@ -461,6 +461,7 @@ if (resetReason == 8) { //////////////////// reset reason detailed
 
 #ifdef GSM 
 delay(7000);
+
 #ifdef DEBUG
   DEBUGSERIAL.println(F("MOD_ST"));
 #endif

@@ -41,6 +41,7 @@ boolean Botletics_modem::checkAT() {
 		return true;
 return false;
 }
+
 boolean Botletics_modem::begin(Stream &port) {
   mySerial = &port;
 
@@ -478,62 +479,112 @@ uint8_t Botletics_modem::UDPconnected(void) {
 }
 
 
+uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte response[12], uint8_t charr) {  
+    uint8_t howmany;
+    char buffer[20];
+    flushInput();
 
+    sprintf(buffer, "AT+CASEND=0,%u", len);
+    mySerial->println(buffer);
+    DEBUG_PRINTLN(buffer);
 
-uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte response[12],uint8_t charr) {	
-	  uint8_t howmany;
-     char buffer[20]; // Make sure the buffer is large enough to hold the entire string
-     flushInput();
+    // Dynamic wait for '>' prompt - more efficient than fixed timeout
+    unsigned long startTime = millis();
+    bool gotPrompt = false;
+    
+    while (millis() - startTime < 2000) { // Max 2 seconds for prompt
+        if (mySerial->available()) {
+            char c = mySerial->read();
+            if (c == '>') {
+                gotPrompt = true;
+                DEBUG_PRINTLN(F("\t<--- Got '>' prompt"));
+                break;
+            }
+        }
+        delay(1); // Small delay to prevent busy-waiting
+    }
+    
+    if (!gotPrompt) {
+        DEBUG_PRINTLN(F("\t<--- No prompt received"));
+        return 3;
+    }
+    
+    // Send packet immediately after prompt
+    mySerial->write(packet, len);
 
-     sprintf(buffer, "AT+CASEND=0,%u", len);
-     mySerial->println(buffer);
-     DEBUG_PRINTLN(buffer);
+    // Wait for SEND OK with reasonable timeout
+    startTime = millis();
+    bool gotSendOk = false;
+    
+    while (millis() - startTime < 3000) { // Max 3 seconds for SEND OK
+        if (mySerial->available()) {
+            uint8_t l = readline(100); // Use short timeout to read available data
+            if (l > 0) {
+                DEBUG_PRINT(F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
+                if (strstr(replybuffer, "SEND OK") != NULL || strstr(replybuffer, "OK") != NULL) {
+                    gotSendOk = true;
+                    break;
+                }
+            }
+        }
+        delay(10);
+    }
+    
+    if (!gotSendOk) {
+        DEBUG_PRINTLN(F("\t<--- No SEND OK received"));
+        return 4;
+    }
 
-	  
-	  readline(1000);
+    // Wait for data indication (network response)
+    startTime = millis();
+    bool gotDataInd = false;
+    
+    while (millis() - startTime < 8000) { // Max 8 seconds for network response
+        if (mySerial->available()) {
+            uint8_t l = readline(100);
+            if (l > 0) {
+                DEBUG_PRINT(F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
+                if (strcmp(replybuffer, "+CADATAIND: 0") == 0) {
+                    gotDataInd = true;
+                    break;
+                }
+            }
+        }
+        delay(10);
+    }
 
-	  if (replybuffer[0] != '>') return 3;
-	  mySerial->write(packet, len);
+    if (!gotDataInd) {
+        DEBUG_PRINTLN(F("\t<--- No data indication received"));
+        return 5;
+    }
 
-	uint8_t sendD = readline(2000); // return SEND OK
-	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
-	  if (strstr(replybuffer, "SEND OK") == NULL && strstr(replybuffer, "OK") == NULL) { return 4;}
+    // Handle different firmware versions
+    if (_type2 == 2) { // different firmware version
+        uint8_t sendD3 = readline(1000); // buffer full
+        DEBUG_PRINT(F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
+    }
 
+    // Request received data
+    mySerial->println(F("AT+CARECV=0,25"));
+    uint8_t receveD = readline2(2000, charr); // RETURN DATA
 
-	uint8_t sendD2 = readline(5000); // return if received data back
-	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
-	if (strcmp(replybuffer, "+CADATAIND: 0") != 0) { return 5;}
-
-		 if (_type2 == 2) { // different firmware version
-			uint8_t sendD3 = readline(1000); // buffer full
-			DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
-		 }
-
-	mySerial->println(F("AT+CARECV=0,25"));
-	uint8_t receveD = readline2(2000,charr); // RETURN DATA
-
-	if (replybuffer2[12]==50 and replybuffer2[13]==44){
-		howmany=13;
-	}
-	else{
-		howmany=12;
-	}
-		
-		//DEBUG_PRINTLN("response :");   
-		  for (uint16_t i=0; i<charr;i++) {
-			  		//DEBUG_PRINT(i);		
-					//DEBUG_PRINT(" - ");		
-					//DEBUG_PRINTLN(replybuffer2[i]);	
-					
-			if (i>howmany) {	 	
-					response[i-(howmany+1)]=replybuffer2[i];
-				}
-		}
-		//DEBUG_PRINTLN(response[0]);
-	  if (response[0] > 0 and response[1] < 4) return 1;
-
-	  else return 6;
-  
+    // Parse response based on format
+    if (replybuffer2[12]==50 && replybuffer2[13]==44){ // "2," in ASCII
+        howmany=13;
+    } else {
+        howmany=12;
+    }
+    
+    // Extract response data
+    for (uint16_t i=0; i<charr; i++) {
+        if (i > howmany) {
+            response[i-(howmany+1)] = replybuffer2[i];
+        }
+    }
+    
+    // Check if response is valid
+    if (response[0] > 0 && response[1] < 4) return 1;
+    else return 6;
 }
 
 

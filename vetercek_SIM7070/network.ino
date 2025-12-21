@@ -29,7 +29,7 @@ void changeNetwork_id(int network, byte technology) {
   #ifdef DEBUG
     DEBUGSERIAL.println(F("network change"));
   #endif 
-  delay(10000);
+  delay(7000);
   connectGPRS();
 }
 
