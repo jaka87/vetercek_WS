@@ -497,28 +497,12 @@ uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
 
 	uint8_t sendD = readline(2000); // return SEND OK
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
-	if (strstr(replybuffer, "SEND OK") == NULL && strstr(replybuffer, "OK") == NULL) {return 4;}
+	  if (strstr(replybuffer, "SEND OK") == NULL && strstr(replybuffer, "OK") == NULL) { return 4;}
 
 
-bool dataInd = false;
-unsigned long start = millis();
-
-while (millis() - start < 5000) {  // 10s NB-IoT window
-    if (readline(2000, true)) {
-        DEBUG_PRINT(F("<-- ")); DEBUG_PRINTLN(replybuffer);
-
-        if (strstr(replybuffer, "+CADATAIND: 0")) {
-            dataInd = true;
-            break;
-        }
-
-        // Ignore other URCs
-    }
-}
-
-if (!dataInd) {
-    return 5;   // downlink did not arrive
-}
+	uint8_t sendD2 = readline(5000); // return if received data back
+	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
+	if (strcmp(replybuffer, "+CADATAIND: 0") != 0) { return 5;}
 
 		 if (_type2 == 2) { // different firmware version
 			uint8_t sendD3 = readline(1000); // buffer full

@@ -251,66 +251,96 @@ void parseResponse(byte response[13]) {
 
 
 bool PostData() {                     
-  if (measureCount ==0){ 
-    if (EEPROM.read(39) == 1 && EEPROM.read(62) >= 5) {
-      #ifdef DEBUG
-        DEBUGSERIAL.println("EEPROM data");
-        DEBUGSERIAL.println(EEPROM.read(62));
-      #endif 
-      const int dataSize = sizeof(data) / sizeof(data[0]);
-      const int eepromStartAddress = 40; 
-      for (int i = 0; i < dataSize; i++) {
-        data[i] = EEPROM.read(eepromStartAddress + i);
-      }
-      EEPROM.write(39, 0); // do not read from eeprom
-      data[17] = resetReason;
+    if (measureCount == 0) { 
+        if (EEPROM.read(39) == 1 && EEPROM.read(62) >= 5) {
+            #ifdef DEBUG
+                DEBUGSERIAL.println("EEPROM data");
+                DEBUGSERIAL.println(EEPROM.read(62));
+            #endif 
+            const int dataSize = sizeof(data) / sizeof(data[0]);
+            const int eepromStartAddress = 40; 
+            for (int i = 0; i < dataSize; i++) {
+                data[i] = EEPROM.read(eepromStartAddress + i);
+            }
+            EEPROM.write(39, 0); // do not read from EEPROM next time
+            data[17] = resetReason;
+        } else {
+            gatherData();
+        }
     } else {
-      gatherData();
-    }
-  } else {
-    gatherData();
-  }
-
-  byte response[13];  
-  byte udp_send = 0;
-  byte attempts = 0;
-  byte max_attempts;
-
-  if (sendError==1) {max_attempts = 1;}
-  else {max_attempts = 3;}
-
-  // Try to send data up to three times
-  while (attempts < max_attempts) {
-    udp_send = fona.UDPsend(data, sizeof(data), response, 26);
-    
-    #ifdef DEBUG 
-      delay(20);
-      DEBUGSERIAL.print("UDPsend attempt ");
-      DEBUGSERIAL.println(attempts + 1);
-      DEBUGSERIAL.println(udp_send);
-      delay(20);
-    #endif
-
-    if (udp_send == 1) {
-      #ifdef DEBUG
-        DEBUGSERIAL.println(F("-->"));
-      #endif
-
-      sendError=0;
-      parseResponse(response);
-      AfterPost(); 
-      return true; // Exit the function after successful send
+        gatherData();
     }
 
-    attempts++;
-    delay(1000);
-  }
+    byte response[13];  
+    byte udp_send = 0;  
+    byte attempts = 0;  
+    byte max_attempts;  
+    byte udp_fail_count = 0;  // Counter for udp_send == 5
 
-  // If all attempts fail
-  sendError=1;
-  fail_to_send();
-  return false;  // Failure
-} 
+    if (sendError == 1) {
+        max_attempts = 1;
+    } else {
+        max_attempts = 5;
+    }
+
+    // Try to send data up to max_attempts times
+    while (attempts < max_attempts) {
+        udp_send = fona.UDPsend(data, sizeof(data), response, 26);
+
+        #ifdef DEBUG 
+            delay(20);
+            DEBUGSERIAL.print("UDPsend attempt ");
+            DEBUGSERIAL.println(attempts + 1);
+            DEBUGSERIAL.println(udp_send);
+            delay(20);
+        #endif
+
+        if (udp_send == 1) {
+            #ifdef DEBUG
+                DEBUGSERIAL.println(F("--> Successful send"));
+            #endif
+            sendError = 0;
+            parseResponse(response);
+            AfterPost(); 
+            return true;  // Successful send
+        }
+
+        // Count if udp_send >1
+        if (udp_send >1) {
+            udp_fail_count++;
+            
+            if (udp_fail_count == 2) { // change network
+            fona.UDPclose();
+            connectGPRS();
+            checkServer();
+            }
+
+            if (udp_fail_count == 3) { // change network
+              fona.UDPclose();
+              fona.enableGPRS(false);
+
+              if (network==1){
+                network=2;
+                changeNetwork_id(network2,net_ver2);
+            }
+              else{
+                network=1;
+                changeNetwork_id(network1,net_ver1);
+            }
+            checkServer();
+            }
+        }
+
+        attempts++;
+        delay(1000);
+    }
+
+    // If all attempts fail
+    sendError = 1;
+    fail_to_send();
+    return false;  // Failure
+}
+
 
 
 

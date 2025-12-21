@@ -204,6 +204,7 @@ volatile byte countWake = 0;
 byte checkServernum=0;
 byte sendError=0;
 bool uzInitialized = false;
+byte network=0;
 
 
 #if NETWORK_OPERATORS == 1
@@ -500,6 +501,7 @@ if (network1>0  and EEPROM.read(26)!= 1) {
     DEBUGSERIAL.println("net1: ");
     DEBUGSERIAL.println(network1);
   #endif  
+  network=1;
   changeNetwork_id(network1,net_ver1);
   } 
 else if (network2>0) { 
@@ -508,6 +510,7 @@ else if (network2>0) {
     DEBUGSERIAL.println("net2: ");
     DEBUGSERIAL.println(network2);
   #endif
+  network=2;  
   changeNetwork_id(network2,net_ver2);
   } 
 
