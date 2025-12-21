@@ -4,7 +4,7 @@ bool checkNetwork() {
   byte zero_network = 0;
   
   // Maximum timer of 60 seconds
-  unsigned long maxTime = 60000;
+  unsigned long maxTime = 40000;
 
   do {
     GSMstatus = netStatus();
@@ -86,119 +86,69 @@ bool checkGPRS() { //check if gprs connected
      #endif     
     return false; 
     }
-  if (!fona.checkPDP())  { 
-         #ifdef DEBUG
-        DEBUGSERIAL.println(F("GPRS_NI2"));
-     #endif     
-    return false; 
-    }
+
      #ifdef DEBUG
         DEBUGSERIAL.println(F("GPRS OK"));
      #endif   
   return true;
 }
 
-bool checkServer() { // try connecting to server
-  unsigned long startTime=millis();    
-  bool conn=false;
-  if (checkGPRS()==false){ connectGPRS(1);  }  //check network, restart gprs
-  conn=fona.UDPconnect(broker,6788);
-  
-  if (conn== false){ // cant connect
-    int count = 0;
-    delay(500);
-    while (count < 5) {
-      conn = fona.UDPconnect(broker, 6788);
-      if (conn) {
-        return true; // Connection successful
-      }
-      count++;
-      delay(500); // Optional: Wait 0.5 second before retrying
+
+bool checkServer() {
+  // Ensure PDP is active
+  if (!checkGPRS()) {
+    if (!connectGPRS()) {
+      return false;
     }
   }
 
-  if (conn== false){ // cant connect
-        checkServernum=checkServernum+1;
-     #ifdef DEBUG
-        DEBUGSERIAL.print(F("vet_con_fail"));
-        DEBUGSERIAL.println(checkServernum);
-     #endif 
+  // Try UDP connect
+  for (int i = 0; i < 5; i++) {
+    if (fona.UDPconnect(broker, 6788)) {
+      checkServernum = 0;   // ✅ reset on success
 
-        if (checkServernum==4 )  {
-          reset(12);
-        } 
-             
-//        else if (checkServernum==4 )  { 
-//           simReset();     
-//            #ifdef DEBUG_ERROR
-//              resetReason=34;  
-//            #endif
-//        } 
+      sig = fona.getRSSI();
+      battLevel = readVcc();
 
+      #ifdef DEBUG
+        DEBUGSERIAL.println(F("SRVR_OK"));
+      #endif
+      return true;
+    }
+    delay(500);
+  }
 
-       else if (checkServernum==3 ){ 
-          connectGPRS(1); //check network, restart gprs
-            #ifdef DEBUG_ERROR
-              resetReason=33;  
-            #endif
-            }
-              
-       else if (checkServernum==2 )  {
-           if (checkGPRS()==false){ 
-              connectGPRS(1); //check network, restart gprs
-           }
-            #ifdef DEBUG_ERROR
-              resetReason=32;  
-            #endif 
-                
-       } 
-     
-    return false;  
-    } 
-   
-  
-//must wait couple seconds before sending data - otherwise UDPsend3 error
-sig=fona.getRSSI(); 
-battLevel = readVcc(); // Get voltage %
-#ifdef DEBUG
-  DEBUGSERIAL.println(F("SRVR_OK"));
-#endif     
+  // Failed all retries
+  checkServernum++;
+
+  #ifdef DEBUG
+    DEBUGSERIAL.print(F("vet_con_fail "));
+    DEBUGSERIAL.println(checkServernum);
+  #endif
+
+  if (checkServernum == 2 || checkServernum == 3) {
+      if (!checkGPRS()) { connectGPRS();  }
+  }
+  else if (checkServernum >= 4) {
+    reset(12);            // hard recovery
+  }
+
+  return false;
 }
 
-void fail_to_send() {     //if cannot send data to vetercek.com
+
+
+void fail_to_send() {
   fona.UDPclose();
-  failedSend=failedSend+1;
+  failedSend++;
 
-#ifdef DEBUG
-  DEBUGSERIAL.print(F("Fail_Send"));
-  DEBUGSERIAL.println(failedSend);
-#endif 
+  #ifdef DEBUG
+    DEBUGSERIAL.print(F("Fail_Send "));
+    DEBUGSERIAL.println(failedSend);
+  #endif
 
-
-  if (failedSend ==4) {    reset(13);}  
-
-//  else if (failedSend ==4) {    simReset();  
-//            #ifdef DEBUG_ERROR
-//              resetReason=38;  
-//            #endif
-//  }  
-
-  else if (failedSend ==3) {    
-     connectGPRS(2); //check network, restart gprs
-            #ifdef DEBUG_ERROR
-              resetReason=37;  
-            #endif
-  } 
-
-  else {    
-     if (checkGPRS()==false){ 
-        connectGPRS(1); //check network, restart gprs
-     }
-     delay(1000);
-            #ifdef DEBUG_ERROR
-              resetReason=36;  
-            #endif
-  } 
-
- 
+  if (failedSend >= 1) {
+    reset(13);
+  }
+  
 }

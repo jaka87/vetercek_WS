@@ -29,8 +29,8 @@ void changeNetwork_id(int network, byte technology) {
   #ifdef DEBUG
     DEBUGSERIAL.println(F("network change"));
   #endif 
-  delay(7000);
-  connectGPRS(1);
+  delay(10000);
+  connectGPRS();
 }
 
 
@@ -40,51 +40,46 @@ byte netStatus() {
 }
 
 
-void GSMerror() {      
-    #ifdef DEBUG    
-      DEBUGSERIAL.println(F("gerr1"));   
-    #endif 
-    bool checkAT = fona.checkAT();
-    delay(50);
-    dropConnection(1); //deactivate PDP, drop GPRS, drop network
-    if (fona.checkAT()) { simReset(); }
-    else { reset(10); }
 
+
+bool connectGPRS() {
+    bool GPRS = false;
+    checkNetwork();  // ensure network is registered
+    unsigned long startTime = millis();    
+
+        #ifdef DEBUG
+        DEBUGSERIAL.println(F("GPRS"));
+        #endif 
+
+    // try connecting once every x second until timeout
+    while (!GPRS && (millis() - startTime) < 30000) {
+        GPRS=fona.enableGPRS(false);
+
+        #ifdef DEBUG
+        DEBUGSERIAL.println(GPRS);
+        #endif 
+        delay(500);
+        GPRS = fona.enableGPRS(true);
+        #ifdef DEBUG
+        DEBUGSERIAL.println(GPRS);
+        #endif 
+        
+        if (!GPRS) delay(6000);
+    }
+
+    if (!GPRS) {
+        #ifdef DEBUG
+        DEBUGSERIAL.println(F("GPRS fail"));
+        #endif     
+        simReset();
+    } else {
+        #ifdef DEBUG
+        DEBUGSERIAL.print(F("GPRS connected: "));
+        DEBUGSERIAL.println(GPRS);
+        #endif 
+    }
 }
 
-
-void connectGPRS(byte what) { //0 - just connect / 1 - drop GPRS, then reconnect / 2 - drop whole network
-  bool GPRS=false;
-  checkNetwork();
-  unsigned long startTime=millis();    
-
-  while (!GPRS && (millis() - startTime) < 30000) {
-    #ifdef DEBUG
-      DEBUGSERIAL.println(F("GPRS try"));
-    #endif 
-
-    if (what==1)  {dropConnection(0); }//deactivate PDP, drop GPRS
-    else if (what==1)  {dropConnection(1); }//drop whole network
-      
-      delay(500);
-      GPRS = fona.enableGPRS(true);
-      delay(500);
-  }
-
-  if (!GPRS)  {
-    #ifdef DEBUG
-      DEBUGSERIAL.println(F("GPRS fail"));
-    #endif     
-    simReset();
-  }
-  
-  else {
-    #ifdef DEBUG
-      DEBUGSERIAL.print(F("GPRS "));
-      DEBUGSERIAL.println(GPRS);
-    #endif 
-  }
-}
 
 
 void gatherData() {
@@ -220,11 +215,33 @@ void parseResponse(byte response[13]) {
    
   onOffTmp=response[5];
   cutoffWind=response[6];
- 
 
+  // if low battery increase sleep time
+//    if ( (response[7] < 4 and battLevel < 180 and battLevel > 170) or (batteryState==1 and response[7] < 4)) { // if low battery < 3.6V
+//       response[7]=4;
+//       batteryState=1;
+//    }
+//    else if (( response[7] < 8 and battLevel < 170 and battLevel > 17) or (batteryState==2 and response[7] < 8)) { // if low battery < 3.4V
+//       response[7]=8;
+//       batteryState=2;
+//    }
+
+  // once battery gets charged change the battery state  
+//    if (  battLevel > 190 and batteryState==1) { batteryState=0; }// if battery > 3.8V
+//    else if (  battLevel >= 180 and battLevel >= 190 and batteryState==2) { batteryState=1; }// if battery > 3.6V
+//    
+  
+  
+  #ifdef UZ_Anemometer
+    if ( response[7]!= sleepBetween and response[7] > -1 and response[7] < 9 and sleepBetween != response[7]) { //change of sleep time
+      changeSleep=1;
+      sleepBetween=response[7];
+    }
+  #else
     if ( (response[7] > -1 and response[7] < 9 and sleepBetween != response[7])) { 
       sleepBetween=response[7];
     }  
+  #endif
 
   if (response[0] >0 and sleepBetween==0) { whenSend=response[0]*2;} // when sleep is 0 updates =2x
   else if (response[0] >0 ) { whenSend=response[0];}
@@ -259,7 +276,7 @@ bool PostData() {
   byte max_attempts;
 
   if (sendError==1) {max_attempts = 1;}
-  else {max_attempts = 2;}
+  else {max_attempts = 3;}
 
   // Try to send data up to three times
   while (attempts < max_attempts) {
@@ -269,6 +286,7 @@ bool PostData() {
       delay(20);
       DEBUGSERIAL.print("UDPsend attempt ");
       DEBUGSERIAL.println(attempts + 1);
+      DEBUGSERIAL.println(udp_send);
       delay(20);
     #endif
 
@@ -295,6 +313,8 @@ bool PostData() {
 
 
 
+
+
 void AfterPost() {
     fona.UDPclose();
     measureCount = 0;
@@ -306,7 +326,6 @@ void AfterPost() {
     windAvgX = 0;
     windAvgY = 0;
     resetReason=0;
-    PDPcount=0;
     failedSend=0;
     sonicError=0;
     rainCount=0;
@@ -333,23 +352,4 @@ bool SendData() {
     return PostData();  // Return the success status from PostData
   }
   return false;
-}
-
-void dropConnection(byte drop_type) { // 1 - full drop cnnection, 0 only drop gprs
-      #ifdef DEBUG                                 
-    DEBUGSERIAL.println("drp con start");
-  #endif
-  fona.activatePDP(0);  
-  fona.enableGPRS(false);  
-  if (drop_type==1){ 
-    fona.setCOPS(2); //de-register
-    delay(200);
-    fona.setCOPS(0); //auto
-    checkNetwork(); // wait till new network connection
-    fona.setNetworkSettings(F(APN)); // after connection to new network APN shoud be entered
-  } 
-  delay(100);
-      #ifdef DEBUG                                 
-    DEBUGSERIAL.println("drp con stop");
-  #endif
 }

@@ -9,6 +9,13 @@ TEMP_FILE2="/home/jaka87/Arduino/vetercek_SIM7070/temp.txt"
 # Step 1: Create a backup of the .ino file
 cp "$INO_PATH" "$TEMP_FILE"
 
+
+echo "Enter DEVICE_ID (default 1):"
+read DEVICE_ID
+DEVICE_ID=${DEVICE_ID:-1}
+sed -i "s|#define DEVICE_ID .*|#define DEVICE_ID $DEVICE_ID|" "$INO_PATH"
+
+
 # Step 2: Make changes to the original .ino file
 echo "Do you want to enable DEBUG? (y/n)"
 read ENABLE_DEBUG
@@ -26,23 +33,30 @@ else
     sed -i 's|^\(#define DEBUG\)|//\1|' "$INO_PATH"
 fi
 
+
+
 echo "Enable ultrasonic anemometer? (y/n)"
 read ENABLE_ULTRASONIC
+
 if [[ "$ENABLE_ULTRASONIC" == "y" ]]; then
     sed -i 's|//\(#define UZ_Anemometer\)|\1|' "$INO_PATH"
+
+
+    echo "Enable toggle_UZ_power? (y/n)"
+    read TOGGLE_UZ
+    if [[ "$TOGGLE_UZ" == "y" ]]; then
+        sed -i 's|//\(#define toggle_UZ_power\)|\1|' "$INO_PATH"
+    else
+        sed -i 's|^\(#define toggle_UZ_power\)|//\1|' "$INO_PATH"
+    fi
+
 else
     sed -i 's|^\(#define UZ_Anemometer\)|//\1|' "$INO_PATH"
 
-	echo "Select anemometer type (1=Davis, 2=Chinese, 3=Custom):"
-	read ANEMOMETER_TYPE
-	sed -i "s|#define ANEMOMETER .*|#define ANEMOMETER $ANEMOMETER_TYPE|" "$INO_PATH"
-
-	echo "Set anemometer debounce (default 15 or 4 for chinese):"
-	read ANEMOMETER_DEBOUNCE
-	ANEMOMETER_DEBOUNCE=${ANEMOMETER_DEBOUNCE:-15}
-	sed -i "s|#define ANEMOMETER_DEBOUNCE .*|#define ANEMOMETER_DEBOUNCE $ANEMOMETER_DEBOUNCE|" "$INO_PATH"
-
 fi
+
+
+
 
 echo "Do you want to enable HUMIDITY? (y/n)"
 read ENABLE_HUMIDITY
@@ -90,20 +104,12 @@ NETWORK_OPERATORS=${NETWORK_OPERATORS:-1}
 sed -i "s|#define NETWORK_OPERATORS .*|#define NETWORK_OPERATORS $NETWORK_OPERATORS|" "$INO_PATH"
 
 
-echo "Lokalna postaja objavljena na vetercku (sicer samo  windgust)? (y/n)"
-read LOCAL_WS
-if [[ "$LOCAL_WS" == "y" ]]; then
-    sed -i 's|//\(#define LOCAL_WS\)|\1|' "$INO_PATH"
-else
-    sed -i 's|^\(#define LOCAL_WS\)|//\1|' "$INO_PATH"
-fi
 
 # Compile the sketch from the temporary directory
 /usr/share/arduino/arduino-builder -compile \
     -logger=machine \
     -hardware /usr/share/arduino/hardware \
     -hardware /home/jaka87/.arduino15/packages \
-    -hardware /home/jaka87/Arduino/hardware \
     -tools /usr/share/arduino/tools-builder \
     -tools /home/jaka87/.arduino15/packages \
     -libraries /home/jaka87/Arduino/libraries \
@@ -135,7 +141,9 @@ echo "Original .ino file restored."
 
 
 elif [ "$var1" == "3" ]; then
-	//bin/avrdude -C//etc/avrdude.conf -v -V -patmega328pb -e -cusbtiny -Uflash:w:/home/jaka87/Arduino/temp/vetercek_SIM7070.ino.hex:i lfuse:w:0xDF:m efuse:w:0xFD:m hfuse:w:DA:m lock:w:0xFF:m 
+	//bin/avrdude -C//etc/avrdude.conf -v -V -patmega328pb -e -cusbtiny -Uflash:w:/home/jaka87/Arduino/temp/vetercek_SIM7070.ino.hex:i lfuse:w:0xDF:m efuse:w:0xF1:m hfuse:w:DA:m lock:w:0xFF:m 
+
+
 fi
 
 

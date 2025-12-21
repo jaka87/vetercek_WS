@@ -71,14 +71,10 @@ class Botletics_modem : public BotleticsStreamType {
   uint8_t getNetworkStatus(void);
   uint8_t getRSSI(void);
 
-  // IMEI
-  uint8_t getIMEI(char *imei);
-
 
   // GPRS handling
   boolean enableGPRS(boolean onoff);
   int8_t GPRSstate(void);
-  boolean checkPDP(void);
   void setNetworkSettings(FStringPtr apn);
   int8_t getNetworkType(char *typeStringBuffer, size_t bufferLength);
   int8_t getBearerStatus(void);

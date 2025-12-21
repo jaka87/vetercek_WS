@@ -259,19 +259,6 @@ boolean Botletics_modem::setNetLED(bool onoff, uint8_t mode, uint16_t timer_on, 
 }
 
 
-/********* IMEI **********************************************************/
-
-uint8_t Botletics_modem::getIMEI(char *imei) {
-  getReply(F("AT+GSN"));
-
-  // up to 15 chars
-  strncpy(imei, replybuffer, 15);
-  imei[15] = 0;
-
-  readline(); // eat 'OK'
-
-  return strlen(imei);
-}
 
 /********* NETWORK *******************************************************/
 
@@ -378,21 +365,7 @@ bool Botletics_modem::getNetworkInfoLong(void) {
   return true;
 }
 
-boolean Botletics_modem::checkPDP(void) {
-  if (! sendCheckReply(F("AT+CGACT?"), F("+CGACT: 1,1")) ) {
-     DEBUG_PRINTLN(F("PDP false")); 
-     return false;
-  }
-  
-  //getReply(F("AT+CGPADDR=?"));
-  // Format of response:
-  // +CNACT: <status>,<ip_addr>  (ex.SIM7000)
-  // +CNACT: <pdpidx>,<status>,<ip_addr>  (ex.SIM7070)
-	      DEBUG_PRINT("\t<--- "); DEBUG_PRINTLN(replybuffer);
-    //if (strstr(replybuffer, "+CNACT: 0,1") == NULL) return false;
-  
-  return true;
-}
+
 
 int8_t Botletics_modem::GPRSstate(void) {
   uint16_t state;
@@ -413,28 +386,40 @@ void Botletics_modem::setNetworkSettings(FStringPtr apn) {
 
 // Open or close wireless data connection
 boolean Botletics_modem::openWirelessConnection(bool onoff) {
-  if (!onoff) { // Disconnect wireless
-      sendCheckReply(F("AT+CNACT=0,0"), ok_reply);
+    if (!onoff) { // Disconnect wireless
+        if (!sendCheckReply(F("AT+CNACT=0,0"), ok_reply)) return false;
 
+        // Wait briefly for the unsolicited DEACTIVE message (optional)
+        unsigned long start = millis();
+        while (millis() - start < 2000) { // 2s timeout
+            readline(500, true);
+            if (_type == SIM7070 && strstr(replybuffer, "+APP PDP: 0,DEACTIVE")) break;
+        }
+    }
+    else { // Activate PDP
+        if (!sendCheckReply(F("AT+CNACT=0,1"), ok_reply)) return false;
 
-    readline();
-    DEBUG_PRINT("\t<--- "); DEBUG_PRINTLN(replybuffer);
+        // Wait for unsolicited ACTIVE message (SIM7070)
+        if (_type == SIM7070) {
+            unsigned long start = millis();
+            bool activeSeen = false;
+            while (millis() - start < 5000) { // 5s timeout
+                readline(500, true);
+                if (strstr(replybuffer, "+APP PDP: 0,ACTIVE")) {
+                    activeSeen = true;
+                    break;
+                }
+            }
+            if (!activeSeen) return false;
+        }
+        else {
+            delay(1000); // SIM7000: short delay is enough
+        }
+    }
 
-    if (_type == SIM7070 && strstr(replybuffer, ",DEACTIVE") == NULL) return false; // +APP PDP: <pdpidx>,DEACTIVE
-  }
-  
-  
-  else {
-       if (! sendCheckReply(F("AT+CNACT=0,1"), ok_reply)) return false;
-
-    readline();
-    DEBUG_PRINT("\t<--- "); DEBUG_PRINTLN(replybuffer);
-
-    if (_type == SIM7070 && strstr(replybuffer, ",ACTIVE") == NULL) return false; // +APP PDP: <pdpidx>,ACTIVE
-  }
-
-  return true;
+    return true;
 }
+
 
 // Query wireless connection status
 boolean Botletics_modem::wirelessConnStatus(void) {
@@ -512,11 +497,28 @@ uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
 
 	uint8_t sendD = readline(2000); // return SEND OK
 	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
-	if (strcmp(replybuffer, "OK") != 0) { return 4;}
+	if (strstr(replybuffer, "SEND OK") == NULL && strstr(replybuffer, "OK") == NULL) {return 4;}
 
-	uint8_t sendD2 = readline(5000); // return if received data back
-	  DEBUG_PRINT(F("\t<--s ")); DEBUG_PRINTLN(replybuffer);
-	if (strcmp(replybuffer, "+CADATAIND: 0") != 0) { return 5;}
+
+bool dataInd = false;
+unsigned long start = millis();
+
+while (millis() - start < 5000) {  // 10s NB-IoT window
+    if (readline(2000, true)) {
+        DEBUG_PRINT(F("<-- ")); DEBUG_PRINTLN(replybuffer);
+
+        if (strstr(replybuffer, "+CADATAIND: 0")) {
+            dataInd = true;
+            break;
+        }
+
+        // Ignore other URCs
+    }
+}
+
+if (!dataInd) {
+    return 5;   // downlink did not arrive
+}
 
 		 if (_type2 == 2) { // different firmware version
 			uint8_t sendD3 = readline(1000); // buffer full

@@ -29,8 +29,8 @@ void changeNetwork_id(int network, byte technology) {
   #ifdef DEBUG
     DEBUGSERIAL.println(F("network change"));
   #endif 
-  delay(7000);
-  connectGPRS(1);
+  delay(10000);
+  connectGPRS();
 }
 
 
@@ -40,51 +40,46 @@ byte netStatus() {
 }
 
 
-void GSMerror() {      
-    #ifdef DEBUG    
-      DEBUGSERIAL.println(F("gerr1"));   
-    #endif 
-    bool checkAT = fona.checkAT();
-    delay(50);
-    dropConnection(1); //deactivate PDP, drop GPRS, drop network
-    if (fona.checkAT()) { simReset(); }
-    else { reset(10); }
 
+
+bool connectGPRS() {
+    bool GPRS = false;
+    checkNetwork();  // ensure network is registered
+    unsigned long startTime = millis();    
+
+        #ifdef DEBUG
+        DEBUGSERIAL.println(F("GPRS"));
+        #endif 
+
+    // try connecting once every x second until timeout
+    while (!GPRS && (millis() - startTime) < 30000) {
+        GPRS=fona.enableGPRS(false);
+
+        #ifdef DEBUG
+        DEBUGSERIAL.println(GPRS);
+        #endif 
+        delay(500);
+        GPRS = fona.enableGPRS(true);
+        #ifdef DEBUG
+        DEBUGSERIAL.println(GPRS);
+        #endif 
+        
+        if (!GPRS) delay(6000);
+    }
+
+    if (!GPRS) {
+        #ifdef DEBUG
+        DEBUGSERIAL.println(F("GPRS fail"));
+        #endif     
+        simReset();
+    } else {
+        #ifdef DEBUG
+        DEBUGSERIAL.print(F("GPRS connected: "));
+        DEBUGSERIAL.println(GPRS);
+        #endif 
+    }
 }
 
-
-void connectGPRS(byte what) { //0 - just connect / 1 - drop GPRS, then reconnect / 2 - drop whole network
-  bool GPRS=false;
-  checkNetwork();
-  unsigned long startTime=millis();    
-
-  while (!GPRS && (millis() - startTime) < 30000) {
-    #ifdef DEBUG
-      DEBUGSERIAL.println(F("GPRS try"));
-    #endif 
-
-    if (what==1)  {dropConnection(0); }//deactivate PDP, drop GPRS
-    else if (what==1)  {dropConnection(1); }//drop whole network
-      
-      delay(500);
-      GPRS = fona.enableGPRS(true);
-      delay(500);
-  }
-
-  if (!GPRS)  {
-    #ifdef DEBUG
-      DEBUGSERIAL.println(F("GPRS fail"));
-    #endif     
-    simReset();
-  }
-  
-  else {
-    #ifdef DEBUG
-      DEBUGSERIAL.print(F("GPRS "));
-      DEBUGSERIAL.println(GPRS);
-    #endif 
-  }
-}
 
 
 void gatherData() {
@@ -282,7 +277,7 @@ bool PostData() {
   byte max_attempts;
 
   if (sendError==1) {max_attempts = 1;}
-  else {max_attempts = 2;}
+  else {max_attempts = 3;}
 
   // Try to send data up to three times
   while (attempts < max_attempts) {
@@ -292,6 +287,7 @@ bool PostData() {
       delay(20);
       DEBUGSERIAL.print("UDPsend attempt ");
       DEBUGSERIAL.println(attempts + 1);
+      DEBUGSERIAL.println(udp_send);
       delay(20);
     #endif
 
@@ -331,7 +327,6 @@ void AfterPost() {
     windAvgX = 0;
     windAvgY = 0;
     resetReason=0;
-    PDPcount=0;
     failedSend=0;
     sonicError=0;
     rainCount=0;
@@ -358,23 +353,4 @@ bool SendData() {
     return PostData();  // Return the success status from PostData
   }
   return false;
-}
-
-void dropConnection(byte drop_type) { // 1 - full drop cnnection, 0 only drop gprs
-      #ifdef DEBUG                                 
-    DEBUGSERIAL.println("drp con start");
-  #endif
-  fona.activatePDP(0);  
-  fona.enableGPRS(false);  
-  if (drop_type==1){ 
-    fona.setCOPS(2); //de-register
-    delay(200);
-    fona.setCOPS(0); //auto
-    checkNetwork(); // wait till new network connection
-    fona.setNetworkSettings(F(APN)); // after connection to new network APN shoud be entered
-  } 
-  delay(100);
-      #ifdef DEBUG                                 
-    DEBUGSERIAL.println("drp con stop");
-  #endif
 }

@@ -665,12 +665,11 @@ void simReset() {
   #ifdef DEBUG
     DEBUGSERIAL.println("SIM RST");
   #endif 
-    dropConnection(1);  //deactivate PDP, drop GPRS, drop network  
     delay(200);
     fona.reset(); // AT+CFUN=1,1
     delay(300);
     moduleSetup(); // Establishes first-time serial comm and prints IMEI 
-    connectGPRS(0); //just connect
+    connectGPRS(); //just connect
 }
 
 

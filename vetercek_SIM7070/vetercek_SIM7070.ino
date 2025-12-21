@@ -40,7 +40,6 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 #define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 #define toggle_UZ_power // toggle ultrasonic power - PCB minimum PCB v.0.6.6
 
-//#define UZ_old // if ultrasonic anemometer - PCB minimum PCB v.0.5
 //#define BMP // comment out if you want to turn off pressure sensor and save space
 #define HUMIDITY 31 // 31 or 41 or comment out if you want to turn off humidity sensor
 //#define TMPDS18B20 // comment out if you want to turn off temerature sensor
@@ -222,7 +221,6 @@ uint16_t battVoltage = 0; // Battery voltage
 unsigned int sig = 0;
 int idd[15];
 byte sleepBetween=2;
-int PDPcount=0; // first reset after 100s
 byte failedSend=0; // if send fail
 byte sonicError=0;
 byte UltrasonicAnemo=0;
@@ -473,7 +471,7 @@ delay(100);
 #endif
 
 
-//r change network
+// change network
 if (network1>0  and EEPROM.read(26)!= 1) { 
   EEPROM.write(26,1); 
     #ifdef DEBUG                                 
@@ -508,29 +506,10 @@ void loop() {
 #ifdef UZ_Anemometer
   DISABLE_UART_START_FRAME_INTERRUPT;    
   unsigned long startedWaiting = millis();
-  
-  #ifdef UZ_old
-    while (ultrasonic.available() < 2 && millis() - startedWaiting <= 15000) {  delay(10);}
-    if (ultrasonic.available() < 2 ) { // sleep while receiving data and anemometer sleep time 3s or more
-          LowPower.idle(SLEEP_2S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
-    }
-    else { // sleep while receiving data and anemometer sleep time 2s or less 
-          LowPower.idle(SLEEP_60MS, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
-    }
-    while (ultrasonic.read() != ',' and millis() - startedWaiting <= 7000) {  } 
-  #else
+
     LowPower.idle(SLEEP_1S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
   
-        //delay(15);
-//        #ifdef DEBUG
-//          DEBUGSERIAL.println(ultrasonic.available());
-//        #endif
-          //if (ultrasonic.available() ==1 ) { // sleep while receiving data and anemometer sleep time 3s or more
-           // LowPower.idle(SLEEP_1S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
-          //}
-      //while (ultrasonic.read() != ',' and millis() - startedWaiting <= 7000) { delay(10); } 
 
-//while (ultrasonic.read() != ',' and millis() - startedWaiting <= 7000) { delay(10); } 
 while (millis() - startedWaiting <= 1000) {
   char c = ultrasonic.read();
   if (c == ',') {
@@ -545,7 +524,7 @@ while (millis() - startedWaiting <= 1000) {
 }
 
 
-  #endif 
+
 
     delay(90);
   if (ultrasonic.available()>61){  
@@ -725,12 +704,11 @@ void simReset() {
   #ifdef DEBUG
     DEBUGSERIAL.println("SIM RST");
   #endif 
-    dropConnection(1);  //deactivate PDP, drop GPRS, drop network  
     delay(200);
     fona.reset(); // AT+CFUN=1,1
     delay(300);
     moduleSetup(); // Establishes first-time serial comm and prints IMEI 
-    connectGPRS(0); //just connect
+    connectGPRS(); //just connect
 }
 
 
