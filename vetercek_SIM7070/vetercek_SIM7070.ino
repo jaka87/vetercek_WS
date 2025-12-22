@@ -645,12 +645,12 @@ void beforeSend() {
         UZsleep(sleepBetween);
       }
     }
-    #endif
-
 
     // ultrasonicFlush();
     ENABLE_UART_START_FRAME_INTERRUPT;
     LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF, TIMER2_ON);  // sleep
+    #endif
+
   }
   else {
     reset(14);
