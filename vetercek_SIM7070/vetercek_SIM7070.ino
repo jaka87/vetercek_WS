@@ -242,7 +242,7 @@ byte network=0;
 
 #if NETWORK_OPERATORS == 1
   int network1=29340; //A1
-  int network2=29370; //telemach
+  int network2=29341; //telekom
   byte net_ver1=9;
   byte net_ver2=0;
 #elif NETWORK_OPERATORS == 2
