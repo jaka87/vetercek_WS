@@ -512,46 +512,81 @@ uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
     // Send packet immediately after prompt
     mySerial->write(packet, len);
 
-    // Wait for SEND OK with reasonable timeout
-    startTime = millis();
-    bool gotSendOk = false;
+
+// Wait for SEND OK or OK for up to 3 seconds
+startTime = millis();
+bool gotSendOk = false;
     
-    while (millis() - startTime < 3000) { // Max 3 seconds for SEND OK
-        if (mySerial->available()) {
-            uint8_t l = readline(100); // Use short timeout to read available data
-            if (l > 0) {
-                DEBUG_PRINT(F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
-                if (strstr(replybuffer, "SEND OK") != NULL || strstr(replybuffer, "OK") != NULL) {
+while (millis() - startTime < 5000) {
+    if (mySerial->available()) {
+        uint8_t l = readline(150); // Increased timeout slightly for complete lines
+        
+        if (l > 0) {
+            DEBUG_PRINT(F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
+            
+            // More robust checking
+            char* sendOkPos = strstr(replybuffer, "SEND OK");
+            char* okPos = strstr(replybuffer, "OK");
+            
+            if (sendOkPos != NULL) {
+                gotSendOk = true;
+                break;
+            }
+            // Check for standalone "OK" (not part of another word)
+            else if (okPos != NULL) {
+                // Make sure it's "OK" at end or surrounded by non-alphanumeric chars
+                uint8_t okIndex = okPos - replybuffer;
+                
+                // Check if OK is at the end of string
+                if (okIndex + 2 == l) { // "OK" is last 2 chars
                     gotSendOk = true;
                     break;
                 }
-            }
-        }
-        delay(10);
-    }
-    
-    if (!gotSendOk) {
-        DEBUG_PRINTLN(F("\t<--- No SEND OK received"));
-        return 4;
-    }
-
-    // Wait for data indication (network response)
-    startTime = millis();
-    bool gotDataInd = false;
-    
-    while (millis() - startTime < 8000) { // Max 8 seconds for network response
-        if (mySerial->available()) {
-            uint8_t l = readline(100);
-            if (l > 0) {
-                DEBUG_PRINT(F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
-                if (strcmp(replybuffer, "+CADATAIND: 0") == 0) {
-                    gotDataInd = true;
-                    break;
+                // Or check if next char after "OK" is not alphanumeric
+                else if (okIndex + 2 < l) {
+                    char nextChar = replybuffer[okIndex + 2];
+                    if (!isalnum(nextChar)) {
+                        gotSendOk = true;
+                        break;
+                    }
                 }
             }
+            
+            // Optional: Also check for errors
+            if (strstr(replybuffer, "ERROR") != NULL) {
+                DEBUG_PRINTLN(F("\t<--- ERROR received"));
+                return 4; // Fail fast on error
+            }
         }
-        delay(10);
     }
+    
+    // Small delay to prevent busy-waiting
+    delay(10);
+}
+    
+if (!gotSendOk) {
+    DEBUG_PRINTLN(F("\t<--- No SEND OK received"));
+    return 4;
+}
+
+// Wait for data indication (network response)
+startTime = millis();
+bool gotDataInd = false;
+
+while (millis() - startTime < 8000) { // Max 8 seconds for network response
+    if (mySerial->available()) {
+        uint8_t l = readline(100);
+        if (l > 0) {
+            DEBUG_PRINT(F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
+            // Use strstr instead of strcmp for more flexible matching
+            if (strstr(replybuffer, "+CADATAIND: 0") != NULL) {
+                gotDataInd = true;
+                break;
+            }
+        }
+    }
+    delay(10);
+}
 
     if (!gotDataInd) {
         DEBUG_PRINTLN(F("\t<--- No data indication received"));

@@ -307,6 +307,8 @@ bool PostData() {
         // Count if udp_send >1
         if (udp_send >1) {
             udp_fail_count++;
+            sonicError=udp_send;
+
             
             if (udp_fail_count == 2) { // change network
             fona.UDPclose();
