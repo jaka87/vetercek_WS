@@ -108,7 +108,6 @@ class Botletics_modem : public BotleticsStreamType {
   int8_t _type2;
 
   char replybuffer[255];
-  byte replybuffer2[24];
   FStringPtr apn;
   FStringPtr apnusername;
   FStringPtr apnpassword;
@@ -119,7 +118,6 @@ class Botletics_modem : public BotleticsStreamType {
   void flushInput();
   uint16_t readRaw(uint16_t b);
   uint8_t readline(uint16_t timeout = BOTLETICS_DEFAULT_TIMEOUT_MS, boolean multiline = false);
-  uint8_t readline2(uint16_t timeout, uint8_t characters);
   uint8_t getReply(const char *send, uint16_t timeout = BOTLETICS_DEFAULT_TIMEOUT_MS);
   uint8_t getReply(FStringPtr send, uint16_t timeout = BOTLETICS_DEFAULT_TIMEOUT_MS);
   uint8_t getReply(FStringPtr prefix, char *suffix, uint16_t timeout = BOTLETICS_DEFAULT_TIMEOUT_MS);

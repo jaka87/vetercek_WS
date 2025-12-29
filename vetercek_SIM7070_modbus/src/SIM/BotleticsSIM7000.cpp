@@ -482,6 +482,8 @@ uint8_t Botletics_modem::UDPconnected(void) {
 uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte response[12], uint8_t charr) {  
     uint8_t howmany;
     char buffer[20];
+    byte replybuffer2[24];  // Local buffer - saves SRAM
+
     flushInput();
 
     sprintf(buffer, "AT+CASEND=0,%u", len);
@@ -513,80 +515,80 @@ uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
     mySerial->write(packet, len);
 
 
-// Wait for SEND OK or OK for up to 3 seconds
-startTime = millis();
-bool gotSendOk = false;
-    
-while (millis() - startTime < 5000) {
-    if (mySerial->available()) {
-        uint8_t l = readline(150); // Increased timeout slightly for complete lines
-        
-        if (l > 0) {
-            DEBUG_PRINT(F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
-            
-            // More robust checking
-            char* sendOkPos = strstr(replybuffer, "SEND OK");
-            char* okPos = strstr(replybuffer, "OK");
-            
-            if (sendOkPos != NULL) {
-                gotSendOk = true;
-                break;
-            }
-            // Check for standalone "OK" (not part of another word)
-            else if (okPos != NULL) {
-                // Make sure it's "OK" at end or surrounded by non-alphanumeric chars
-                uint8_t okIndex = okPos - replybuffer;
-                
-                // Check if OK is at the end of string
-                if (okIndex + 2 == l) { // "OK" is last 2 chars
-                    gotSendOk = true;
-                    break;
-                }
-                // Or check if next char after "OK" is not alphanumeric
-                else if (okIndex + 2 < l) {
-                    char nextChar = replybuffer[okIndex + 2];
-                    if (!isalnum(nextChar)) {
-                        gotSendOk = true;
-                        break;
-                    }
-                }
-            }
-            
-            // Optional: Also check for errors
-            if (strstr(replybuffer, "ERROR") != NULL) {
-                DEBUG_PRINTLN(F("\t<--- ERROR received"));
-                return 4; // Fail fast on error
-            }
-        }
-    }
-    
-    // Small delay to prevent busy-waiting
-    delay(10);
-}
-    
-if (!gotSendOk) {
-    DEBUG_PRINTLN(F("\t<--- No SEND OK received"));
-    return 4;
-}
+	// Wait for SEND OK or OK for up to 3 seconds
+	startTime = millis();
+	bool gotSendOk = false;
+		 
+	while (millis() - startTime < 5000) {
+		 if (mySerial->available()) {
+			  uint8_t l = readline(150); // Increased timeout slightly for complete lines
+			  
+			  if (l > 0) {
+					DEBUG_PRINT(F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
+					
+					// More robust checking
+					char* sendOkPos = strstr(replybuffer, "SEND OK");
+					char* okPos = strstr(replybuffer, "OK");
+					
+					if (sendOkPos != NULL) {
+						 gotSendOk = true;
+						 break;
+					}
+					// Check for standalone "OK" (not part of another word)
+					else if (okPos != NULL) {
+						 // Make sure it's "OK" at end or surrounded by non-alphanumeric chars
+						 uint8_t okIndex = okPos - replybuffer;
+						 
+						 // Check if OK is at the end of string
+						 if (okIndex + 2 == l) { // "OK" is last 2 chars
+							  gotSendOk = true;
+							  break;
+						 }
+						 // Or check if next char after "OK" is not alphanumeric
+						 else if (okIndex + 2 < l) {
+							  char nextChar = replybuffer[okIndex + 2];
+							  if (!isalnum(nextChar)) {
+									gotSendOk = true;
+									break;
+							  }
+						 }
+					}
+					
+					// Optional: Also check for errors
+					if (strstr(replybuffer, "ERROR") != NULL) {
+						 DEBUG_PRINTLN(F("\t<--- ERROR received"));
+						 return 4; // Fail fast on error
+					}
+			  }
+		 }
+		 
+		 // Small delay to prevent busy-waiting
+		 delay(10);
+	}
+		 
+	if (!gotSendOk) {
+		 DEBUG_PRINTLN(F("\t<--- No SEND OK received"));
+		 return 4;
+	}
 
-// Wait for data indication (network response)
-startTime = millis();
-bool gotDataInd = false;
+	// Wait for data indication (network response)
+	startTime = millis();
+	bool gotDataInd = false;
 
-while (millis() - startTime < 8000) { // Max 8 seconds for network response
-    if (mySerial->available()) {
-        uint8_t l = readline(100);
-        if (l > 0) {
-            DEBUG_PRINT(F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
-            // Use strstr instead of strcmp for more flexible matching
-            if (strstr(replybuffer, "+CADATAIND: 0") != NULL) {
-                gotDataInd = true;
-                break;
-            }
-        }
-    }
-    delay(10);
-}
+	while (millis() - startTime < 8000) { // Max 8 seconds for network response
+		 if (mySerial->available()) {
+			  uint8_t l = readline(100);
+			  if (l > 0) {
+					DEBUG_PRINT(F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
+					// Use strstr instead of strcmp for more flexible matching
+					if (strstr(replybuffer, "+CADATAIND: 0") != NULL) {
+						 gotDataInd = true;
+						 break;
+					}
+			  }
+		 }
+		 delay(10);
+	}
 
     if (!gotDataInd) {
         DEBUG_PRINTLN(F("\t<--- No data indication received"));
@@ -601,7 +603,23 @@ while (millis() - startTime < 8000) { // Max 8 seconds for network response
 
     // Request received data
     mySerial->println(F("AT+CARECV=0,25"));
-    uint8_t receveD = readline2(2000, charr); // RETURN DATA
+	uint16_t replyidx = 0;
+	uint16_t timeout = 2000;
+	while (timeout--) {
+		 if (replyidx >= charr) break;
+		 
+		 while(mySerial->available()) {
+			  replybuffer2[replyidx++] = mySerial->read();
+			  if (replyidx == charr) break;
+		 }
+		 
+		 if (timeout == 0) break;
+		 delay(1);
+	}
+	replybuffer2[replyidx] = 0;
+	uint8_t receveD = replyidx;
+
+
 
     // Parse response based on format
     if (replybuffer2[12]==50 && replybuffer2[13]==44){ // "2," in ASCII
@@ -722,32 +740,6 @@ uint8_t Botletics_modem::readline(uint16_t timeout, boolean multiline) {
 }
 
 
-
-uint8_t Botletics_modem::readline2(uint16_t timeout, uint8_t characters) {
-  uint16_t replyidx = 0;
-
-  while (timeout--) {
-    if (replyidx >= characters) {
-      break;
-    }
-
-    while(mySerial->available() ) {
-      int c =  mySerial->read();
-      replybuffer2[replyidx] = c;
-      replyidx++;
-     if (replyidx == characters) {
-      break;
-		}
-    }
-
-    if (timeout == 0) {
-      break;
-    }
-    delay(1);
-  }
-  replybuffer2[replyidx] = 0;  // null term
-  return replyidx;
-}
 
 uint8_t Botletics_modem::getReply(const char *send, uint16_t timeout) {
   flushInput();
