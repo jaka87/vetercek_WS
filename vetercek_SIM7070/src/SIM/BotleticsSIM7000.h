@@ -71,6 +71,7 @@ class Botletics_modem : public BotleticsStreamType {
   uint8_t getNetworkStatus(void);
   uint8_t getRSSI(void);
 
+  uint8_t getIMEI(char *imei);
 
   // GPRS handling
   boolean enableGPRS(boolean onoff);

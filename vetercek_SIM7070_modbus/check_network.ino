@@ -104,7 +104,7 @@ bool checkServer() {
 
   // Try UDP connect
   for (int i = 0; i < 5; i++) {
-    if (fona.UDPconnect(broker, 6788)) {
+    if (fona.UDPconnect(broker, BROKER_PORT)) {
       checkServernum = 0;   // ✅ reset on success
 
       sig = fona.getRSSI();

@@ -428,14 +428,22 @@ void GetTmpNow() {
 #ifdef TMPDS18B20
   if (onOffTmp == 1) {
     GetAir();                               // air
-    data[12]=99;
+    #ifdef OPENVPN
+      data[12]=99;
+    #else
+      data[18]=99;
+    #endif
     delay(20);
   }
   else if (onOffTmp == 2) {    
     if (enableRain==0){  
       GetWater();                             // water
     }          
-    data[13]=99;
+    #ifdef OPENVPN
+      data[13]=99;
+    #else
+      data[19]=99;
+    #endif
     delay(20);
   }
   else if (onOffTmp > 2) {
@@ -503,14 +511,55 @@ float readVcc() {
 }
 
 #ifdef UZ_Anemometer
-void ultrasonicFlush(){
-  while(ultrasonic.available() > 0 ) {
-    char t = ultrasonic.read();
-     #ifdef DEBUG
-      DEBUGSERIAL.println(t);
-    #endif
-  }
-}
-
-  
+void ultrasonicFlush() {
+    unsigned long t0 = millis();
+    while (millis() - t0 < 50) {       // 50 ms silence window
+        while (ultrasonic.available()) {
+            ultrasonic.read();
+            t0 = millis();             // reset on activity
+        }
+    }
+} 
 #endif 
+
+
+
+#ifndef OPENVPN
+void checkIMEI() {
+  char IMEI[15]; // Use this for device ID
+   if (EEPROM.read(0)==1 and EEPROM.read(1)!=240) {  // read from EEPROM if data in it 
+      for (int i = 0; i < 8; i++){
+       data[i]=EEPROM.read(i+1);
+        //#ifdef DEBUG                                 
+        //  DEBUGSERIAL.println(EEPROM.read(i+1));
+        //#endif
+       }
+   }
+   
+   else {  // read from SIM module
+      uint8_t imeiLen = fona.getIMEI(IMEI);  // imei to byte array
+        delay(200);
+        
+      for(int i=0; i<16; i++)
+        {
+          idd[i]=(int)IMEI[i] - 48;
+        }
+
+      for (int i = 0; i < 8; i++){
+        int multiply=i*2;
+        if (i > 6) {
+       data[i]=(idd[multiply]);
+       }
+        else {
+       data[i]=((idd[multiply]*10)+idd[multiply+1]);
+       }   
+      }           
+
+
+        EEPROM.write(0, 1);   // write new data to EEPROM
+        for (int i = 0; i < 8; i++){
+          EEPROM.write(i+1, data[i]);
+         }
+   }
+}
+#endif

@@ -260,7 +260,19 @@ boolean Botletics_modem::setNetLED(bool onoff, uint8_t mode, uint16_t timer_on, 
 }
 
 
+/********* IMEI **********************************************************/
 
+uint8_t Botletics_modem::getIMEI(char *imei) {
+  getReply(F("AT+GSN"));
+
+  // up to 15 chars
+  strncpy(imei, replybuffer, 15);
+  imei[15] = 0;
+
+  readline(); // eat 'OK'
+
+  return strlen(imei);
+}
 /********* NETWORK *******************************************************/
 
 uint8_t Botletics_modem::getNetworkStatus(void) {

@@ -19,13 +19,14 @@ union FloatUnion {
 
 FloatUnion floatUnion; // Create an instance
 
-void UltrasonicAnemometer() { //measure wind speed using Modbus RTU
+void UltrasonicAnemometer() { // measure wind speed using Modbus RTU
 
-    uint8_t device_id = 1;
-    uint8_t function_code = 3;
-    uint16_t start_address = 0x0001; // Start from register 2 (Wind Direction)
-    uint16_t num_registers = 3;      // Read registers 2-4 (Wind Dir + Speed)
+    const uint8_t  device_id     = 1;
+    const uint8_t  function_code = 3;
+    const uint16_t start_address = 0x0001; // register 2
+    const uint16_t num_registers = 3;      // registers 2–4
 
+    // ---------- Build Modbus request ----------
     uint8_t frame[8];
     frame[0] = device_id;
     frame[1] = function_code;
@@ -38,86 +39,109 @@ void UltrasonicAnemometer() { //measure wind speed using Modbus RTU
     frame[6] = lowByte(crc);
     frame[7] = highByte(crc);
 
-    // Clear RX buffer and send request
-    while (ULTRASONIC.available()) ULTRASONIC.read();
-    ULTRASONIC.write(frame, 8);
-    ULTRASONIC.flush();
+    // ---------- Clear RX buffer safely ----------
+    unsigned long t0 = millis();
+    while (ULTRASONIC.available() && (millis() - t0) < 5) {
+        ULTRASONIC.read();
+    }
 
-    // Wait for response
-    unsigned long startTime = millis();
+    // ---------- Send request ----------
+    ULTRASONIC.write(frame, 8);
+    delayMicroseconds(4000);
+    //delay(15);
+
+    // ---------- Receive response ----------
     uint8_t response[32];
     uint8_t idx = 0;
-    
-    const uint8_t expected_len = 5 + 2 * num_registers;
-    
-    while ((millis() - startTime) < 1000) { // 1 second timeout
+    const uint8_t expected_len = 5 + 2 * num_registers; // 11 bytes
+
+    unsigned long startTime = millis();
+    while ((millis() - startTime) < 1000) {
         if (ULTRASONIC.available()) {
             response[idx++] = ULTRASONIC.read();
             if (idx >= expected_len) break;
         }
-        delay(1);
     }
 
-    if (idx < 5) {
-        #ifdef DEBUG
-            DEBUGSERIAL.println(F("x modbus"));
-        #endif
+    // ---------- Basic length check ----------
+    if (idx != expected_len) {
+    #ifdef DEBUG
+            DEBUGSERIAL.println(F("Modbus timeout / short frame"));
+    #endif
         UZerror();
         return;
     }
 
-    // Verify CRC
-    uint16_t recv_crc = (uint16_t)response[idx - 2] | ((uint16_t)response[idx - 1] << 8);
+    // ---------- CRC check ----------
+    uint16_t recv_crc = (uint16_t)response[idx - 2] |
+                        ((uint16_t)response[idx - 1] << 8);
     uint16_t calc_crc = crc16(response, idx - 2);
 
     if (recv_crc != calc_crc) {
-        #ifdef DEBUG
-            DEBUGSERIAL.println(F("x Modbus CRC"));
-        #endif
+    #ifdef DEBUG
+            DEBUGSERIAL.println(F("Modbus CRC error"));
+    #endif
+        UZerror();
         return;
     }
 
-
-    // Parse response
-    uint8_t byte_count = response[2];
-    uint8_t *payload = &response[3];
-
-    // Extract Wind Direction (Register 2 - 16-bit integer)
-    uint16_t wind_dir_raw = ((uint16_t)payload[0] << 8) | payload[1];
-    
-    // Extract Wind Speed (Registers 3-4 - 32-bit float)
-    // Word-swapped order: [4,5,2,3]
-    floatUnion.b[3] = payload[4]; 
-    floatUnion.b[2] = payload[5]; 
-    floatUnion.b[1] = payload[2]; 
-    floatUnion.b[0] = payload[3]; 
-    
-    float wind_speed_raw = floatUnion.f;
-
-    // Apply calibration and processing (same as your original code)
-    calDirection = wind_dir_raw + vaneOffset;
-    CalculateWindDirection();  // calculate wind direction from data
-    
-    // Convert m/s to your preferred units if needed
-    // Original code used: windSpeed = atof(wind)*19.4384449;
-    windSpeed = wind_speed_raw*19.4384449;
-    
-    CalculateWindGust(windSpeed);
-    CalculateWind();
-    
-    if ((wind_speed >= (cutoffWind * 10) && measureCount <= whenSend) || 
-        (wind_speed < (cutoffWind * 10) && measureCount <= (whenSend * 2))) {
-        timergprs = 0;  
+    // ---------- Exception response check ----------
+    if (response[1] & 0x80) {
+    #ifdef DEBUG
+            DEBUGSERIAL.print(F("Modbus exception: "));
+            DEBUGSERIAL.println(response[2], HEX);
+    #endif
+        UZerror();    
+        return;
     }
 
-  digitalWrite(13, HIGH);   // turn the LED on
-  delay(15);                       // wait
-  digitalWrite(13, LOW);    // turn the LED
-  
-    noInterrupts();
-    timergprs = 0;                                
-    interrupts();
+    // ---------- Byte count validation ----------
+    uint8_t byte_count = response[2];
+    if (byte_count != num_registers * 2) {
+      #ifdef DEBUG
+              DEBUGSERIAL.println(F("Invalid Modbus byte count"));
+      #endif
+        UZerror();      
+        return;
+    }
+
+    uint8_t *payload = &response[3];
+
+    // ---------- Extract wind direction (16-bit) ----------
+    uint16_t wind_dir_raw =
+        ((uint16_t)payload[0] << 8) | payload[1];
+
+    // ---------- Extract wind speed (32-bit float, word-swapped) ----------
+    floatUnion.b[3] = payload[4];
+    floatUnion.b[2] = payload[5];
+    floatUnion.b[1] = payload[2];
+    floatUnion.b[0] = payload[3];
+
+    float wind_speed_raw = floatUnion.f;
+
+    // ---------- Apply your existing processing ----------
+    calDirection = wind_dir_raw + vaneOffset;
+    CalculateWindDirection();
+
+    // m/s → your units
+    windSpeed = wind_speed_raw * 19.4384449;
+
+    CalculateWindGust(windSpeed);
+    CalculateWind();
+
+    if ((wind_speed >= (cutoffWind * 10) && measureCount <= whenSend) || (wind_speed <  (cutoffWind * 10) && measureCount <= (whenSend * 2))) {
+
+        noInterrupts();
+        timergprs = 0;
+        interrupts();
+    }
+
+    // ---------- Status LED ----------
+    digitalWrite(13, HIGH);
+    delay(15);
+    digitalWrite(13, LOW);
 }
+
 
 void UZerror() { //ultrasonic error
   sonicError++;
@@ -319,14 +343,22 @@ void GetTmpNow() {
 #ifdef TMPDS18B20
   if (onOffTmp == 1) {
     GetAir();                               // air
-    data[12]=99;
+    #ifdef OPENVPN
+      data[12]=99;
+    #else
+      data[18]=99;
+    #endif
     delay(20);
   }
   else if (onOffTmp == 2) {    
     if (enableRain==0){  
       GetWater();                             // water
     }          
-    data[13]=99;
+    #ifdef OPENVPN
+      data[13]=99;
+    #else
+      data[19]=99;
+    #endif
     delay(20);
   }
   else if (onOffTmp > 2) {
@@ -392,3 +424,45 @@ float readVcc() {
   }
   return battLevel;
 }
+
+
+
+#ifndef OPENVPN
+void checkIMEI() {
+  char IMEI[15]; // Use this for device ID
+   if (EEPROM.read(0)==1 and EEPROM.read(1)!=240) {  // read from EEPROM if data in it 
+      for (int i = 0; i < 8; i++){
+       data[i]=EEPROM.read(i+1);
+        //#ifdef DEBUG                                 
+        //  DEBUGSERIAL.println(EEPROM.read(i+1));
+        //#endif
+       }
+   }
+   
+   else {  // read from SIM module
+      uint8_t imeiLen = fona.getIMEI(IMEI);  // imei to byte array
+        delay(200);
+        
+      for(int i=0; i<16; i++)
+        {
+          idd[i]=(int)IMEI[i] - 48;
+        }
+
+      for (int i = 0; i < 8; i++){
+        int multiply=i*2;
+        if (i > 6) {
+       data[i]=(idd[multiply]);
+       }
+        else {
+       data[i]=((idd[multiply]*10)+idd[multiply+1]);
+       }   
+      }           
+
+
+        EEPROM.write(0, 1);   // write new data to EEPROM
+        for (int i = 0; i < 8; i++){
+          EEPROM.write(i+1, data[i]);
+         }
+   }
+}
+#endif

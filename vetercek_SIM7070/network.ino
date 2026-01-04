@@ -82,6 +82,8 @@ bool connectGPRS() {
 
 
 
+#ifdef OPENVPN
+
 void gatherData() {
   data[2]  = windDir / 100;
   data[3]  = windDir % 100;
@@ -136,6 +138,60 @@ void gatherData() {
     data[21] = humidity;
   }
 }
+#else
+
+void gatherData() {
+  data[8]=windDir/100;
+  data[9]=windDir%100;
+  data[10]=wind_speed/10;
+  data[11]=wind_speed%10;
+  data[12]=windGustAvg/10;
+  data[13]=windGustAvg%10;
+  data[15]=abs(temp*100)/100;
+  data[16]=abs(int(temp*100))%100;
+  data[18]=abs(water*100)/100;
+  data[19]=abs(int(water*100))%100;
+  data[20]=battLevel;
+  data[21]=sig;
+  data[22]=measureCount;
+  data[23]=resetReason;
+  data[24]=SolarCurrent;
+
+  if (temp > 0) { data[14]=1; } // if positive or negative air temperature
+  else {    data[14]=0; } 
+
+  if (rainCount > -1 and enableRain==1) { // if rain instead of water
+    data[17]=10;
+    data[18]=rainCount;
+    data[19]=0;    
+  } 
+  
+  else if (water > 0) { //if positive or negative water temperature
+    data[17]=1;
+    data[18]=abs(water*100)/100;
+    data[19]=abs(int(water*100))%100;
+  } 
+  else {
+    data[17]=0;
+    data[18]=abs(water*100)/100;
+    data[19]=abs(int(water*100))%100;
+  } 
+
+  if (enableBmp==1) { // if send pressure value
+    data[25]=pressure/100;
+    data[26]=pressure%100;
+  } 
+  else { 
+    data[25]=sonicError;    
+  } 
+
+  if (enableHum==1) { // if send humidity value
+    data[27]=humidity;
+  } 
+
+}
+#endif
+
 
 
 void parseResponse(byte response[13]) {
@@ -263,7 +319,11 @@ bool PostData() {
                 data[i] = EEPROM.read(eepromStartAddress + i);
             }
             EEPROM.write(39, 0); // do not read from EEPROM next time
-            data[17] = resetReason;
+            #ifdef OPENVPN
+              data[17] = resetReason;
+            #else
+              data[23] = resetReason;
+            #endif
         } else {
             gatherData();
         }
@@ -308,7 +368,7 @@ bool PostData() {
         // Count if udp_send >1
         if (udp_send >1) {
             udp_fail_count++;
-            sonicError=udp_send;
+            //sonicError=udp_send;
             
             if (udp_fail_count == 2) { // change network
             fona.UDPclose();

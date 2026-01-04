@@ -23,7 +23,18 @@ int resetReason = MCUSR;
 
 //////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
 #define APN "iot.1nce.net"
-char* broker = "10.64.124.253";
+#define OPENVPN
+
+#ifdef OPENVPN
+  char* broker = "10.64.124.253";
+  #define BROKER_PORT 6788
+
+#else
+  char* broker = "vetercek.com";
+  #define BROKER_PORT 6789
+
+#endif
+
 #define DEVICE_ID 1   
 
 byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 (2g with nb-iot as backup) and 51 (nb-iot with 2g as backup)
@@ -99,8 +110,11 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 #define ENABLE_TX1 pinMode(TX1_PIN, OUTPUT); UCSR1B |= (1 << TXEN1)
 
 
-
-byte data[] = { DEVICE_ID & 0xFF, (DEVICE_ID >> 8) & 0xFF, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 0,0,0 }; // data
+#ifdef OPENVPN
+  byte data[] = { DEVICE_ID & 0xFF, (DEVICE_ID >> 8) & 0xFF, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 0,0,0 }; // data
+#else
+  byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 0,0,0 }; // data
+#endif
 
 
 #ifdef TMPDS18B20
@@ -472,6 +486,10 @@ delay(100);
   DEBUGSERIAL.println(checkAT);
 #endif
 
+#ifndef OPENVPN
+  if (fona.checkAT()) { checkIMEI(); }
+#endif
+
 
 // change network
 if (network1>0  and EEPROM.read(26)!= 1) { 
@@ -646,7 +664,6 @@ void beforeSend() {
       }
     }
 
-    // ultrasonicFlush();
     ENABLE_UART_START_FRAME_INTERRUPT;
     LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF, TIMER2_ON);  // sleep
     #endif
@@ -712,7 +729,12 @@ void simReset() {
     fona.reset(); // AT+CFUN=1,1
     delay(300);
     moduleSetup(); // Establishes first-time serial comm and prints IMEI 
+
+    #ifndef OPENVPN
+      checkIMEI();     
+    #endif
     connectGPRS(); //just connect
+    
 }
 
 

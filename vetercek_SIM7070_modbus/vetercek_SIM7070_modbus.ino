@@ -17,7 +17,15 @@ int resetReason = MCUSR;
 
 //////////////////////////////////    EDIT THIS FOR CUSTOM SETTINGS
 #define APN "iot.1nce.net"
-char* broker = "10.64.124.253";
+#define OPENVPN
+
+#ifdef OPENVPN
+  char* broker = "10.64.124.253";
+  #define BROKER_PORT 6788
+#else
+  char* broker = "vetercek.com";
+  #define BROKER_PORT 6789
+#endif
 #define DEVICE_ID 1   
 
 
@@ -68,10 +76,11 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 #define PWRKEY 10
 
 
-
-
-byte data[] = { DEVICE_ID & 0xFF, (DEVICE_ID >> 8) & 0xFF, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 0,0,0 }; // data
-
+#ifdef OPENVPN
+  byte data[] = { DEVICE_ID & 0xFF, (DEVICE_ID >> 8) & 0xFF, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 0,0,0 }; // data
+#else
+  byte data[] = { 11,11,11,11,11,11,11,1, 0,0, 0,0, 0,0, 0,0,0, 0,0,0, 0,0,0,0,0, 0,0,0 }; // data
+#endif
 
 #ifdef TMPDS18B20
   #include "src/OneWire/OneWire.h" //tmp sensor
@@ -100,7 +109,7 @@ byte data[] = { DEVICE_ID & 0xFF, (DEVICE_ID >> 8) & 0xFF, 0,0, 0,0, 0,0, 0,0,0,
 // 83 - manual remote reset 
 // 84 - X sonic errors in UZ function
 // 85 - cant connect
-// 86 - can't send data#define ANEMOMETER_DEBOUNCE 15 // 15 davis anemometer, 4 chinese with 20 pulses
+// 86 - can't send data
 
 // 87 - uz NC
 // 88 - other
@@ -493,6 +502,9 @@ moduleSetup(); // Establishes first-time serial comm and prints IMEI
 bool checkAT = fona.checkAT();
 delay(100);
 
+#ifndef OPENVPN
+  if (fona.checkAT()) { checkIMEI(); }
+#endif
 
 //r change network
 if (network1>0  and EEPROM.read(26)!= 1) { 
@@ -553,10 +565,7 @@ void loop() {
   else if ( sleepBetween == 8 )  { // to sleep or not to sleep between wind measurement
     LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);  // sleep
   }       
-  else if ( sleepBetween == 16 )  { // to sleep or not to sleep between wind measurement
-    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);  // sleep
-    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);  // sleep
-  }  
+
 
 UltrasonicAnemometer();
 
@@ -613,7 +622,6 @@ void beforeSend() {
   if (sendSuccess) {
   digitalWrite(DTR, HIGH);  // sleep
   delay(50);
-
    }
   else {
     reset(14);
@@ -672,6 +680,9 @@ void simReset() {
     fona.reset(); // AT+CFUN=1,1
     delay(300);
     moduleSetup(); // Establishes first-time serial comm and prints IMEI 
+    #ifndef OPENVPN
+      checkIMEI();     
+    #endif    
     connectGPRS(); //just connect
 }
 
