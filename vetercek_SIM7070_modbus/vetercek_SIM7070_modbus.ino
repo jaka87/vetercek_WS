@@ -313,6 +313,7 @@ void setup() {
   delay(20);
   DEBUGSERIAL.println(F("S"));
   DEBUGSERIAL.println(resetReason);
+  DEBUGSERIAL.println(DEVICE_ID);
 #endif
 
 
@@ -462,9 +463,6 @@ void setup() {
 //GetPressure();
 
 
-#ifdef DEBUG
-  DEBUGSERIAL.println(F("bbb")); // ADD THIS
-#endif
 
 int eepromValue27 = EEPROM.read(27);
 if (eepromValue27 == 255 || eepromValue27 == 1) {  
@@ -533,42 +531,37 @@ UZ_wake();
 
 }
 
-void loop() {
-  if ( sleepBetween == 1)  { // to sleep or not to sleep between wind measurement
-    LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);  // sleep
+
+void loop()
+{
+  if (sleepBetween >= 4 && sleepBetween <= 8)
+  {
+    #ifdef toggle_UZ_power
+      digitalWrite(26, LOW);   // power OFF sensor
+      sleepSeconds(sleepBetween);
+      digitalWrite(26, HIGH);  // power ON sensor
+      LowPower.powerDown(SLEEP_500MS, ADC_OFF, BOD_OFF); // warm-up delay
+    #else
+      sleepSeconds(sleepBetween);
+    #endif
   }
-  else if ( sleepBetween == 2)  { // to sleep or not to sleep between wind measurement
-    LowPower.powerDown(SLEEP_2S, ADC_OFF, BOD_OFF);  // sleep
+
+  else if (sleepBetween >= 1 && sleepBetween <= 3)
+  {
+    sleepSeconds(sleepBetween);
   }
-  else if ( sleepBetween == 3)  { // to sleep or not to sleep between wind measurement
-    LowPower.powerDown(SLEEP_2S, ADC_OFF, BOD_OFF);  // sleep
-    LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);  // sleep
-  }
-  
-  else if ( sleepBetween ==4)  { // to sleep or not to sleep between wind measurement
-    LowPower.powerDown(SLEEP_4S, ADC_OFF, BOD_OFF);  // sleep
-  }
-  else if ( sleepBetween ==5)  { // to sleep or not to sleep between wind measurement
-    LowPower.powerDown(SLEEP_4S, ADC_OFF, BOD_OFF);  // sleep
-    LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);  // sleep
-  }
-  else if ( sleepBetween ==6)  { // to sleep or not to sleep between wind measurement
-    LowPower.powerDown(SLEEP_4S, ADC_OFF, BOD_OFF);  // sleep
-    LowPower.powerDown(SLEEP_2S, ADC_OFF, BOD_OFF);  // sleep
-  }  
-  else if ( sleepBetween ==7)  { // to sleep or not to sleep between wind measurement
-    LowPower.powerDown(SLEEP_4S, ADC_OFF, BOD_OFF);  // sleep
-    LowPower.powerDown(SLEEP_2S, ADC_OFF, BOD_OFF);  // sleep
-    LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);  // sleep
-  } 
-  
-  else if ( sleepBetween == 8 )  { // to sleep or not to sleep between wind measurement
-    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);  // sleep
-  }       
 
 
+  #ifdef DEBUG_MEASURE                                 
+     unsigned long startTimee = millis();  
+  #endif
+  
 UltrasonicAnemometer();
 
+
+  #ifdef DEBUG_MEASURE                                 
+        DEBUGSERIAL.println(millis() - startTimee);
+  #endif
 
   #ifdef DEBUG_MEASURE                                 // debug data
     DEBUGSERIAL.print(F(" d:"));
@@ -742,4 +735,24 @@ void readEEPROMnetwork(byte ee1,byte ee2, byte ee3) {
     net_ver2=secondpart;
     }
 
+}
+
+
+void sleepSeconds(uint16_t seconds)
+{
+  while (seconds >= 8) {
+    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
+    seconds -= 8;
+  }
+  if (seconds >= 4) {
+    LowPower.powerDown(SLEEP_4S, ADC_OFF, BOD_OFF);
+    seconds -= 4;
+  }
+  if (seconds >= 2) {
+    LowPower.powerDown(SLEEP_2S, ADC_OFF, BOD_OFF);
+    seconds -= 2;
+  }
+  if (seconds >= 1) {
+    LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);
+  }
 }
