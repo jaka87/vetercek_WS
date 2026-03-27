@@ -12,7 +12,7 @@ bool checkNetwork() {
     // Check if more than 20 seconds have passed with no network or forbidden status
     if ((GSMstatus == 0 or GSMstatus == 3) and (millis() - startTime) > 20000) {
       fona.setCOPS(2); // de-register
-      delay(500);
+      delay(3000);
       fona.setCOPS(0); // auto-register
       #ifdef DEBUG
         DEBUGSERIAL.println(F("dereg"));
@@ -77,20 +77,37 @@ bool checkNetwork() {
 
 
 
-
-bool checkGPRS() { //check if gprs connected
-  bool checkAT = fona.checkAT(); // first thing to send to module after wake up
-  if (fona.GPRSstate()!=1)  { 
-     #ifdef DEBUG
-        DEBUGSERIAL.println(F("GPRS_NI1"));
-     #endif     
-    return false; 
+bool checkGPRS() { 
+    if (!fona.checkAT()) {
+        #ifdef DEBUG
+            DEBUGSERIAL.println(F("Module not responding"));
+        #endif
+        return false;
     }
-
-     #ifdef DEBUG
-        DEBUGSERIAL.println(F("GPRS OK"));
-     #endif   
-  return true;
+    
+    if (fona.GPRSstate() != 1) {
+        #ifdef DEBUG
+            DEBUGSERIAL.println(F("GPRS not attached"));
+        #endif
+        return false;
+    }
+    
+    #ifdef DEBUG
+        DEBUGSERIAL.println(F("GPRS attached"));
+    #endif
+    
+    if (!hasValidIP()) {
+        #ifdef DEBUG
+            DEBUGSERIAL.println(F("No valid IP"));
+        #endif
+        return false;
+    }
+    
+    #ifdef DEBUG
+        DEBUGSERIAL.println(F("GPRS OK with IP"));
+    #endif
+    
+    return true;
 }
 
 
@@ -151,4 +168,58 @@ void fail_to_send() {
     reset(13);
   }
   
+}
+
+
+//void flushSerialBuffer(int timeoutMs = 500) {
+//    unsigned long startTime = millis();
+//    
+//    // Keep reading until timeout or no more data
+//    while (millis() - startTime < timeoutMs) {
+//        // Read from hardware serial
+//        while (Serial.available()) {
+//            Serial.read();
+//            startTime = millis();  // Reset timeout if we received something
+//        }
+//        
+//        // Read from FONA library buffer
+//        while (fona.available()) {
+//            fona.read();
+//            startTime = millis();  // Reset timeout if we received something
+//        }
+//        
+//        delay(1);
+//    }
+//}
+
+
+
+// Check if we have a valid IP address
+bool hasValidIP() {
+    char ip[16];
+    if (fona.getIPAddress(ip, sizeof(ip))) {
+        #ifdef DEBUG
+            DEBUGSERIAL.print(F("IP Address: "));
+            DEBUGSERIAL.println(ip);
+        #endif
+        return true;
+    }
+    
+    #ifdef DEBUG
+        DEBUGSERIAL.println(F("No valid IP address"));
+    #endif
+    return false;
+}
+
+// Wait for IP address with timeout
+bool waitForIP(uint16_t timeoutMs = 15000) {
+    unsigned long startTime = millis();
+    while (millis() - startTime < timeoutMs) {
+        if (hasValidIP()) {
+            return true;
+        }
+        delay(500);
+        //flushSerialBuffer(200);
+    }
+    return false;
 }

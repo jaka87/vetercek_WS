@@ -160,6 +160,60 @@ boolean Botletics_modem::setFunctionality(uint8_t option) {
 boolean Botletics_modem::reset() {
   return sendCheckReply(F("AT+CFUN=1,1"), ok_reply);
 }
+boolean Botletics_modem::getIPAddress(char *ipBuffer, uint8_t bufferSize) {
+    flushInput();
+    // Clear buffer
+    if (ipBuffer == nullptr || bufferSize == 0) return false;
+    ipBuffer[0] = '\0';
+
+    // Send command
+    getReply(F("AT+CNACT?"));
+
+    // Example responses:
+    // +CNACT: 0,1,"100.100.100.100"
+    // +CNACT: 1,0
+    // +CNACT: 0,1,100.100.100.100
+    // There may be multiple lines for multiple PDP contexts
+
+    char *line = replybuffer;
+    while (line && *line) {
+        // Look for "+CNACT:"
+        char *pCNACT = strstr(line, "+CNACT:");
+        if (!pCNACT) break;
+
+        // Move past "+CNACT:"
+        char *p = pCNACT + 7;
+        while (*p && (*p == ' ' || *p == '\t')) p++;
+
+        // Skip context ID
+        while (*p && *p != ',') p++;
+        if (*p == ',') p++;
+
+        // Skip activation flag
+        while (*p && *p != ',') p++;
+        if (*p == ',') p++;
+
+        // Now p points to IP (may be quoted or unquoted)
+        if (*p == '"') p++;
+
+        // Copy IP
+        uint8_t i = 0;
+        while (*p && i < bufferSize - 1 && (isdigit(*p) || *p == '.')) {
+            ipBuffer[i++] = *p++;
+        }
+        ipBuffer[i] = '\0';
+
+        // Check validity
+        if (i > 0 && strcmp(ipBuffer, "0.0.0.0") != 0) return true;
+
+        // Move to next line if available
+        line = strchr(line, '\n');
+        if (line) line++; // skip newline
+    }
+
+    // No valid IP found
+    return false;
+}
 
 // 2  - Automatic
 // 13 - GSM only
@@ -493,8 +547,10 @@ uint8_t Botletics_modem::UDPconnected(void) {
 
 uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte response[12], uint8_t charr) {  
     uint8_t howmany;
-    char buffer[20];
     byte replybuffer2[24];  // Local buffer - saves SRAM
+    char buffer[20];
+    uint8_t idx = 0;
+
 
     flushInput();
 
@@ -531,52 +587,59 @@ uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
 	startTime = millis();
 	bool gotSendOk = false;
 		 
-	while (millis() - startTime < 5000) {
-		 if (mySerial->available()) {
-			  uint8_t l = readline(150); // Increased timeout slightly for complete lines
-			  
-			  if (l > 0) {
-					DEBUG_PRINT(F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
-					
-					// More robust checking
-					char* sendOkPos = strstr(replybuffer, "SEND OK");
-					char* okPos = strstr(replybuffer, "OK");
-					
-					if (sendOkPos != NULL) {
-						 gotSendOk = true;
-						 break;
-					}
-					// Check for standalone "OK" (not part of another word)
-					else if (okPos != NULL) {
-						 // Make sure it's "OK" at end or surrounded by non-alphanumeric chars
-						 uint8_t okIndex = okPos - replybuffer;
-						 
-						 // Check if OK is at the end of string
-						 if (okIndex + 2 == l) { // "OK" is last 2 chars
-							  gotSendOk = true;
-							  break;
-						 }
-						 // Or check if next char after "OK" is not alphanumeric
-						 else if (okIndex + 2 < l) {
-							  char nextChar = replybuffer[okIndex + 2];
-							  if (!isalnum(nextChar)) {
-									gotSendOk = true;
-									break;
-							  }
-						 }
-					}
-					
-					// Optional: Also check for errors
-					if (strstr(replybuffer, "ERROR") != NULL) {
-						 DEBUG_PRINTLN(F("\t<--- ERROR received"));
-						 return 4; // Fail fast on error
-					}
-			  }
-		 }
-		 
-		 // Small delay to prevent busy-waiting
-		 delay(10);
-	}
+	
+
+
+while (millis() - startTime < 3000) {
+    while (mySerial->available()) {
+        char c = mySerial->read();
+
+        if (idx < sizeof(buffer) - 1) {
+            buffer[idx++] = c;
+            buffer[idx] = 0;
+        }
+
+        // 1. Best case: SEND OK
+        if (strstr(buffer, "SEND OK")) {
+            gotSendOk = true;
+            break;
+        }
+
+        // 2. ERROR (fail fast)
+        if (strstr(buffer, "ERROR")) {
+            return 4;
+        }
+
+        // 3. Standalone OK detection
+        char* okPos = strstr(buffer, "OK");
+        if (okPos != NULL) {
+            bool validOK = false;
+
+            // Check char before "OK"
+            if (okPos == buffer) {
+                validOK = true; // starts with OK
+            } else {
+                char prev = *(okPos - 1);
+                if (prev == '\n' || prev == '\r') {
+                    validOK = true;
+                }
+            }
+
+            // Check char after "OK"
+            char next = *(okPos + 2);
+            if (next == '\0' || next == '\n' || next == '\r') {
+                validOK = true;
+            }
+
+            if (validOK) {
+                gotSendOk = true;
+                break;
+            }
+        }
+    }
+
+    if (gotSendOk) break;
+}
 		 
 	if (!gotSendOk) {
 		 DEBUG_PRINTLN(F("\t<--- No SEND OK received"));
@@ -587,13 +650,13 @@ uint8_t Botletics_modem::UDPsend(unsigned char *packet, uint8_t len, byte respon
 	startTime = millis();
 	bool gotDataInd = false;
 
-	while (millis() - startTime < 8000) { // Max 8 seconds for network response
+	while (millis() - startTime < 3000) { // Max 8 seconds for network response
 		 if (mySerial->available()) {
 			  uint8_t l = readline(100);
 			  if (l > 0) {
 					DEBUG_PRINT(F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
 					// Use strstr instead of strcmp for more flexible matching
-					if (strstr(replybuffer, "+CADATAIND: 0") != NULL) {
+					if (strstr(replybuffer, "+CADATAIND") != NULL) {
 						 gotDataInd = true;
 						 break;
 					}
@@ -1044,6 +1107,8 @@ boolean Botletics_modem::sendParseReplyFloat(FStringPtr tosend,
 
   return true;
 }
+
+
 
 
 

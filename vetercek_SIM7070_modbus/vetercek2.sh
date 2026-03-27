@@ -3,9 +3,9 @@ var1=$1
 
 if [ "$var1" == "1" ]; then
 # Source file path
-	INO_PATH="/home/jaka87/Arduino/vetercek_SIM7070/vetercek_SIM7070.ino"
-TEMP_FILE="/home/jaka87/Arduino/vetercek_SIM7070/vetercek_temp.txt"
-TEMP_FILE2="/home/jaka87/Arduino/vetercek_SIM7070/temp.txt"
+	INO_PATH="/home/jaka87/Arduino/vetercek_SIM7070_modbus/vetercek_SIM7070_modbus.ino"
+TEMP_FILE="/home/jaka87/Arduino/vetercek_SIM7070_modbus/vetercek_temp.txt"
+TEMP_FILE2="/home/jaka87/Arduino/vetercek_SIM7070_modbus/temp.txt"
 # Step 1: Create a backup of the .ino file
 cp "$INO_PATH" "$TEMP_FILE"
 
@@ -14,7 +14,6 @@ echo "Enter DEVICE_ID (default 1):"
 read DEVICE_ID
 DEVICE_ID=${DEVICE_ID:-1}
 sed -i "s|#define DEVICE_ID .*|#define DEVICE_ID $DEVICE_ID|" "$INO_PATH"
-
 
 # Step 2: Make changes to the original .ino file
 echo "Do you want to enable DEBUG? (y/n)"
@@ -33,27 +32,6 @@ else
     sed -i 's|^\(#define DEBUG\)|//\1|' "$INO_PATH"
 fi
 
-
-
-echo "Enable ultrasonic anemometer? (y/n)"
-read ENABLE_ULTRASONIC
-
-if [[ "$ENABLE_ULTRASONIC" == "y" ]]; then
-    sed -i 's|//\(#define UZ_Anemometer\)|\1|' "$INO_PATH"
-
-
-    echo "Enable toggle_UZ_power? (y/n)"
-    read TOGGLE_UZ
-    if [[ "$TOGGLE_UZ" == "y" ]]; then
-        sed -i 's|//\(#define toggle_UZ_power\)|\1|' "$INO_PATH"
-    else
-        sed -i 's|^\(#define toggle_UZ_power\)|//\1|' "$INO_PATH"
-    fi
-
-else
-    sed -i 's|^\(#define UZ_Anemometer\)|//\1|' "$INO_PATH"
-
-fi
 
 echo "Do you want to enable OPENVPN? (y/n)"
 read OPENVPN
@@ -147,7 +125,7 @@ echo "Original .ino file restored."
 
 
 elif [ "$var1" == "3" ]; then
-	//bin/avrdude -C//etc/avrdude.conf -v -V -patmega328pb -e -cusbtiny -Uflash:w:/home/jaka87/Arduino/temp/vetercek_SIM7070.ino.hex:i lfuse:w:0xDF:m efuse:w:0xF1:m hfuse:w:DA:m lock:w:0xFF:m 
+	//bin/avrdude -C//etc/avrdude.conf -v -V -patmega328pb -e -cusbtiny -Uflash:w:/home/jaka87/Arduino/temp/vetercek_SIM7070_modbus.ino.hex:i lfuse:w:0xDF:m efuse:w:0xF1:m hfuse:w:DA:m lock:w:0xFF:m 
 
 
 fi

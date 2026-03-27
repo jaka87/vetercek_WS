@@ -214,6 +214,8 @@ byte checkServernum=0;
 byte sendError=0;
 bool uzInitialized = false;
 byte network=0;
+bool lastWasNoResponseSuccess = false;
+
 
 
 #if NETWORK_OPERATORS == 1
@@ -598,27 +600,10 @@ void beforeSend() {
   /////////////////////////// send data to server ///////////////////////////////////////////////
   digitalWrite(DTR, LOW);  // wake up
   delay(100);
-
-  bool sendSuccess = false;
-  int attempts = 0;
-
-  while (!sendSuccess && attempts < 3) {
-    sendSuccess = SendData();
-    attempts++;
-    if (!sendSuccess) {
-      delay(1000);  // Optional delay between retries
-    }
-  }
-
-
-
-  if (sendSuccess) {
+  SendData();
   digitalWrite(DTR, HIGH);  // sleep
   delay(50);
-   }
-  else {
-    reset(14);
-  }
+
 }
 
 

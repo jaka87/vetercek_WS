@@ -43,41 +43,73 @@ byte netStatus() {
 
 
 bool connectGPRS() {
-    bool GPRS = false;
-    checkNetwork();  // ensure network is registered
-    unsigned long startTime = millis();    
-
+    // First, ensure network is registered
+    if (!checkNetwork()) {
         #ifdef DEBUG
-        DEBUGSERIAL.println(F("GPRS"));
-        #endif 
-
-    // try connecting once every x second until timeout
-    while (!GPRS && (millis() - startTime) < 30000) {
-        GPRS=fona.enableGPRS(false);
-
-        #ifdef DEBUG
-        DEBUGSERIAL.println(GPRS);
-        #endif 
-        delay(500);
-        GPRS = fona.enableGPRS(true);
-        #ifdef DEBUG
-        DEBUGSERIAL.println(GPRS);
-        #endif 
+            DEBUGSERIAL.println(F("Network not registered"));
+        #endif
+        return false;
+    }
+    
+    #ifdef DEBUG
+        DEBUGSERIAL.println(F("Connecting GPRS..."));
+    #endif
+    
+    unsigned long startTime = millis();
+    bool gprsAttached = false;
+    
+    // Try to enable GPRS
+    while (!gprsAttached && (millis() - startTime) < 30000) {
+        gprsAttached = fona.enableGPRS(true);
         
-        if (!GPRS) delay(6000);
+        if (!gprsAttached) {
+            #ifdef DEBUG
+                DEBUGSERIAL.print(F("GPRS enable attempt failed, retrying..."));
+            #endif
+            delay(2000);
+            //flushSerialBuffer(200);
+        }
     }
-
-    if (!GPRS) {
+    
+    if (!gprsAttached) {
         #ifdef DEBUG
-        DEBUGSERIAL.println(F("GPRS fail"));
-        #endif     
-        simReset();
-    } else {
-        #ifdef DEBUG
-        DEBUGSERIAL.print(F("GPRS connected: "));
-        DEBUGSERIAL.println(GPRS);
-        #endif 
+            DEBUGSERIAL.println(F("GPRS enable failed after timeout"));
+        #endif
+        return false;
     }
+    
+    #ifdef DEBUG
+        DEBUGSERIAL.println(F("GPRS attached, waiting for IP..."));
+    #endif
+    
+    // CRITICAL: Wait for IP address to be assigned
+    if (waitForIP(15000)) {
+        #ifdef DEBUG
+            DEBUGSERIAL.println(F("GPRS connected with valid IP"));
+        #endif
+        return true;
+    }
+    
+    #ifdef DEBUG
+        DEBUGSERIAL.println(F("GPRS attached but no IP assigned"));
+    #endif
+    
+    // Try to reactivate PDP context
+    #ifdef DEBUG
+        DEBUGSERIAL.println(F("Reactivating PDP context..."));
+    #endif
+    
+    fona.enableGPRS(false);
+    //flushSerialBuffer(200);
+    delay(2000);
+    
+    // Try one more time
+    gprsAttached = fona.enableGPRS(true);
+    if (gprsAttached) {
+        return waitForIP(10000);
+    }
+    
+    return false;
 }
 
 
@@ -304,103 +336,6 @@ void parseResponse(byte response[13]) {
 } 
 
 
-bool PostData() {                     
-    if (measureCount == 0) { 
-        if (EEPROM.read(39) == 1 && EEPROM.read(62) >= 5) {
-            #ifdef DEBUG
-                DEBUGSERIAL.println("EEPROM data");
-                DEBUGSERIAL.println(EEPROM.read(62));
-            #endif 
-            const int dataSize = sizeof(data) / sizeof(data[0]);
-            const int eepromStartAddress = 40; 
-            for (int i = 0; i < dataSize; i++) {
-                data[i] = EEPROM.read(eepromStartAddress + i);
-            }
-            EEPROM.write(39, 0); // do not read from EEPROM next time
-            #ifdef OPENVPN
-              data[17] = resetReason;
-            #else
-              data[23] = resetReason;
-            #endif
-            } else {
-            gatherData();
-        }
-    } else {
-        gatherData();
-    }
-
-    byte response[13];  
-    byte udp_send = 0;  
-    byte attempts = 0;  
-    byte max_attempts;  
-    byte udp_fail_count = 0;  // Counter for udp_send == 5
-
-    if (sendError == 1) {
-        max_attempts = 1;
-    } else {
-        max_attempts = 5;
-    }
-
-    // Try to send data up to max_attempts times
-    while (attempts < max_attempts) {
-        udp_send = fona.UDPsend(data, sizeof(data), response, 26);
-
-        #ifdef DEBUG 
-            delay(20);
-            DEBUGSERIAL.print("UDPsend attempt ");
-            DEBUGSERIAL.println(attempts + 1);
-            DEBUGSERIAL.println(udp_send);
-            delay(20);
-        #endif
-
-        if (udp_send == 1) {
-            #ifdef DEBUG
-                DEBUGSERIAL.println(F("--> Successful send"));
-            #endif
-            sendError = 0;
-            parseResponse(response);
-            AfterPost(); 
-            return true;  // Successful send
-        }
-
-        // Count if udp_send >1
-        if (udp_send >1) {
-            udp_fail_count++;
-            //sonicError=udp_send;
-
-            
-            if (udp_fail_count == 2) { // change network
-            fona.UDPclose();
-            connectGPRS();
-            checkServer();
-            }
-
-            if (udp_fail_count == 3) { // change network
-              fona.UDPclose();
-              fona.enableGPRS(false);
-
-              if (network==1){
-                network=2;
-                changeNetwork_id(network2,net_ver2);
-            }
-              else{
-                network=1;
-                changeNetwork_id(network1,net_ver1);
-            }
-            checkServer();
-            }
-        }
-
-        attempts++;
-        delay(1000);
-    }
-
-    // If all attempts fail
-    sendError = 1;
-    fail_to_send();
-    return false;  // Failure
-}
-
 
 
 
@@ -431,16 +366,245 @@ void AfterPost() {
 
 
 
-// send data to server
 bool SendData() {
-  if (failedSend == 0 && checkServernum == 0) {  
-    BeforePostCalculations(1); 
-  }
-  else {  
-    BeforePostCalculations(0); 
-  }
-  if (checkServer()) {  
-    return PostData();  // Return the success status from PostData
-  }
-  return false;
+    static byte failLevel = 0;
+    bool serverConnected = false;
+    
+    if (failedSend == 0 && checkServernum == 0) {  
+        BeforePostCalculations(1); 
+    } else {  
+        BeforePostCalculations(0); 
+    }
+    
+    gatherData();
+    
+    while (failLevel <= 3) {
+        
+        // Apply recovery for current level
+        if (failLevel == 0) {
+            // Level 0: Normal operation
+            #ifdef DEBUG
+                DEBUGSERIAL.println(F("Level 0: Normal send attempt"));
+            #endif
+            // Only flush if we're recovering from previous failure
+            if (failedSend > 0 || checkServernum > 0) {
+                //flushSerialBuffer(100);
+            }
+        }
+        else if (failLevel == 1) {
+            // Level 1: Restart GPRS
+            #ifdef DEBUG
+                DEBUGSERIAL.println(F("Level 1: Restarting GPRS..."));
+            #endif
+            
+            // Close UDP socket and disable GPRS
+            fona.UDPclose();
+            //flushSerialBuffer(200);
+            delay(200);
+            
+            fona.enableGPRS(false);
+            //flushSerialBuffer(200);
+            delay(2000);
+            
+            // Try to connect GPRS with timeout
+            unsigned long startTime = millis();
+            bool gprsConnected = false;
+            while (!gprsConnected && (millis() - startTime) < 30000) {
+                gprsConnected = connectGPRS();
+                if (!gprsConnected) {
+                    delay(2000);
+                }
+            }
+            
+            if (!checkGPRS()) {
+                #ifdef DEBUG
+                    DEBUGSERIAL.println(F("GPRS restart failed"));
+                #endif
+                failLevel++;
+                continue;
+            }
+            
+            #ifdef DEBUG
+                DEBUGSERIAL.println(F("GPRS restart successful"));
+            #endif
+        }
+        else if (failLevel == 2) {
+            // Level 2: Reset GSM module
+            #ifdef DEBUG
+                DEBUGSERIAL.println(F("Level 2: Resetting GSM module..."));
+            #endif
+            
+            // Cleanup before reset
+            fona.UDPclose();
+            //flushSerialBuffer(200);
+            delay(500);
+            
+            fona.enableGPRS(false);
+            //flushSerialBuffer(200);
+            delay(1000);
+            
+            // Reset GSM module
+            fona.reset();
+            delay(5000);
+            
+            // Re-initialize
+            moduleSetup();
+            delay(2000);
+            
+            
+            // Try to connect GPRS with timeout
+            unsigned long startTime = millis();
+            bool gprsConnected = false;
+            while (!gprsConnected && (millis() - startTime) < 30000) {
+                gprsConnected = connectGPRS();
+                if (!gprsConnected) {
+                    delay(2000);
+                }
+            }
+            
+            if (!checkGPRS()) {
+                #ifdef DEBUG
+                    DEBUGSERIAL.println(F("GSM reset failed"));
+                #endif
+                failLevel++;
+                continue;
+            }
+            
+            #ifdef DEBUG
+                DEBUGSERIAL.println(F("GSM reset successful"));
+            #endif
+        }
+        else if (failLevel == 3) {
+            // Level 3: Board reset
+            #ifdef DEBUG
+                DEBUGSERIAL.println(F("Level 3: Board reset..."));
+            #endif
+            reset(13);
+            return false;
+        }
+        
+        // Always close any existing UDP connection before trying to reconnect
+        fona.UDPclose();
+        //flushSerialBuffer(200);
+        delay(100);
+        
+        // Now try to connect to server with retries
+        serverConnected = false;
+        for (int connectAttempt = 0; connectAttempt < 3; connectAttempt++) {
+            #ifdef DEBUG
+                DEBUGSERIAL.print(F("Server connect attempt "));
+                DEBUGSERIAL.print(connectAttempt + 1);
+                DEBUGSERIAL.print(F("... "));
+            #endif
+            
+            if (fona.UDPconnect(broker, BROKER_PORT)) {
+                serverConnected = true;
+                
+                // Update battery and signal when connected
+                sig = fona.getRSSI();
+                battLevel = readVcc();
+                
+                #ifdef DEBUG
+                    DEBUGSERIAL.print(F("OK (Sig: "));
+                    DEBUGSERIAL.print(sig);
+                    DEBUGSERIAL.print(F(", Batt: "));
+                    DEBUGSERIAL.print(battLevel);
+                    DEBUGSERIAL.println(F(")"));
+                #endif
+                break;
+            }
+            
+            #ifdef DEBUG
+                DEBUGSERIAL.println(F("FAILED"));
+            #endif
+            delay(2000);
+            //flushSerialBuffer(200);  // Only flush after failed attempt
+        }
+        
+        if (!serverConnected) {
+            #ifdef DEBUG
+                DEBUGSERIAL.println(F("Server connection failed, escalating"));
+            #endif
+            failLevel++;
+            continue;
+        }
+        
+        // Try to send data with retries
+        byte result = trySendWithRetries();
+        
+        if (result == 1) {
+            // SUCCESS!
+            failLevel = 0;
+            failedSend = 0;
+            checkServernum = 0;
+            return true;
+        }
+        
+        // Send failed, escalate
+        #ifdef DEBUG
+            DEBUGSERIAL.print(F("Send failed with result: "));
+            DEBUGSERIAL.println(result);
+        #endif
+        
+        failLevel++;
+        fona.UDPclose();
+        //flushSerialBuffer(200);
+        delay(1000);
+    }
+    
+    return false;
+}
+
+
+byte trySendWithRetries() {
+    const byte MAX_RETRIES = 3;
+    byte result = 0;
+    
+    for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        byte response[13];
+        
+        #ifdef DEBUG
+            DEBUGSERIAL.print(F("UDPsend attempt "));
+            DEBUGSERIAL.print(attempt + 1);
+            DEBUGSERIAL.print(F("... "));
+        #endif
+        
+        result = fona.UDPsend(data, sizeof(data), response, 26);
+        
+        #ifdef DEBUG
+            DEBUGSERIAL.println(result);
+        #endif
+        
+        if (result == 1) {
+            // Success!
+            sendError = 0;
+            parseResponse(response);
+            AfterPost();
+            return 1;
+        }
+        
+        if (result == 5) {
+            // No response, retry with backoff
+            int delayTime = 1000 * (attempt + 1);
+            #ifdef DEBUG
+                DEBUGSERIAL.print(F("No response, retrying in "));
+                DEBUGSERIAL.print(delayTime);
+                DEBUGSERIAL.println(F("ms"));
+            #endif
+            delay(delayTime);
+            continue;
+        }
+        
+        // Any other error, break out
+        #ifdef DEBUG
+            DEBUGSERIAL.println(F("Fatal error, stopping retries"));
+        #endif
+        break;
+    }
+    
+    #ifdef DEBUG
+        DEBUGSERIAL.println(F("All UDP retries failed"));
+    #endif
+    
+    return result;
 }

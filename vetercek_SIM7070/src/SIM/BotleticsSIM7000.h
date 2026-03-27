@@ -66,6 +66,7 @@ class Botletics_modem : public BotleticsStreamType {
   boolean enableSleepMode(bool onoff); // AT+CSCLK command
   boolean set_eDRX(uint8_t mode, uint8_t connType, char * eDRX_val); // AT+CEDRXS command
   boolean setNetLED(bool onoff, uint8_t mode = 0, uint16_t timer_on = 64, uint16_t timer_off = 3000); // AT+CNETLIGHT and AT+SLEDS commands
+  boolean getIPAddress(char *ipBuffer, uint8_t bufferSize);
 
   // SIM query
   uint8_t getNetworkStatus(void);

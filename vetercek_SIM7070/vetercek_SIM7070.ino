@@ -35,7 +35,7 @@ int resetReason = MCUSR;
 
 #endif
 
-#define DEVICE_ID 1   
+#define DEVICE_ID 1
 
 byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 (2g with nb-iot as backup) and 51 (nb-iot with 2g as backup)
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
@@ -48,7 +48,7 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 //#define DEBUG_MEASURE  // debug data
 //#define DEBUG_ERROR  // debug connection,DEBUG_ERROR not written to serial but as reset reason
 #define LOCAL_WS // comment out if the station is global - shown on windgust.eu
-#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 #define toggle_UZ_power // toggle ultrasonic power - PCB minimum PCB v.0.6.6
 
 //#define BMP // comment out if you want to turn off pressure sensor and save space
@@ -252,7 +252,7 @@ byte checkServernum=0;
 byte sendError=0;
 bool uzInitialized = false;
 byte network=0;
-
+bool lastWasNoResponseSuccess = false;
 
 #if NETWORK_OPERATORS == 1
   int network1=29340; //A1
@@ -262,8 +262,8 @@ byte network=0;
 #elif NETWORK_OPERATORS == 2
   int network1=21901; //H-telekom
   int network2=21902; //a1
-  byte net_ver1=0;
-  byte net_ver2=9;
+  byte net_ver1=9;
+  byte net_ver2=0;
 #elif NETWORK_OPERATORS == 3
   int network1=22210;
   int network2=22288;
@@ -637,20 +637,8 @@ void beforeSend() {
   digitalWrite(DTR, LOW);  // wake up
   delay(100);
 
-  bool sendSuccess = false;
-  int attempts = 0;
+  SendData();
 
-  while (!sendSuccess && attempts < 3) {
-    sendSuccess = SendData();
-    attempts++;
-    if (!sendSuccess) {
-      delay(1000);  // Optional delay between retries
-    }
-  }
-
-
-
-  if (sendSuccess) {
   digitalWrite(DTR, HIGH);  // sleep
   delay(50);
   IGNORE_GSM_DATA;
@@ -663,15 +651,10 @@ void beforeSend() {
         UZsleep(sleepBetween);
       }
     }
-
     ENABLE_UART_START_FRAME_INTERRUPT;
     LowPower.powerExtStandby(SLEEP_8S, ADC_OFF, BOD_OFF, TIMER2_ON);  // sleep
     #endif
 
-  }
-  else {
-    reset(14);
-  }
 }
 
 
