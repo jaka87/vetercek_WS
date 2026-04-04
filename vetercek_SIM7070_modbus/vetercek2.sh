@@ -90,7 +90,7 @@ sed -i "s|#define NETWORK_OPERATORS .*|#define NETWORK_OPERATORS $NETWORK_OPERAT
 
 
 # Compile the sketch from the temporary directory
-/usr/share/arduino/arduino-builder -compile \
+/usr/bin/arduino-builder -compile \
     -logger=machine \
     -hardware /usr/share/arduino/hardware \
     -hardware /home/jaka87/.arduino15/packages \
