@@ -529,9 +529,10 @@ bool SendData() {
             failLevel++;
             continue;
         }
-        
+
+       
         // Try to send data with retries
-        byte result = trySendWithRetries();
+        byte result = trySendWithRetries(failLevel);
         
         if (result == 1) {
             // SUCCESS!
@@ -557,8 +558,8 @@ bool SendData() {
 }
 
 
-byte trySendWithRetries() {
-    const byte MAX_RETRIES = 3;
+byte trySendWithRetries(byte &failLevel) {
+    const byte MAX_RETRIES = 5;
     byte result = 0;
     
     for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
@@ -584,16 +585,24 @@ byte trySendWithRetries() {
             return 1;
         }
         
-        if (result == 5) {
-            // No response, retry with backoff
-            int delayTime = 1000 * (attempt + 1);
+        if (result == 5) { // No response
             #ifdef DEBUG
-                DEBUGSERIAL.print(F("No response, retrying in "));
-                DEBUGSERIAL.print(delayTime);
-                DEBUGSERIAL.println(F("ms"));
+                DEBUGSERIAL.println(F("No response, checking GPRS..."));
             #endif
-            delay(delayTime);
-            continue;
+        
+            if (!checkGPRS()) {
+                #ifdef DEBUG
+                    DEBUGSERIAL.println(F("GPRS not attached, restarting GPRS..."));
+                #endif
+                failLevel = 1; // escalate to GPRS restart
+                break; // exit retries, go to failLevel handling
+            }
+            else {
+                // GPRS OK, just retry UDPsend
+                int delayTime = 1000 * (attempt + 1);
+                delay(delayTime);
+                continue;
+            }
         }
         
         // Any other error, break out
