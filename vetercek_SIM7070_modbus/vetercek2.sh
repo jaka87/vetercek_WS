@@ -124,6 +124,67 @@ echo "Original .ino file restored."
 
 
 
+elif [ "$var1" == "11" ]; then
+    INO_PATH="/home/jaka87/Arduino/vetercek_SIM7070_modbus/vetercek_SIM7070_modbus.ino"
+    TEMP_FILE="/home/jaka87/Arduino/vetercek_SIM7070_modbus/vetercek_temp.txt"
+    TEMP_FILE2="/home/jaka87/Arduino/vetercek_SIM7070_modbus/temp.txt"
+
+    # Backup
+    cp "$INO_PATH" "$TEMP_FILE"
+
+    # Ask for DEVICE_ID
+    echo "Enter DEVICE_ID (default 1):"
+    read DEVICE_ID
+    DEVICE_ID=${DEVICE_ID:-1}
+    sed -i "s|#define DEVICE_ID .*|#define DEVICE_ID $DEVICE_ID|" "$INO_PATH"
+
+    # Set default options automatically
+    sed -i 's|^\(#define DEBUG\)|//\1|' "$INO_PATH"
+    sed -i 's|^\(#define DEBUG_MEASURE\)|//\1|' "$INO_PATH"
+    sed -i 's|^\(#define OPENVPN\)|\1|' "$INO_PATH"
+    sed -i 's|^\(#define HUMIDITY\)|\1|' "$INO_PATH"
+    sed -i 's|^\(#define TMPDS18B20\)|//\1|' "$INO_PATH"
+    sed -i 's/enableRain=1;/enableRain=0;/g' "$INO_PATH"
+    sed -i 's|^\(#define BMP\)|//\1|' "$INO_PATH"
+
+    # Ask for network operator (country)
+    echo "Set operator (1 SLO - 2 HR - 3 ITA - 4 HUN - 5 AU - 6 GER - 7 FR - 8 NED - 9 POR - 10 GRE - 11 SPAIN)"
+    read NETWORK_OPERATORS
+    NETWORK_OPERATORS=${NETWORK_OPERATORS:-1}
+    sed -i "s|#define NETWORK_OPERATORS .*|#define NETWORK_OPERATORS $NETWORK_OPERATORS|" "$INO_PATH"
+
+    # Compile the sketch (reuse your existing arduino-builder command)
+    /usr/bin/arduino-builder -compile \
+        -logger=machine \
+        -hardware /usr/share/arduino/hardware \
+        -hardware /home/jaka87/.arduino15/packages \
+        -tools /usr/share/arduino/tools-builder \
+        -tools /home/jaka87/.arduino15/packages \
+        -libraries /home/jaka87/Arduino/libraries \
+        -fqbn=MiniCore:avr:328:bootloader=uart0,eeprom=keep,variant=modelPB,BOD=disabled,LTO=Os,clock=8MHz_external \
+        -ide-version=10819 \
+        -build-path /home/jaka87/Arduino/temp/ \
+        -warnings=none \
+        -build-cache /tmp/arduino_cache_754522 \
+        -prefs=build.warn_data_percentage=75 \
+        -prefs=runtime.tools.arduinoOTA.path=/home/jaka87/.arduino15/packages/arduino/tools/arduinoOTA/1.3.0 \
+        -prefs=runtime.tools.arduinoOTA-1.3.0.path=/home/jaka87/.arduino15/packages/arduino/tools/arduinoOTA/1.3.0 \
+        -prefs=runtime.tools.avrdude.path=/home/jaka87/.arduino15/packages/arduino/tools/avrdude/6.3.0-arduino18 \
+        -prefs=runtime.tools.avrdude-6.3.0-arduino18.path=/home/jaka87/.arduino15/packages/arduino/tools/avrdude/6.3.0-arduino18 \
+        -prefs=runtime.tools.avr-gcc.path=/home/jaka87/.arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7 \
+        -prefs=runtime.tools.avr-gcc-7.3.0-atmel3.6.1-arduino7.path=/home/jaka87/.arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7 \
+        -verbose "$INO_PATH"
+
+    # Restore original .ino file
+    cp "$INO_PATH" "$TEMP_FILE2"
+    rm "$INO_PATH"
+    mv "$TEMP_FILE" "$INO_PATH"
+
+    echo "Original .ino file restored."
+
+
+
+
 elif [ "$var1" == "3" ]; then
 	//bin/avrdude -C//etc/avrdude.conf -v -V -patmega328pb -e -cusbtiny -Uflash:w:/home/jaka87/Arduino/temp/vetercek_SIM7070_modbus.ino.hex:i lfuse:w:0xDF:m efuse:w:0xF1:m hfuse:w:DA:m lock:w:0xFF:m 
 
