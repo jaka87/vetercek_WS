@@ -119,12 +119,26 @@ void UltrasonicAnemometer() { // measure wind speed using Modbus RTU
 
     float wind_speed_raw = floatUnion.f;
 
+  // Reject invalid sensor values
+  if (!isfinite(wind_speed_raw) || wind_speed_raw < 0.0 || wind_speed_raw > 36.0) {
+      #ifdef DEBUG
+          DEBUGSERIAL.print(F("Invalid raw wind speed: "));
+          DEBUGSERIAL.println(wind_speed_raw);
+      #endif
+
+      return;
+  }
+
+
     // ---------- Apply your existing processing ----------
     calDirection = wind_dir_raw + vaneOffset;
     CalculateWindDirection();
 
     // m/s → your units
     windSpeed = wind_speed_raw * 19.4384449;
+
+
+
 
     CalculateWindGust(windSpeed);
     CalculateWind();

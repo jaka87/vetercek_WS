@@ -26,7 +26,7 @@ int resetReason = MCUSR;
 #define OPENVPN
 
 #ifdef OPENVPN
-  char* broker = "10.64.124.253";
+  char* broker = "stations.vetercek.com";
   #define BROKER_PORT 6788
 
 #else
@@ -35,7 +35,7 @@ int resetReason = MCUSR;
 
 #endif
 
-#define DEVICE_ID 1
+#define DEVICE_ID 3
 
 byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 (2g with nb-iot as backup) and 51 (nb-iot with 2g as backup)
 byte cutoffWind = 0; // if wind is below this value time interval is doubled - 2x
@@ -48,7 +48,7 @@ int sea_level_m=0; // enter elevation for your location for pressure calculation
 //#define DEBUG_MEASURE  // debug data
 //#define DEBUG_ERROR  // debug connection,DEBUG_ERROR not written to serial but as reset reason
 #define LOCAL_WS // comment out if the station is global - shown on windgust.eu
-//#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
+#define UZ_Anemometer // if ultrasonic anemometer - PCB minimum PCB v.0.5
 #define toggle_UZ_power // toggle ultrasonic power - PCB minimum PCB v.0.6.6
 
 //#define BMP // comment out if you want to turn off pressure sensor and save space
@@ -262,7 +262,7 @@ bool lastWasNoResponseSuccess = false;
 #elif NETWORK_OPERATORS == 2
   int network1=21901; //H-telekom
   int network2=21902; //a1
-  byte net_ver1=9;
+  byte net_ver1=0;
   byte net_ver2=0;
 #elif NETWORK_OPERATORS == 3
   int network1=22210;
@@ -529,36 +529,57 @@ void loop() {
   DISABLE_UART_START_FRAME_INTERRUPT;    
   unsigned long startedWaiting = millis();
 
-    LowPower.idle(SLEEP_1S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
+    //LowPower.idle(SLEEP_1S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
   
 
-while (millis() - startedWaiting <= 1000) {
-  char c = ultrasonic.read();
-  if (c == ',') {
-    break;
-  }
-  #ifdef DEBUG
-    if (c >= 32 && c <= 126) {  // Printable ASCII range
-      DEBUGSERIAL.println(c);
+// while (millis() - startedWaiting <= 1000) {
+//   char c = ultrasonic.read();
+//   if (c == ',') {
+//     break;
+//   }
+//   #ifdef DEBUG
+//     if (c >= 32 && c <= 126) {  // Printable ASCII range
+//       DEBUGSERIAL.println(c);
+//     }
+//   #endif
+//   delay(10);
+// }
+
+
+    #ifdef DEBUG
+      DEBUGSERIAL.print(F(" na voljo: "));
+      DEBUGSERIAL.println(ultrasonic.available());
+    #endif
+unsigned long startTimee = millis();
+int timeoutMs = 20000;  // Wait max 10 seconds
+
+if (ultrasonic.available() < 5) {
+    LowPower.idle(SLEEP_1S, ADC_OFF, TIMER4_OFF,TIMER3_OFF,TIMER2_ON, TIMER1_OFF, TIMER0_OFF,SPI1_OFF,SPI0_OFF,USART1_ON, USART0_OFF, TWI1_OFF,TWI0_OFF,PTC_OFF);
+}
+
+    #ifdef DEBUG
+      DEBUGSERIAL.print(F(" na voljo: "));
+      DEBUGSERIAL.println(ultrasonic.available());
+    #endif
+while (millis() - startTimee < timeoutMs) {
+    if (ultrasonic.available() > 60) {
+        // Got enough data
+        break;
     }
-  #endif
-  delay(10);
+    delay(10);  // Small delay to prevent CPU hogging
 }
 
 
-
-
-    delay(90);
-  if (ultrasonic.available()>61){  
+  if (ultrasonic.available()>61 && ultrasonic.available()<80){  
     UltrasonicAnemometer();
     #ifdef DEBUG
       unsigned long totalTime = millis() - startedWaiting;
-      DEBUGSERIAL.print(F("UZ time: "));
+      DEBUGSERIAL.print(F(" UZ time: "));
       DEBUGSERIAL.println(totalTime);
     #endif
     } 
   else {  
-    UZerror(1);
+        ultrasonicFlush();
   } 
 
                     

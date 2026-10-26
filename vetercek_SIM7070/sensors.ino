@@ -1,83 +1,418 @@
 #ifdef UZ_Anemometer
-void UltrasonicAnemometer() { //measure wind speed
 
-// first: :1,0,0.00,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,E5
-// second: :01,0,0.00,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,BE
-// latest: :01,0,0.00,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,0,,23
+// void UltrasonicAnemometer_checksumnedela() {
+
+//     char buffer[75];
+//     unsigned long startTime = millis();
+//     int size = 0;
+
+//     // ---------------- READ ----------------
+//     while ((millis() - startTime) < 5000) {
+
+//         if (ultrasonic.available()) {
+
+//             size = ultrasonic.readBytesUntil('\n', buffer, sizeof(buffer) - 1);
+//             buffer[size] = '\0';
+//             break;
+//         }
+
+//         delay(10);
+//     }
+
+//     if (size < 5) {
+//         ultrasonicFlush();
+//         return;
+//     }
+
+//     // ---------------- CLEAN INPUT ----------------
+
+//     // remove leading junk
+//     while (size > 0 && (uint8_t)buffer[0] < 32) {
+//         memmove(buffer, buffer + 1, size);
+//         size--;
+//         buffer[size] = '\0';
+//     }
+
+//     // remove trailing junk
+//     while (size > 0 && (uint8_t)buffer[size - 1] < 32) {
+//         buffer[size - 1] = '\0';
+//         size--;
+//     }
+
+//     // remove CR if present
+//     if (size > 0 && buffer[size - 1] == '\r') {
+//         buffer[size - 1] = '\0';
+//         size--;
+//     }
+
+// #ifdef DEBUG
+//     DEBUGSERIAL.print(F("Clean buffer: "));
+//     DEBUGSERIAL.println(buffer);
+// #endif
+
+//     // ---------------- PARSE ----------------
+
+//     char *header = strtok(buffer, ",");
+//     char *dirStr = strtok(NULL, ",");
+//     char *speedStr = strtok(NULL, ",");
+
+//     if (!header || !dirStr || !speedStr) {
+//         UZerror(2);
+//         return;
+//     }
+
+//     // checksum = last 2 chars of full frame (after CR fix)
+//     char *checksum = buffer + strlen(buffer) - 2;
+
+//     // ---------------- VALIDATION ----------------
+
+//     for (int i = 0; dirStr[i] != '\0'; i++) {
+//         if (!isdigit(dirStr[i])) {
+//             UZerror(3);
+//             return;
+//         }
+//     }
+
+//     bool dotFound = false;
+//     for (int i = 0; speedStr[i] != '\0'; i++) {
+//         if (speedStr[i] == '.') {
+//             if (dotFound) {
+//                 UZerror(4);
+//                 return;
+//             }
+//             dotFound = true;
+//         }
+//         else if (!isdigit(speedStr[i])) {
+//             UZerror(5);
+//             return;
+//         }
+//     }
+
+//     int direction = atoi(dirStr);
+//     float speed = atof(speedStr);
+
+//     if (direction < 0 || direction > 360 || speed < 0 || speed >= 50) {
+//         UZerror(6);
+//         return;
+//     }
+
+//     // ---------------- CHECKSUM (FIXED SAFE VERSION) ----------------
+
+//     unsigned int sum = 0;
+//     sum += countBytes(dirStr);
+//     sum += countBytes(speedStr);
+//     sum += 2605;
+
+//     // detect "latest format"
+//   int commaCount = 0;
+
+//   for (int i = 0; buffer[i] != '\0'; i++) {
+//       if (buffer[i] == ',') commaCount++;
+//   }
+
+//   // format C has MORE fields (extra ",0,,")
+//   bool hasExtraZeroField = (commaCount > 20);
+
+
+//     unsigned int v1 = sum % 256;
+//     unsigned int v2;
+
+//     if (hasExtraZeroField) {
+//         v2 = (sum - 62) % 256;
+//     } else {
+//         v2 = (sum + 48) % 256;
+//     }
+
+//     v1 = (256 - v1) % 256;
+//     v2 = (256 - v2) % 256;
+
+//     char hex1[3];
+//     char hex2[3];
+
+//     sprintf(hex1, "%02X", v1);
+//     sprintf(hex2, "%02X", v2);
+
+//     char c0 = toupper(checksum[0]);
+//     char c1 = toupper(checksum[1]);
+
+
+// #ifdef DEBUG
+// DEBUGSERIAL.print(F("RX checksum: "));
+// DEBUGSERIAL.println(checksum);
+
+// DEBUGSERIAL.print(F("HEX1: "));
+// DEBUGSERIAL.println(hex1);
+
+// DEBUGSERIAL.print(F("HEX2: "));
+// DEBUGSERIAL.println(hex2);
+
+// DEBUGSERIAL.print(F("hasExtraZeroField: "));
+// DEBUGSERIAL.println(hasExtraZeroField);
+// #endif
+
+
+//     bool checksumOK =
+//         (c0 == hex1[0] && c1 == hex1[1]) ||
+//         (c0 == hex2[0] && c1 == hex2[1]);
+
+//     if (!checksumOK) {
+//         UZerror(7);
+//         ultrasonicFlush();
+//         return;
+//     }
+
+//     // ---------------- PROCESS DATA ----------------
+
+//     calDirection = direction + vaneOffset;
+//     CalculateWindDirection();
+
+//     windSpeed = (int)(speed * 19.4384449);
+//     CalculateWindGust(windSpeed);
+//     CalculateWind();
+
+//     if ((wind_speed >= (cutoffWind * 10) && measureCount <= whenSend) ||
+//         (wind_speed < (cutoffWind * 10) && measureCount <= (whenSend * 2))) {
+//         timergprs = 0;
+//     }
+
+//     ultrasonicFlush();
+// }
+
+void UltrasonicAnemometer() {
 
     char buffer[75];
-    char hexbuffer[5];
-    char hexbuffer2[5]; // new anemometer with aditional 0 in string
-    int sum;
-    int sum2; // new anemometer with aditional 0 in string
-    unsigned long startedWaiting = millis();
-    unsigned long startTime = millis(); // Get the start time
+    unsigned long startTime = millis();
     int size = 0;
-    while ((millis() - startTime) < 30000) {  // 30 seconds = 30000 milliseconds
-        // Check if data is available to read
+
+
+    // Read one line
+    while ((millis() - startTime) < 5000) {
+
         if (ultrasonic.available()) {
-            size = ultrasonic.readBytesUntil('\r\n', buffer, 75);
-            buffer[size] = '\0'; // Null-terminate the string
-            break; // Exit the loop once data is read
+
+            size = ultrasonic.readBytesUntil('\n', buffer, sizeof(buffer) - 1);
+            buffer[size] = '\0';
+            break;
         }
-        delay(10); // Small delay to prevent busy-waiting (optional)
+
+        delay(10);
     }
 
-    #ifdef DEBUG
-        DEBUGSERIAL.print(F("Raw buffer: "));
-        DEBUGSERIAL.println(buffer);
-    #endif
-    
-    if ((millis() - startTime) >= 30000) {
-        // Timeout occurred
-        UZerror(1); // Handle timeout error (1 indicates timeout for this case)
+
+    if (size < 5) {
+        ultrasonicFlush();
         return;
     }
-              
-      delay(20); // important in case of error          
-      char *dir = strtok(buffer, ",/");
-      char *wind = strtok(NULL, ",/");
-      char* check = strtok(NULL, ",/");
-      char* check2 = strtok(NULL, ",/");
 
 
-      if( check!=NULL and wind!=NULL and dir!=NULL)  {    
+    // Remove leading non-printable characters (0x00 etc.)
+    while (size > 0 && (uint8_t)buffer[0] < 32) {
 
-        if( check2!=NULL)  {  check=check2;  }
-        sum+=countBytes(dir);
-        sum+=countBytes(wind);
-        sum+=2605;
-        if( check2!=NULL)  {  sum2=sum-62;  } //2781
-        else {  sum2=sum+48;  }
-        
-        sum=-(sum % 256);   
-        sum2=-(sum2 % 256);   
-        sprintf(hexbuffer,"%02X", sum);
-        sprintf(hexbuffer2,"%02X", sum2); // new anemometer with aditional 0 in string
-   
-        if( (check[0] ==hexbuffer[2] and check[1] ==hexbuffer[3]) or (check[0] ==hexbuffer2[2] and check[1] ==hexbuffer2[3]) )  {  
-            calDirection = atoi(dir) + vaneOffset;
-            
-            CalculateWindDirection();  // calculate wind direction from data
-            windSpeed=atof(wind)*19.4384449;
-            CalculateWindGust(windSpeed);
-            CalculateWind();
-            if ( (wind_speed >= (cutoffWind*10) and measureCount <= whenSend )  or (wind_speed < (cutoffWind*10) and measureCount <= (whenSend*2))  ) {  // uz dont reset timer if more measurement than needed
-              timergprs = 0;  
-            } 
-                                           
+        memmove(buffer, buffer + 1, size);
+        size--;
+        buffer[size] = '\0';
+    }
+
+
+    // Remove trailing non-printable characters (\r etc.)
+    while (size > 0 && (uint8_t)buffer[size - 1] < 32) {
+
+        buffer[size - 1] = '\0';
+        size--;
+    }
+
+
+#ifdef DEBUG
+    DEBUGSERIAL.print(F("Clean buffer: "));
+    DEBUGSERIAL.println(buffer);
+#endif
+
+
+    /*
+       Accepted examples:
+
+       :1,0,0.00,,,,,,,,,,,,E5
+       :01,0,0.00,,,,,,,,,,,,BE
+       :01,0,0.00,,,,,,,,,0,,23
+
+       We only need:
+       field 0 = header
+       field 1 = direction
+       field 2 = speed
+    */
+
+
+    char *header = strtok(buffer, ",");
+    char *dirStr = strtok(NULL, ",");
+    char *speedStr = strtok(NULL, ",");
+
+
+    if (!header || !dirStr || !speedStr) {
+
+        UZerror(2);
+        return;
+    }
+
+
+    // Check that direction contains only digits
+    bool dirValid = true;
+
+    for (int i = 0; dirStr[i] != '\0'; i++) {
+
+        if (!isdigit(dirStr[i])) {
+            dirValid = false;
+            break;
         }
-        else { 
-            UZerror(3); 
-          }        
-      }
-      else { 
-        UZerror(2); 
-        }      
+    }
 
-ultrasonicFlush();
 
+    // Check that speed contains valid number characters
+    bool speedValid = true;
+    bool dotFound = false;
+
+    for (int i = 0; speedStr[i] != '\0'; i++) {
+
+        if (speedStr[i] == '.') {
+
+            if (dotFound) {
+                speedValid = false;
+                break;
+            }
+
+            dotFound = true;
+        }
+        else if (!isdigit(speedStr[i])) {
+
+            speedValid = false;
+            break;
+        }
+    }
+
+
+    if (!dirValid || !speedValid) {
+
+        UZerror(3);
+        return;
+    }
+
+
+    int direction = atoi(dirStr);
+    float speed = atof(speedStr);
+
+
+
+    // Final range check
+    if (direction < 0 || direction > 360 ||
+        speed < 0 || speed >= 50) {
+
+        UZerror(3);
+        return;
+    }
+
+
+    // Process valid data
+
+    calDirection = direction + vaneOffset;
+    CalculateWindDirection();
+    // m/s -> km/h * 10
+    windSpeed = (int)(speed * 19.4384449);
+    CalculateWindGust(windSpeed);
+    CalculateWind();
+
+
+    if ((wind_speed >= (cutoffWind * 10) && measureCount <= whenSend) ||
+        (wind_speed < (cutoffWind * 10) && measureCount <= (whenSend * 2))) {
+
+        timergprs = 0;
+    }
+
+
+    ultrasonicFlush();
 }
+
+
+
+
+
+// void UltrasonicAnemometer_old() { //measure wind speed
+
+// // first: :1,0,0.00,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,E5
+// // second: :01,0,0.00,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,BE
+// // latest: :01,0,0.00,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,0,,23
+
+//     char buffer[75];
+//     char hexbuffer[5];
+//     char hexbuffer2[5]; // new anemometer with aditional 0 in string
+//     unsigned int sum;
+//     int sum2; // new anemometer with aditional 0 in string
+//     unsigned long startedWaiting = millis();
+//     unsigned long startTime = millis(); // Get the start time
+//     int size = 0;
+//     while ((millis() - startTime) < 30000) {  // 30 seconds = 30000 milliseconds
+//         // Check if data is available to read
+//         if (ultrasonic.available()) {
+//             size = ultrasonic.readBytesUntil('\r\n', buffer, 75);
+//             buffer[size] = '\0'; // Null-terminate the string
+//             break; // Exit the loop once data is read
+//         }
+//         delay(10); // Small delay to prevent busy-waiting (optional)
+//     }
+
+//     #ifdef DEBUG
+//         DEBUGSERIAL.print(F("Raw buffer: "));
+//         DEBUGSERIAL.println(buffer);
+//     #endif
+    
+//     if ((millis() - startTime) >= 30000) {
+//         // Timeout occurred
+//         UZerror(1); // Handle timeout error (1 indicates timeout for this case)
+//         return;
+//     }
+              
+//       delay(40); // important in case of error          
+//       char *dir = strtok(buffer, ",/");
+//       char *wind = strtok(NULL, ",/");
+//       char* check = strtok(NULL, ",/");
+//       char* check2 = strtok(NULL, ",/");
+
+
+//       if( check!=NULL and wind!=NULL and dir!=NULL)  {    
+
+//         if( check2!=NULL)  {  check=check2;  }
+//         sum+=countBytes(dir);
+//         sum+=countBytes(wind);
+//         sum+=2605;
+//         if( check2!=NULL)  {  sum2=sum-62;  } //2781
+//         else {  sum2=sum+48;  }
+        
+//         sum=-(sum % 256);   
+//         sum2=-(sum2 % 256);   
+//         sprintf(hexbuffer,"%02X", sum);
+//         sprintf(hexbuffer2,"%02X", sum2); // new anemometer with aditional 0 in string
+   
+//         if( (check[0] ==hexbuffer[2] and check[1] ==hexbuffer[3]) or (check[0] ==hexbuffer2[2] and check[1] ==hexbuffer2[3]) )  {  
+//             calDirection = atoi(dir) + vaneOffset;
+            
+//             CalculateWindDirection();  // calculate wind direction from data
+//             windSpeed=atof(wind)*19.4384449;
+//             CalculateWindGust(windSpeed);
+//             CalculateWind();
+//             if ( (wind_speed >= (cutoffWind*10) and measureCount <= whenSend )  or (wind_speed < (cutoffWind*10) and measureCount <= (whenSend*2))  ) {  // uz dont reset timer if more measurement than needed
+//               timergprs = 0;  
+//             } 
+                                           
+//         }
+//         else { 
+//             UZerror(3); 
+//           }        
+//       }
+//       else { 
+//         UZerror(2); 
+//         }      
+
+// ultrasonicFlush();
+
+// }
 
 
 int countBytes( const char * data )

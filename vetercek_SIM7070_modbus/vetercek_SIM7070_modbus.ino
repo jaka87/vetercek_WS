@@ -20,13 +20,13 @@ int resetReason = MCUSR;
 #define OPENVPN
 
 #ifdef OPENVPN
-  char* broker = "10.64.124.253";
+  char* broker = "stations.vetercek.com";
   #define BROKER_PORT 6788
 #else
   char* broker = "vetercek.com";
   #define BROKER_PORT 6789
 #endif
-#define DEVICE_ID 1   
+#define DEVICE_ID 12
 
 
 byte GSMstate=2; // default value for network preference - 13 for 2G, 38 for nb-iot and 2 (2g with nb-iot as backup) and 51 (nb-iot with 2g as backup)
